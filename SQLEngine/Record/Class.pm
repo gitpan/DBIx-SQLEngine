@@ -91,14 +91,28 @@ sub import {
 
 =item new_subclass()
 
-  DBIx::SQLEngine::Record::Class->new_subclass( table=>$table ) : $class_name
-  DBIx::SQLEngine::Record::Class->new_subclass( table=>$table, name=>$name ) : $class_name
-  DBIx::SQLEngine::Record::Class->new_subclass( table=>$table, name=>$name, traits => \@traits ) : $class_name
+  DBIx::SQLEngine::Record::Class->new_subclass( %options ) : $class_name
 
-Subclass constructor. 
+Subclass constructor. Accepts a hash of options with the following keys:
 
-If you do not supply a class name, one is generated based on the table name. 
-If the class name does not contain a "::" package separator, it is prepended with DBIx::SQLEngine::Record::Auto:: to keep the namespace conflict-free.
+=over 4
+
+=item 'name'
+
+If you do not supply a class name, one is generated based on the table name, which must be provided.
+
+If the class name does not contain a "::" package separator, it is prepended
+with DBIx::SQLEngine::Record::Auto:: to keep the namespace conflict-free.
+
+=item 'table'
+
+You may provde a DBIx::SQLEngine::Schema::Table object or create the class without it and initialize it later.
+
+=item 'traits'
+
+You may pass a reference to one or more trait names as a "traits" argument.
+
+=back
 
 =item subclass_for_table()
 
@@ -196,7 +210,7 @@ The following trait classes are included with this distribution:
 
 =item Accessors
 
-Generates methods for column names.
+Generates methods for getting and setting values in each record object.
 
 =item Cache
 

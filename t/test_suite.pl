@@ -2,17 +2,16 @@
 
 my $separator = ( '=' x 79 ) . "\n";
 
-my @dsns = grep $_, split "\n", <<'.';
+my @dsns = grep /^[^\#]/, split "\n", <<'.';
 dbi:mysql:test:blackdart
 dbi:AnyData:test_data
 dbi:SQLite:dbname=t/test_data/test.sqlite
 dbi:CSV:f_dir=t/test_data
 .
 
-system qq! make !;
-
 print $separator;
-system qq! perl -Mblib -MTest::Harness=runtests -e '\$ENV{DBI_DSN}=""; runtests grep { /user_dsn/ ? 0 : 1 } \@ARGV' t/*.t !;
+
+system q! perl -Mblib -MTest::Harness=runtests -e '$ENV{DBI_DSN}=""; runtests grep { /user_dsn/ ? 0 : 1 } @ARGV' t/*.t !;
 
 foreach my $dsn ( @dsns ) {
 

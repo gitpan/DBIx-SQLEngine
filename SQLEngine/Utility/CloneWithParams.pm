@@ -194,7 +194,10 @@ sub __clone_with_parameters {
   }
   
   my $copy;
-  if ($ref_type eq 'SCALAR' or $ref_type eq 'REF') {
+  if ($ref_type eq 'SCALAR') {
+    $CopiedItems{ $source } = $copy = \( my $var = "" );;
+    $$copy = __clone_with_parameters($$source);
+  } elsif ($ref_type eq 'REF') {
     $CopiedItems{ $source } = $copy = \( my $var = "" );;
     $$copy = __clone_with_parameters($$source);
   } elsif ($ref_type eq 'HASH') {
@@ -224,7 +227,7 @@ Uses the Safe package to eval the provided code string. Uses a compartment which
 
 my $safe_compartment;
 sub safe_eval_with_parameters {
-  $safe_compartment ||= do {
+  $safe_compartment or $safe_compartment = do {
     require Safe;
     my $compartment = Safe->new();
     $compartment->share_from( 'main', [ map { '$' . $_ } ( 1 .. 9 ) ] );

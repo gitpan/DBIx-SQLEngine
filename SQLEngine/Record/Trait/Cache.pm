@@ -377,6 +377,8 @@ __PACKAGE__->define_cache_styles(
 
 =head1 FETCHING DATA (SQL DQL)
 
+=over 4
+
 =item fetch_select()
 
   $class_name->fetch_select ( %select_clauses ) : $record_set

@@ -29,7 +29,7 @@ cleanmanifest:
 	rm MANIFEST ; touch MANIFEST; make manifest
 
 testsuite:
-	perl t/test_suite.pl
+	make; perl t/test_suite.pl
 
 cover:
 	cover -delete; HARNESS_PERL_SWITCHES=-MDevel::Cover make testsuite; cover

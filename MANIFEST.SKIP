@@ -9,3 +9,4 @@ dbix_sqlengine_seq
 test.sqlite
 cover_db
 DBIx-SQLEngine-[^/]+/
+sqle_test

@@ -234,7 +234,7 @@ for the various classes.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.022;
+$VERSION = 0.023;
 
 use strict;
 
@@ -562,7 +562,7 @@ sub define_named_connections {
     $self->named_connections( splice( @_, 0, 2 ) )
   }
 }
-sub define_named_connection { &define_named_connections }
+*define_named_connection = \&define_named_connections;
 
 # DBIx::SQLEngine->define_named_connections_from_text( $name, $string )
 sub define_named_connections_from_text {
@@ -650,7 +650,7 @@ methods, which may individually be overridden by subclasses.
 
 # Provide aliases for methods that might be called on the base class
 foreach my $method ( qw/ DBILogging SQLLogging 
-	  named_queries define_named_query define_named_queries_from_text / ) {
+	named_queries define_named_queries define_named_queries_from_text / ) {
   no strict 'refs';
   *{$method} = sub { shift; DBIx::SQLEngine::Driver::Default->$method( @_ ) }
 }
@@ -2371,7 +2371,7 @@ sub define_named_queries {
     $self->named_queries( splice( @_, 0, 2 ) )
   }
 }
-sub define_named_query { &define_named_queries }
+*define_named_query = \&define_named_queries;
 
 # $sqldb->define_named_queries_from_text( $name, $string )
 sub define_named_queries_from_text {
@@ -3787,7 +3787,7 @@ sub visitall_array {
   my ($self, $sth, $coderef) = @_;
   my @row;
   my @results;
-  while (@row = $sth->fetchrow_hashref) {
+  while (@row = $sth->fetchrow_array) {
     push @results, &$coderef( @row );
   }
   return @results;

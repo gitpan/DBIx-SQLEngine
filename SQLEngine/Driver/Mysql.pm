@@ -135,6 +135,7 @@ sub recoverable_query_exceptions {
   'MySQL server has gone away',
   'no statement executing',
   'fetch without execute',
+  "\Qfetch() without execute()",
 }
 
 ########################################################################

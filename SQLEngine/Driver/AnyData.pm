@@ -28,8 +28,6 @@ use Carp;
 
 use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
 
-use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );
-
 ########################################################################
 
 =head2 fetch_one_value
@@ -204,11 +202,11 @@ Capability Limitation: This driver does not support stored procedures.
 
 =cut
 
-sub dbms_select_table_as_unsupported { 1 }
+use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );
 
-sub dbms_column_types_unsupported    { 1 }
-sub dbms_indexes_unsupported         { 1 }
-sub dbms_storedprocs_unsupported     { 1 }
+use DBIx::SQLEngine::Driver::Trait::NoColumnTypes ':all';
+
+sub dbms_select_table_as_unsupported { 1 }
 
 ########################################################################
 

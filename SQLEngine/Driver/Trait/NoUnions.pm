@@ -189,7 +189,7 @@ sub visit_select {
   my %clauses = @_;
 
   my $union = delete $clauses{'union'}
-	or return _super_dispatch($self, 'visit_select_rows', $code, %clauses );
+	or return _super_dispatch($self, 'visit_select', $code, %clauses );
 
   my @results;
   foreach my $query ( @$union ) {

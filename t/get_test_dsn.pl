@@ -38,7 +38,7 @@ if ( ! $dsn ) {
 .
 
   %common_cases = (
-    'AnyData' => 'dbi:AnyData:test_data',
+    'AnyData' => 'dbi:AnyData:',
     'Pg'      => 'dbi:Pg:dbname=test',
     'SQLite'  => 'dbi:SQLite:dbname=t/test_data/test.sqlite',
     'Solid'   => 'dbi:Solid:',

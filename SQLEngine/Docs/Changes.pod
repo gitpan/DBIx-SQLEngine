@@ -6,6 +6,15 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.023
+
+2004-04-   Released as DBIx-SQLEngine-0.023.
+
+2004-04-10 Added feature matrix to Docs::Related. Added Docs::Comparison.
+
+2004-04-10 Fixed test crasher in visit_select for Driver::Trait::NoUnions.
+
+
 =head2 Version 0.022
 
 2004-04-09 Released as DBIx-SQLEngine-0.022.

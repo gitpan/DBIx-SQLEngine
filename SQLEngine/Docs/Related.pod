@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Docs::RelatedModules - Survey of Class Builders
+DBIx::SQLEngine::Docs::RelatedModules - Survey of DBI Wrappers
 
 
 =head1 SYNOPSIS
@@ -26,7 +26,7 @@ Most of these provide simple wrappers around DBI's connect, prepare, and fetch
 methods, but do not appear to support any kind of cross-DBMS portability
 mechanism. See L<DBIx::Abstract>, L<DBIx::Broker>, L<DBIx::Simple>, and
 L<Sql::Simple> for examples of this group. See also L<DBIx::AbstractLite>,
-L<DBIx::Wrap>, L<DBIx::Wraper>, and L<DBIx::YAWM>. Single-platform solutions
+L<DBIx::Schema>, L<DBIx::Wrap>, and L<DBIx::YAWM>. Single-platform solutions
 like L<MySQL::Easy> are also available.
 
 Some provide only SQL generation mechanisms. See L<SQL::Abstract>.
@@ -58,7 +58,71 @@ L<SQL::Catalog>, L<SQL::Library>, L<DBIx::PhraseBook>,
 L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
 
 Some packages focus on managing database schema information. See
-L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>, L<DBIx::SystemCatalog>.
+L<DBIx::DataSource>, L<DBIx::Admin::TableInfo>, L<DBIx::SystemCatalog>.
+
+http://poop.sourceforge.net/
+
+=head2 Feature Matrix
+
+Please note that much of this information was collected just from scanning documentation, and may be incorrect or out of date. (Corrections welcome!)
+
+  DBI Wrapper     -- Maintains connection to DBI handle.
+  One Call Query  -- Provides combined prepare/fetch/finish method.
+  Data-driven SQL -- Generates queries from Perl-ish arguments.
+  Schema Access   -- Detect or create tables and other structures.
+  Named Configs   -- Manage connection params and query definitions.
+  Portability     -- Consistent way of performing queries across platforms.
+  Object Mapping  -- Treat rows of data as objects, or vice-versa.
+
+Comparison:
+
+ __PACKAGE__        	DBIWrap	OneCall	DataSQL	NameCfg	Schema	Portble	ObjectM
+  
+ DBIx::SQLEngine	  Y	  Y	  Y	  Y	  Y	  Y	  Y
+ 
+ __Object_Mappers__
+ Alzabo                	  Y	  Y	  Y	  -?	  Y	  Y	  Y
+ Class::DBI/Ima::DBI	  Y	  Y	  Y	  Y?	  ?	  Y	  Y
+ DBIx::RecordSet/Compat	  Y	  ?	  Y	  -?	  Y	  Y	  Y
+ DBIx::SearchBuilder	  Y	  Y	  Y	  -	  -	  Y	  Y?
+ MKDoc::SQL         	  Y	  Y	  Y	  -?	  ?	  Y/-	  Y
+ Rosetta/SQL::SyntaxModel Y?	  -?	  Y?	  -?	  Y?	  Y?	  Y?
+ SPOPS              	  Y	  Y	  Y	  -	  Y	  Y	  Y
+ Tangram        	  Y	  Y	  Y	  -	  Y?	  Y	  Y
+ 
+ __DBI_Wrappers__
+ DBIx::Abstract        	  Y	  Y	  Y	  -	  -	  -	  -
+ DBIx::AbstractLite	  Y	  -	  Y	  -	  -	  -	  -
+ DBIx::Broker        	  Y	  Y	  Y	  -	  -	  -	  -
+ DBIx::Browse        	  Y	  Y	  Y	  -	  -	  -	  -
+ DBIx::DWIW        	  Y	  Y	  -	  -	  -	  Y/-	  -
+ DBIx::Easy        	  Y	  Y	  Y	  -	  -	  Y/-	  -
+ DBIx::Schema        	  Y	  Y	  Y	  -	  -	  -	  -
+ DBIx::Simple        	  Y	  Y	  -	  -	  -	  -	  -
+ DBIx::Wrap        	  Y	  Y	  Y	  -	  -	  -	  -
+ DBIx::YAWM        	  Y	  Y	  Y	  -	  -	  -	  -
+ MySQL::Easy        	  Y	  Y	  -	  -	  -	  -	  -
+ SQL::AnyDBD/DBIx::AnyDBD Y	  -	  Y	  -	  -	  Y	  -
+ Sql::Simple        	  Y	  Y	  Y	  -	  -	  -	  -
+ 
+ __Named_Configs__
+ DBIx::Librarian	  Y	  -	  -	  Y	  -	  -	  -
+ DBIx::PhraseBook	  Y	  Y	  Y	  Y/-	  -	  -	  -
+ DBIx::SearchProfiles	  Y	  Y	  Y	  Y	  -	  -	  -
+ SQL::Catalog        	  Y	  -	  -	  Y	  -	  -	  -
+ 
+ __Query Generation__
+ Class::Phrasebook::SQL	  -	  -	  -	  Y	  -	  -	  -	  
+ SQL::Abstract        	  -	  -	  Y	  -	  -	  -	  -
+ SQL::Generator        	  -	  -	  Y	  Y	  -	  -
+ SQL::Library        	  -	  -	  -	  Y	  -	  ?	  -
+ 
+ __Schema_Information__
+ DBIx::Admin::TableInfo	  Y	  -	  -	  -	  Y	  -	  -
+ DBIx::DataSource	  -	  -	  -	  -	  Y	  Y	  -
+ DBIx::SystemCatalog	  Y	  -	  -	  -	  Y	  Y	  -
+  
+                  	DBIWrap	OneCall	DataSQL	NameCfg	Schema	Portble	ObjectM
 
 
 =head1 SEE ALSO

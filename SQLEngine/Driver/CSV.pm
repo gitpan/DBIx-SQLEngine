@@ -213,8 +213,9 @@ Capability Limitation: This driver does not support stored procedures.
 
 sub dbms_select_table_as_unsupported { 1 }
 
+use DBIx::SQLEngine::Driver::Trait::NoColumnTypes ':all';
+
 sub dbms_joins_unsupported           { 1 }
-sub dbms_column_types_unsupported    { 1 }
 sub dbms_null_becomes_emptystring    { 1 }
 
 use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );

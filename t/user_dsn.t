@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
+use strict;
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
 
@@ -8,7 +9,7 @@ use DBIx::SQLEngine;
 
 BEGIN { require 't/get_test_dsn.pl' }
 
-BEGIN { plan tests => 45 }
+BEGIN { plan tests => 49 }
 
 ########################################################################
 
@@ -144,7 +145,7 @@ SELECT_CRITERIA_MULTI: {
 SELECT_CRITERIA_ONE: {
 
   my $row = $sqldb->fetch_one_row( table => $table, criteria => {name=>'Dave'});
-  ok( ref $row and $rows->[0]->{'name'} eq 'Dave' );
+  ok( ref $row and $row->{'name'} eq 'Dave' );
 
   $row = $sqldb->fetch_one_row( table => $table, criteria => {name=>'Mike'});
   ok( ! $row );
@@ -160,15 +161,15 @@ SELECT_CRITERIA_ONE: {
 VISIT_SELECT: {
 
   my ($row) = $sqldb->visit_select( table => $table, criteria => {name=>'Dave'}, sub { $_[0] });
-  ok( ref $row and $rows->[0]->{'name'} eq 'Dave' );
+  ok( ref $row and $row->{'name'} eq 'Dave' );
 
-  $row = $sqldb-> visit_select( table => $table, criteria => {name=>'Mike'}, sub { $_[0] });
+  $row = $sqldb->visit_select( table => $table, criteria => {name=>'Mike'}, sub { $_[0] });
   ok( ! $row );
 
-  my $value = $sqldb->visit_select( table => $table, columns => 'name', criteria => {name=>'Dave'}, sub { $_[0]->{name} });
+  my ($value) = $sqldb->visit_select( table => $table, columns => 'name', criteria => {name=>'Dave'}, sub { $_[0]->{name} });
   ok( $value eq 'Dave' );
 
-  $value = $sqldb->fetch_one_value( table => $table, columns => 'name', criteria => {name=>'Mike'}, sub { $_[0]->{name} });
+  $value = $sqldb->visit_select( table => $table, columns => 'name', criteria => {name=>'Mike'}, sub { $_[0]->{name} });
   ok( ! $value );
 }
 
