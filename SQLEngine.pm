@@ -141,7 +141,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.015;
+$VERSION = 0.016;
 
 use strict;
 

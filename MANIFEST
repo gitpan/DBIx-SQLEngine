@@ -28,6 +28,7 @@ SQLEngine/Driver/CSV.pm
 SQLEngine/Driver/File.pm
 SQLEngine/Driver/MSSQL.pm
 SQLEngine/Driver/Mysql.pm
+SQLEngine/Driver/NullP.pm
 SQLEngine/Driver/Oracle.pm
 SQLEngine/Driver/Pg.pm
 SQLEngine/Driver/SQLite.pm
@@ -38,6 +39,9 @@ SQLEngine/Schema/Table.pm
 SQLEngine/Schema/TableSet.pm
 TODO
 t/compile.t
+t/core_clone.t
 t/example.t
+t/null.t
 t/standard.t
 test_data/about_test_data
+test_data/test.sqlite

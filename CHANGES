@@ -2,6 +2,12 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Version 0.016
+
+    2004-03-23 Released as DBIx-SQLEngine-0.016.
+
+    2004-03-23 Fixed files missing from manifest.
+
   Version 0.015
 
     2004-03-22 Released as DBIx-SQLEngine-0.015.
