@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.027;
+$VERSION = 0.028;
 
 use DBIx::SQLEngine::Driver;
 @ISA = qw( DBIx::SQLEngine::Driver );

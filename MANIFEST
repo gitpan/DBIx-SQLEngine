@@ -24,6 +24,7 @@ SQLEngine/Docs/Comparison.pod
 SQLEngine/Docs/ReadMe.pod
 SQLEngine/Docs/Related.pod
 SQLEngine/Docs/ToDo.pod
+SQLEngine/Driver.pm
 SQLEngine/Driver/AnyData.pm
 SQLEngine/Driver/CSV.pm
 SQLEngine/Driver/Informix.pm
@@ -71,3 +72,4 @@ t/table_objects.t
 t/test_data/about_test_data
 t/test_suite.pl
 t/user_dsn.t
+upman.db
