@@ -15,7 +15,7 @@ Each Criteria::Comparison object is implemented in the form of blessed arrayref,
 
 The comparison value is assumed by default to be a literal string or numeric value, and uses parameter substitution to avoid having to deal with quoting. If you actually want to compare against another column or expression, pass a reference to the column name or expression string. For example, to select records where C<first_name = last_name>, you could use:
 
-  DBIx::SQLEngine::Criteria::StringEquality->('first_name', \'last_name');
+  DBIx::SQLEngine::Criteria::Equality->('first_name', \'last_name');
 
 =cut
 
@@ -86,7 +86,7 @@ sub sql_where {
   my $cmp = $self->sql_comparator;
   ( length $cmp ) or Carp::confess("sql_comparator is missing or empty");
   
-  # 2002-11-02 Based on patch from Michael Kroell, University of Innsbruck
+  # 2002-11-02 Based on patch from Michael Kroll, University of Innsbruck
   if ( ! defined($compv) ) {
     if ( $cmp eq '=' ) { $cmp = 'IS' }
     join(' ', $expr, $cmp, 'NULL' );
@@ -102,37 +102,14 @@ sub sql_where {
 ########################################################################
 
 
-=head1 VERSION
+=head1 SEE ALSO
 
-2001-06-28 Simon: Moved to DBIx::O2:: namespace. Switched to Class::MakeMethods. Renamed from SimpleSQL to Comparison.
+See L<DBIx::SQLEngine::Criteria> and L<DBIx::SQLEngine::Criteria::Comparison>
+for more information on using these objects.
 
-1999-10-13 Chaos: Added NumericInequality criterion. 
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
-1999-10-05 Chaos: Fixed StringInequality criterion. 
-
-1999-01-31 Simon: Removed Data::Collection dependancy; now handled by Data::DRef.
-
-1998-09-18 Simon: Updated to use MethodMaker::Compatibility instead of NamedFactory.
-
-1998-03-19 Simon: Switched to new table->quote_for_column method.
-
-1998-03-17 Simon: Split DBO::Criteria subclasses into new .pm files. 
-
-
-=head1 AUTHORS
-
-Developed by Evolution Online Systems:
-
-  M. Simon Cavalletto, simonm@evolution.com
-
-
-=head1 LICENSE
-
-This module is free software. It may be used, redistributed and/or
-modified under the same terms as Perl.
-
-Copyright (c) 1996, 1997, 1999, 2000, 2001 Evolution Online Systems, Inc.
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 =cut
-
-1;

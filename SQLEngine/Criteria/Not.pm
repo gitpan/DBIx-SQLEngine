@@ -2,20 +2,21 @@ package DBIx::SQLEngine::Criteria::Not;
 
 @ISA = 'DBIx::SQLEngine::Criteria';
 use strict;
+use Carp;
 
 sub new {
   my $package = shift;
+  ( @_ < 2 ) or croak("The Not criteria only accepts one argument");
   bless [ shift ], $package;
 }
 
 sub sql_where {
-    my $self = shift;
-    my ($clause, @params) = $self->[0]->sql_where;
-
-    return unless defined $clause and length $clause;
-
-    return ( " NOT ( " . $clause . " ) ", @params )
-
+  my $self = shift;
+  my ($clause, @params) = $self->[0]->sql_where;
+  
+  return unless defined $clause and length $clause;
+  
+  return ( " NOT ( " . $clause . " ) ", @params )
 }
 
 1;
@@ -38,7 +39,7 @@ DBIx::SQLEngine::Criteria::Not - Negating A Single Criteria
 DBIx::SQLEngine::Criteria::Not logicaly inverts a single given
 criteria by wrapping it in a NOT criteria.
 
-See L<DBIx::SQLEngine::Criteria> for more.
+(Contributed by Christian Glahn at Innsbruck University.)
 
 
 =head1 REFERENCE
@@ -53,17 +54,15 @@ Constructor.
 
 =back
 
-=head1 AUTHORS
 
-Developed by Innsbruck University:
+=head1 SEE ALSO
 
-   Christian Glahn, christian.glahn@uibk.ac.at
+See L<DBIx::SQLEngine::Criteria> and L<DBIx::SQLEngine::Criteria::Comparison>
+for more information on using these objects.
 
-=head1 LICENSE
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
-This module is free software. It may be used, redistributed and/or
-modified under the same terms as Perl.
-
-Copyright (c) 2002 ZID, Innsbruck University (Austria)
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 =cut

@@ -4,25 +4,25 @@ DBIx::SQLEngine - Extends DBI with high-level operations
 
 =head1 SYNOPSIS
 
-  my $db = DBIx::SQLEngine->new( @DBIConnectionArgs );
+  my $sqldb = DBIx::SQLEngine->new( @DBIConnectionArgs );
   
-  $datasource->do_insert(
+  $sqldb->do_insert(
     table => 'students', 
     values => { 'name'=>'Dave', 'age'=>'19', 'status'=>'minor' },
   );
   
-  $hash_ary = $datasource->fetch_select( 
+  $hash_ary = $sqldb->fetch_select( 
     table => 'students' 
     criteria => { 'status'=>'minor' },
   );
   
-  $datasource->do_update( 
+  $sqldb->do_update( 
     table => 'students', 
     criteria => 'age > 20' 
     values => { 'status'=>'adult' },
   );
   
-  $datasource->do_delete(
+  $sqldb->do_delete(
     table => 'students', 
     criteria => { 'name'=>'Dave' },
   );
@@ -33,9 +33,25 @@ The DBIx::SQLEngine class provides an extended interface for the DBI database fr
 
 =head2 Portability Subclasses
 
-Behind the scenes, different subclasses of SQLEngine are instantiated depending on the type of server to which you connect, thanks to DBIx::AnyData. As a result, SQL dialect ideosyncracies can be compensated for; this release includes subclasses supporting the MySQL, Pg, AnyData, and CSV drivers.
+Behind the scenes, different subclasses of SQLEngine are instantiated
+depending on the type of server to which you connect, thanks to
+DBIx::AnyData. As a result, SQL dialect ideosyncracies can be
+compensated for; this release includes subclasses for connections
+to MySQL, Pg, Oracle, and MSSQL servers, as well as for the standalone
+SQLite, AnyData, and CSV packages.
 
-The public interface described below is shared by all SQLEngine subclasses. In general, these methods aim to produce generic, database-independent queries, using standard SQL syntax. Subclasses may override these methods to compensate for SQL syntax idiosyncrasies. To facilitate cross-platform subclassing, many of these methods are implemented by calling combinations of other methods, which may individually be overridden by subclasses.
+The only method that's actually provided by the DBIx::SQLEngine
+class itself is the new() constructor. All of the other methods
+described below are defined in DBIx::SQLEngine::Driver::Default,
+or overridden in one of its subclasses.
+
+The public interface described below is shared by all SQLEngine
+subclasses. In general, these methods aim to produce generic,
+database-independent queries, using standard SQL syntax. Subclasses
+may override these methods to compensate for SQL syntax idiosyncrasies.
+To facilitate cross-platform subclassing, many of these methods
+are implemented by calling combinations of other methods, which
+may individually be overridden by subclasses.
 
 =head2 SQL Functionality
 
@@ -63,22 +79,15 @@ The other fetch_*, visit_* and do_* methods, like do_insert, are wrappers that c
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.010;
+$VERSION = 0.011;
 
 use strict;
-use Carp;
 
 use DBI;
 use DBIx::AnyDBD;
 use Class::MakeMethods;
 
-use DBIx::SQLEngine::Criteria::HashGroup;
-
-SETUP_DEFAULT_CLASS: {
-  no strict 'refs';
-  *{'DBIx::SQLEngine::Default::'} = *{'DBIx::SQLEngine::'};
-  $INC{'DBIx/SQLEngine/Default.pm'} = $INC{'DBIx/SQLEngine/Default.pm'};
-}
+use DBIx::SQLEngine::Criteria;
 
 ########################################################################
 
@@ -102,7 +111,7 @@ Accepts the same arguments as the standard DBI connect method.
 
 =back
 
-I<Portability:> After setting up the DBI handle that it will use, the SQLEngine is reblessed into a matching subclass, if one is available. Thus, if you create a DBIx::SQLEngine that's using DBD::mysql, by passing a DSN such as "dbi:mysql:test", your object will automatically shift to being an instance of the DBIx::SQLEngine::Mysql class. This allows the driver-specific subclasses to compensate for differences in the SQL dialect or execution ideosyncracies of that platform.
+I<Portability:> After setting up the DBI handle that it will use, the SQLEngine is reblessed into a matching subclass, if one is available. Thus, if you connect a DBIx::SQLEngine through DBD::mysql, by passing a DSN such as "dbi:mysql:test", your object will automatically shift to being an instance of the DBIx::SQLEngine::Driver::Mysql class. This allows the driver-specific subclasses to compensate for differences in the SQL dialect or execution ideosyncracies of that platform.
 
 =cut
 
@@ -110,14 +119,26 @@ sub new {
   my $class = shift;
   my ($dsn, $user, $pass, $args) = @_;
   $args ||= { AutoCommit => 1, PrintError => 0, RaiseError => 1, };
-  __PACKAGE__->log_connect( $dsn ) if __PACKAGE__->DBILogging;
-  my $self = DBIx::AnyDBD->connect($dsn, $user, $pass, $args, 'DBIx::SQLEngine');
+  DBIx::SQLEngine::Driver::Default->log_connect( $dsn ) 
+	if DBIx::SQLEngine::Driver::Default->DBILogging;
+  my $self = DBIx::AnyDBD->connect($dsn, $user, $pass, $args, 'DBIx::SQLEngine::Driver');
   return undef unless $self;
   $self->{'reconnector'} = sub { DBI->connect($dsn, $user, $pass, $args) };
   return $self;
 }
 
 ########################################################################
+
+sub DBILogging { shift; DBIx::SQLEngine::Driver::Default->DBILogging( @_ ) }
+sub SQLLogging { shift; DBIx::SQLEngine::Driver::Default->SQLLogging( @_ ) }
+
+########################################################################
+
+package DBIx::SQLEngine::Driver::Default;
+BEGIN { $INC{'DBIx/SQLEngine/Driver/Default.pm'} = __FILE__ }
+
+use strict;
+use Carp;
 
 ########################################################################
 
@@ -127,7 +148,7 @@ Information is obtained from a DBI database through the Data Query Language feat
 
 =head2 Retrieving Data With Select
 
-The following methods may be used to retrieve data using SQL select statements.
+The following methods may be used to retrieve data using SQL select statements. They all accept a flexible set of key-value arguments describing the query to be run, as described in the "SQL Select Clauses" section below.
 
 =over 4
 
@@ -196,6 +217,26 @@ Optional. May contain a comma-separated string of column names or experessions, 
 
 Optional. May contain a comma-separated string of column names or experessions, or an reference to an array of the same.
 
+=item limit
+
+Optional. Maximum number of rows to be retrieved from the server. Relies on DBMS-specific behavior provided by sql_limit(). 
+
+=item offset
+
+Optional. Number of rows at the start of the result which should be skipped over. Relies on DBMS-specific behavior provided by sql_limit(). 
+
+=back
+
+I<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
+
+=over 4
+
+=item sql_limit
+
+  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
+
+Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
+
 =back
 
 B<Examples:>
@@ -216,10 +257,6 @@ Each query can be written out explicitly or generated on demand using whichever 
 
   $hashes = $sqldb->fetch_select( 
     table => 'students', criteria => [ 'status = ?', 'minor' ]
-  );
-
-  $hashes = $sqldb->fetch_select( 
-    table => 'students', criteria => { 'status' => 'minor' } 
   );
 
   $hashes = $sqldb->fetch_select( 
@@ -337,7 +374,7 @@ sub fetch_select {
 # $row = $self->fetch_one_row( %clauses );
 sub fetch_one_row {
   my $self = shift;
-  my $rows = $self->fetch_select( @_ ) or return;
+  my $rows = $self->fetch_select( limit => 1, @_ ) or return;
   $rows->[0];
 }
 
@@ -348,24 +385,25 @@ sub fetch_one_value {
   (%$row)[1];
 }
 
+# $rows = $self->visit_select( %clauses, $coderef );
 # $rows = $self->visit_select( $coderef, %clauses );
 sub visit_select {
   my $self = shift;
-  $self->visit_sql( shift, $self->sql_select( @_ ) );
+  $self->visit_sql( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) );
 }
 
 sub sql_select {
   my $self = shift;
   my %clauses = @_;
-  
+
   if ( my $explicit = $clauses{'sql'} ) {
     return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
   }
-  
+
+  my $sql_keyword = 'select';
   my ($sql, @params);
   
-  my $columns = $clauses{'columns'};
-  delete $clauses{'columns'};
+  my $columns = delete $clauses{'columns'};
   if ( ! $columns ) {
     $columns = '*';
   } elsif ( ! ref( $columns ) and length( $columns ) ) {
@@ -379,9 +417,7 @@ sub sql_select {
   }
   $sql = "select $columns";
   
-  my $tables = $clauses{'table'} || $clauses{'tables'};
-  delete $clauses{'table'};
-  delete $clauses{'tables'};
+  my $tables = delete $clauses{'table'} || delete $clauses{'tables'};
   if ( ! $tables ) {
     confess("Table name is missing or empty");
   } elsif ( ! ref( $tables ) and length( $tables ) ) {
@@ -395,51 +431,64 @@ sub sql_select {
   }
   $sql .= " from $tables";
   
-  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
-  delete $clauses{'criteria'};
-  if ( $criteria ) {
-    $sql .= " where $criteria";
-    push @params, @cp;
+  if ( my $criteria = delete $clauses{'criteria'} ) {
+    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
+    if ( $sql_crit ) {
+      $sql .= " where $sql_crit";
+      push @params, @cp;
+    }
   }
   
-  my $group = $clauses{'group'};
-  delete $clauses{'group'};
-  if ( ! $group ) {
-    $group = '';
-  } elsif ( ! ref( $group ) and length( $group ) ) {
-    # should be one or more comma-separated column names or expressions
-  } elsif ( ref($group) eq 'ARRAY' ) {
-    $group = join ', ', @$group;
-  } else {
-    confess("Unsupported group spec '$group'");
+  if ( my $group = delete $clauses{'group'} ) {
+    if ( ! ref( $group ) and length( $group ) ) {
+      # should be one or more comma-separated column names or expressions
+    } elsif ( ref($group) eq 'ARRAY' ) {
+      $group = join ', ', @$group;
+    } else {
+      confess("Unsupported group spec '$group'");
+    }
+    if ( $group ) {
+      $sql .= " group by $group";
+    }
   }
-  if ( $group ) {
-    $sql .= " group by $group";
+  
+  if ( my $order = delete $clauses{'order'} ) {
+    if ( ! ref( $order ) and length( $order ) ) {
+      # should be one or more comma-separated column names with optional 'desc'
+    } elsif ( ref($order) eq 'ARRAY' ) {
+      $order = join ', ', @$order;
+    } else {
+      confess("Unsupported order spec '$order'");
+    }
+    if ( $order ) {
+      $sql .= " order by $order";
+    }
   }
- 
-  my $order = $clauses{'order'};
-  delete $clauses{'order'};
-  if ( ! $order ) {
-    $order = '';
-  } elsif ( ! ref( $order ) and length( $order ) ) {
-    # should be one or more comma-separated column names with optional 'desc'
-  } elsif ( ref($order) eq 'ARRAY' ) {
-    $order = join ', ', @$order;
-  } else {
-    confess("Unsupported order spec '$order'");
-  }
-  if ( $order ) {
-    $sql .= " order by $order";
+  
+  my $limit = delete $clauses{limit};
+  my $offset = delete $clauses{offset};
+  if ( $limit or $offset) {
+    ($sql, @params) = $self->sql_limit($limit, $offset, $sql, @params);
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported select clauses: " . 
+    confess("Unsupported $sql_keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
   $self->log_sql( $sql, @params );
   
   return( $sql, @params );
+}
+
+sub sql_limit {
+  my $self = shift;
+  my ( $limit, $offset, $sql, @params ) = @_;
+  
+  $sql .= " limit $limit" if $limit;
+  $sql .= " offset $offset" if $offset;
+  
+  return ($sql, @params);
 }
 
 ########################################################################
@@ -458,7 +507,7 @@ Information is entered into a DBI database through the Data Manipulation Languag
 
   $sqldb->do_insert( %sql_clauses ) : $row_count
 
-Insert a single row into a table in the datasource. Should always return 1.
+Insert a single row into a table in the datasource. Should return 1, unless there's an exception.
 
 =item sql_insert
 
@@ -488,6 +537,10 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
+=item sequence
+
+Optional. May contain a string with the name of a column in the target table which should receive an automatically incremented value. If present, triggers use of the DMBS-specific do_insert_with_sequence() method, described below.
+
 =back
 
 B<Examples:>
@@ -496,12 +549,16 @@ B<Examples:>
 
 =item *
 
+Here's a simple insert using a hash of column-value pairsL
+
   $sqldb->do_insert( 
     table => 'students', 
     values => { 'name'=>'Dave', 'age'=>'19', 'status'=>'minor' } 
   );
 
 =item *
+
+Here's the same insert using separate arrays of column names and values to be inserted:
 
   $sqldb->do_insert( 
     table => 'students', 
@@ -510,6 +567,8 @@ B<Examples:>
   );
 
 =item *
+
+Of course you can also use your own arbitrary SQL and placeholder parameters.
 
   $sqldb->fetch_one_row( 
     sql => [ 'insert into students (id, name) values (?, ?)', 201, 'Dave' ]
@@ -522,7 +581,13 @@ B<Examples:>
 # $rows = $self->do_insert( %clauses );
 sub do_insert {
   my $self = shift;
-  $self->do_sql( $self->sql_insert( @_ ) );
+  my %args = @_;
+  
+  if ( my $seq_name = delete $args{sequence} ) {
+    $self->do_insert_with_sequence( $seq_name, %args );
+  } else {
+    $self->do_sql( $self->sql_insert( @_ ) );
+  }
 }
 
 sub sql_insert {
@@ -530,13 +595,13 @@ sub sql_insert {
   my %clauses = @_;
 
   if ( my $explicit = $clauses{'sql'} ) {
-    return $explicit;
+    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
   }
 
+  my $sql_keyword = 'insert';
   my ($sql, @params);
   
-  my $table = $clauses{'table'};
-  delete $clauses{'table'};
+  my $table = delete $clauses{'table'};
   if ( ! $table ) {
     confess("Table name is missing or empty");
   } elsif ( ! ref( $table ) and length( $table ) ) {
@@ -546,8 +611,7 @@ sub sql_insert {
   }
   $sql = "insert into $table";
   
-  my $columns = $clauses{'columns'};
-  delete $clauses{'columns'};
+  my $columns = delete $clauses{'columns'};
   if ( ! $columns and UNIVERSAL::isa( $clauses{'values'}, 'HASH' ) ) {
     $columns = $clauses{'values'}
   }
@@ -568,8 +632,7 @@ sub sql_insert {
     $sql .= " ($columns)";
   }
   
-  my $values = $clauses{'values'};
-  delete $clauses{'values'};
+  my $values = delete $clauses{'values'};
   my @value_args;
   if ( ! defined $values or ! length $values ) {
     croak("Values are missing or empty");
@@ -603,7 +666,7 @@ sub sql_insert {
   push @params, @v_params;
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported insert clauses: " . 
+    confess("Unsupported $sql_keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -611,6 +674,87 @@ sub sql_insert {
   
   return( $sql, @params );
 }  
+
+########################################################################
+
+=pod
+
+I<Portability:> Auto-incrementing sequences are handled differently by various DBMS platforms. For example, the MySQL and MSSQL subclasses use auto-incrementing fields, Oracle and Pg use server-specific sequence objects, and AnyData and CSV make their own ad-hoc table of incrementing values.  
+
+To standardize their use, this package defines an interface with several typical methods which may or may not be supported by individual subclasses. You may need to consult the documentation for the SQLEngine subclass and DBMS platform you're using to confirm that the sequence functionality you need is available.
+
+=over 4
+
+=item do_insert_with_sequence
+
+  $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
+
+Insert a single row into a table in the datasource, using a sequence to fill in the values of the column named in the first argument. Should return 1, unless there's an exception.
+
+Fails with message "DBMS-Specific Function". 
+
+Subclasses will probably want to call either the _seq_do_insert_preinc() method or the _seq_do_insert_postfetch() method, and define the appropriate other seq_* methods to support them. These two methods are not part of the public interface but instead provide a template for the two most common types of insert-with-sequence behavior. The _seq_do_insert_preinc() method first obtaines a new number from the sequence using seq_increment(), and then performs a normal do_insert(). The _seq_do_insert_postfetch() method performs a normal do_insert() and then fetches the resulting value that was automatically incremented using seq_fetch_current().
+
+=item seq_fetch_current
+
+  $sqldb->seq_fetch_current( $table, $field ) : $current_value
+
+Fetches the current sequence value.
+
+Fails with message "DBMS-Specific Function". 
+
+=item seq_increment
+
+  $sqldb->seq_increment( $table, $field ) : $new_value
+
+Increments the sequence, and returns the newly allocated value. 
+
+Fails with message "DBMS-Specific Function". 
+
+=back
+
+=cut
+
+# $self->do_insert_with_sequence( $seq_name, %args );
+sub do_insert_with_sequence {
+  confess("DBMS-Specific Function")
+}
+
+# $rows = $self->_seq_do_insert_preinc( $sequence, %clauses );
+sub _seq_do_insert_preinc {
+  my ($self, $seq_name, %args) = @_;
+  
+  unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
+    croak ref($self) . " insert with sequence requires values to be hash-ref"
+  }
+  
+  $args{values}->{$seq_name} = $self->seq_increment( $args{table}, $seq_name );
+  
+  $self->do_insert( %args );
+}
+
+# $rows = $self->_seq_do_insert_postfetch( $sequence, %clauses );
+sub _seq_do_insert_postfetch {
+  my ($self, $seq_name, %args) = @_;
+  
+  unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
+    croak ref($self) . " insert with sequence requires values to be hash-ref"
+  }
+  
+  my $rv = $self->do_insert( %args );
+  $args{values}->{$seq_name} = $self->seq_fetch_current($args{table},$seq_name);
+  return $rv;
+}
+
+# $current_id = $sqldb->seq_fetch_current( $table, $field );
+sub seq_fetch_current {
+  confess("DBMS-Specific Function")
+}
+
+# $nextid = $sqldb->seq_increment( $table, $field );
+sub seq_increment {
+  confess("DBMS-Specific Function")
+}
 
 ########################################################################
 
@@ -704,13 +848,13 @@ sub sql_update {
   my %clauses = @_;
 
   if ( my $explicit = $clauses{'sql'} ) {
-    return $explicit;
+    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
   }
 
+  my $sql_keyword = 'update';
   my ($sql, @params);
     
-  my $table = $clauses{'table'};
-  delete $clauses{'table'};
+  my $table = delete $clauses{'table'};
   if ( ! $table ) {
     confess("Table name is missing or empty");
   } elsif ( ! ref( $table ) and length( $table ) ) {
@@ -720,8 +864,7 @@ sub sql_update {
   }
   $sql = "update $table";
 
-  my $columns = $clauses{'columns'};
-  delete $clauses{'columns'};
+  my $columns = delete $clauses{'columns'};
   if ( ! $columns and UNIVERSAL::isa( $clauses{'values'}, 'HASH' ) ) {
     $columns = $clauses{'values'}
   }
@@ -741,8 +884,7 @@ sub sql_update {
     confess("Unsupported column spec '$columns'");
   }
   
-  my $values = $clauses{'values'};
-  delete $clauses{'values'};
+  my $values = delete $clauses{'values'};
   my @value_args;
   if ( ! $values ) {
     croak("Values are missing or empty");
@@ -773,15 +915,16 @@ sub sql_update {
   $sql .= " set " . join ', ', map "$columns[$_] = $values[$_]", 0 .. $#columns;
   push @params, @v_params;
   
-  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
-  delete $clauses{'criteria'};
-  if ( $criteria ) {
-    $sql .= " where $criteria";
-    push @params, @cp;
+  if ( my $criteria = delete $clauses{'criteria'} ) {
+    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
+    if ( $sql_crit ) {
+      $sql .= " where $sql_crit";
+      push @params, @cp;
+    }
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported update clauses: " . 
+    confess("Unsupported $sql_keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -863,13 +1006,13 @@ sub sql_delete {
   my %clauses = @_;
 
   if ( my $explicit = $clauses{'sql'} ) {
-    return $explicit;
+    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
   }
 
+  my $sql_keyword = 'delete';
   my ($sql, @params);
     
-  my $table = $clauses{'table'};
-  delete $clauses{'table'};
+  my $table = delete $clauses{'table'};
   if ( ! $table ) {
     confess("Table name is missing or empty");
   } elsif ( ! ref( $table ) and length( $table ) ) {
@@ -879,15 +1022,16 @@ sub sql_delete {
   }
   $sql = "delete from $table";
   
-  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
-  delete $clauses{'criteria'};
-  if ( $criteria ) {
-    $sql .= " where $criteria";
-    push @params, @cp;
+  if ( my $criteria = delete $clauses{'criteria'} ) {
+    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
+    if ( $sql_crit ) {
+      $sql .= " where $sql_crit";
+      push @params, @cp;
+    }
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported delete clauses: " . 
+    confess("Unsupported $sql_keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -1074,17 +1218,27 @@ B<Column Type Info Methods>: The following methods are used by sql_create_table 
 
 =item sql_create_column_type
 
-  $sqldb->sql_create_column_type ( table, $column, $columns ) : $col_type_str
+  $sqldb->sql_create_column_type ( $table, $column, $columns ) : $col_type_str
+
+Returns an appropriate 
+
+=item dbms_create_column_types
+
+  $sqldb->dbms_create_column_types () : %column_type_codes
+
+Subclass hook. Defaults to empty. Should return a hash mapping column type codes to the specific strings used in a SQL create statement for such a column. 
+
+Subclasses should provide at least two entries, for the symbolic types referenced elsewhere in this interface, "sequential" and "binary".
 
 =item sql_create_column_text_length
 
   $sqldb->sql_create_column_text_length ( $length ) : $col_type_str
 
-Returns varchar(length) for values under 256, otherwise calls sql_create_column_text_long_type.
+Returns "varchar(length)" for values under 256, otherwise calls dbms_create_column_text_long_type.
 
-=item sql_create_column_text_long_type
+=item dbms_create_column_text_long_type
 
-  $sqldb->sql_create_column_text_long_type () : $col_type_str
+  $sqldb->dbms_create_column_text_long_type () : $col_type_str
 
 Fails with message "DBMS-Specific Function".
 
@@ -1111,10 +1265,18 @@ sub sql_create_columns {
 sub sql_create_column_type {
   my($self, $table, $column, $columns) = @_;
   my $type = $column->{type};
-  if ( $type eq 'text' ) {
-    my $length = $column->{length};
-    $type = $self->sql_create_column_text_length( $length || 255 ) ;
+  
+  my %dbms_types = $self->dbms_create_column_types;
+  if ( my $dbms_type = $dbms_types{ $type } ) {
+    $type = $dbms_type;
   }
+  
+  if ( $type eq 'text' ) {
+    $type = $self->sql_create_column_text_length( $column->{length} || 255 ) ;
+  } elsif ( $type eq 'binary' ) {
+    $type = $self->sql_create_column_text_length( $column->{length} || 65535 ) ;
+  }
+  
   return $type;
 }
 
@@ -1123,11 +1285,15 @@ sub sql_create_column_text_length {
   my $length = shift;
 
   return "varchar($length)" if ($length < 256);
-  return $self->sql_create_column_text_long_type;
+  return $self->dbms_create_column_text_long_type;
 }
 
-sub sql_create_column_text_long_type {
+sub dbms_create_column_text_long_type {
   confess("DBMS-Specific Function")
+}
+
+sub dbms_create_column_types {
+  return ()
 }
 
 ########################################################################
@@ -1218,12 +1384,13 @@ sub fetch_sql_rows {
   return wantarray ? ($rows, $columns) : $rows;
 }
 
-# $self->visit_sql($coderef, $sql);
-# $self->visit_sql($coderef, $sql, @params);
-# $self->visit_sql($coderef, $sql);
+# @results = $self->visit_sql($coderef, $sql);
+# @results = $self->visit_sql($coderef, $sql, @params);
+# @results = $self->visit_sql($sql, $coderef);
+# @results = $self->visit_sql($sql, @params, $coderef);
 sub visit_sql {
   my $self = shift;
-  my $coderef = shift;
+  my $coderef = ( ref($_[0]) ? shift : pop );
   my ($sql, @params) = @_;
   $self->try_query( $sql, \@params, 'visitall_hashref', $coderef );
 }
@@ -1350,6 +1517,12 @@ The following methods manage the DBI database handle through which we communicat
 
 Get the current DBH
 
+=item dbh_func
+
+  $sqldb->dbh_func ( $func_name, @args ) : @results
+
+Calls the DBI func() method on the database handle returned by get_dbh, passing the provided function name and arguments. See the documentation for your DBD driver to learn which functions it supports.
+
 =back
 
 =cut
@@ -1360,6 +1533,13 @@ sub get_dbh {
   my $self = shift;
   ( ref $self ) or ( Carp::confess("Not a class method") );
   return $self->{dbh};
+}
+
+sub dbh_func {
+  my $self = shift;
+  my $dbh = $self->get_dbh;
+  my $func = shift;
+  $dbh->func( $func, @_ );
 }
 
 ########################################################################
@@ -1413,7 +1593,7 @@ B<SQL Generation>: The above detect_ method uses the following sql_ method to ge
   $sqldb->sql_detect_any : %sql_select_clauses
 
 Subclass hook. Retrieve something from the database that is guaranteed to exist. 
-Defaults to SQL literal "select 1", which may not work on all platforms. Your subclass might prefer one of these: "select SYSDATE() from dual", (I'm unsure of the others)...
+Defaults to SQL literal "select 1", which may not work on all platforms. Your database driver might prefer something else, like Oracle's "select 1 from dual".
 
 =back
 
@@ -1424,6 +1604,8 @@ sub sql_detect_any {
 }
 
 ########################################################################
+
+=head2 Connection Lifecycle
 
 =over 4
 
@@ -1449,7 +1631,7 @@ Incomplete. Subclass hook. Get the current DBH or reconnect.
 
 =cut
 
-sub _init  {  }
+sub _init {  }
 
 sub reconnect {
   my $self = shift;
@@ -1489,12 +1671,29 @@ The following methods manipulate DBI statement handles as part of processing que
 
 Error handling wrapper around the internal execute_query method.
 
+The $result_method should be the name of a method supported by that
+SQLEngine instance, typically one of those shown in the "Retrieving
+Rows from an Executed Statement" section below. The @result_args,
+if any, are passed to the named method along with the active
+statement handle.
+
 =item catch_query_exception
 
   $sqldb->catch_query_exception ( $exception, $sql, \@params, 
 			$result_method, @result_args ) : $resolution
 
-This is a subclass hook that does nothing in the superclass but should be overridden in subclasses. Exceptions are passed to catch_query_exception; if it returns "REDO" the query will be retried up to five times.
+Exceptions are passed to catch_query_exception; if it returns "REDO"
+the query will be retried up to five times. The superclass checks
+the error message against the recoverable_query_exceptions; subclasses
+may wish to override this to provide specialized handling.
+
+=item recoverable_query_exceptions
+
+  $sqldb->recoverable_query_exceptions() : @common_error_messages
+
+Subclass hook. Defaults to empty. Subclasses may provide a list of
+error messages which represent common communication failures or
+other incidental errors.
 
 =back
 
@@ -1537,11 +1736,24 @@ sub try_query {
   ( ! defined $want ) ? () : 
 		$want ? @results :
      ( @results < 2 ) ? $results[0] : 
-	  croak "This method returns a list, but was called in scalar context";
+	  croak "This method returns a list, but was called in scalar context"
 }
 
 sub catch_query_exception {
-  0;
+  my $self = shift;
+  my $error = shift;
+  
+  foreach my $pattern ( $self->recoverable_query_exceptions() ) {  
+    if ( $error =~ /$pattern/i ) {
+      $self->reconnect() and return 'REDO';
+    }
+  }
+  
+  return;
+}
+
+sub recoverable_query_exceptions {
+  return ()
 }
 
 ########################################################################
@@ -1556,11 +1768,15 @@ These are internal methods for query operations
 
   $sqldb->execute_query($sql, \@params, $result_method, @result_args) : @results
 
+This overall lifecycle method calls prepare_execute(), runs the $result_method, and then calls done_with_query().
+
+The $result_method should be the name of a method supported by that SQLEngine instance, typically one of those shown in the "Retrieving Rows from an Executed Statement" section below. The @result_args, if any, are passed to the named method along with the active statement handle.
+
 =item prepare_execute
 
   $sqldb->prepare_execute ($sql, @params) : $sth
 
-Prepare, bind, and execute a SQL statement.
+Prepare, bind, and execute a SQL statement to create a DBI statement handle.
 
 =item done_with_query
 
@@ -1643,7 +1859,7 @@ Does nothing.
 
 =item get_execute_rowcount
 
-  $sqldb->get_execute_rowcount ($sth) : ()
+  $sqldb->get_execute_rowcount ($sth) : $row_count
 
 Returns the row count reported by the last statement executed.
 
@@ -1767,15 +1983,15 @@ sub retrieve_columns {
   
   my $type_defs = $self->column_type_codes();
   my $names = $sth->{'NAME_lc'};
-  my $types = $sth->{'TYPE'};
+  my $types = eval { $sth->{'TYPE'} || [] };
   # warn "Types: " . join(', ', map "'$_'", @$types);
   my $type_codes = [ map { 
 	my $typeinfo = scalar $self->type_info($_);
 	# warn "Type $typeinfo";
 	scalar $typeinfo->{'DATA_TYPE'} 
   } @$types ];
-  my $sizes = []; # $sth->{PRECISION};
-  my $nullable = $sth->{'NULLABLE'};
+  my $sizes = eval { $sth->{PRECISION} || [] };
+  my $nullable = eval { $sth->{'NULLABLE'} || [] };
   [
     map {
       my $type = $type_defs->{ $type_codes->[$_] || 0 } || $type_codes->[$_];
@@ -2017,20 +2233,17 @@ This example, based on a writeup by Ron Savage, shows a connection being opened,
 
 Many types of database servers are not yet supported.
 
-Database driver/server combinations that do not support placeholders will fail.
+Database driver/server combinations that do not support placeholders
+will fail.
 (http://groups.google.com/groups?selm=dftza.3519%24ol.117790%40news.chello.at)
 
-There has been a few small discussions of this module on PerlMonks and Usenet:
-
-  http://groups.google.com/groups?q=dbix+sqlengine+-ports&scoring=d
-  http://perlmonks.org/index.pl?node_id=3989&BIT=sqlengine&go=Search
+See L<DBIx::SQLEngine::ToDo> for additional bugs and missing
+features.
 
 
 =head1 SEE ALSO 
 
-See L<DBIx::SQLEngine::Default> for implementation details.
-
-See L<DBIx::SQLEngine::ReadMe> for distribution information.
+See L<DBIx::SQLEngine::ReadMe> for distribution and support information.
 
 See L<DBI> and the various DBD modules for information about the underlying database interface.
 
@@ -2039,26 +2252,35 @@ See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
 =head1 CREDITS AND COPYRIGHT
 
-=head2 Developed By
+=head2 Author
 
-Developed by Matthew Simon Cavalletto at Evolution Softworks. 
-You may contact the author directly at C<simonm@cavalletto.org>.
-More free Perl software is available at C<www.evoscript.org>.
+Developed by Matthew Simon Cavalletto at Evolution Softworks.
+
+You may contact the author directly at C<evo@cpan.org> or
+C<simonm@cavalletto.org>. More free Perl software is available at
+C<www.evoscript.org>.
 
 =head2 Contributors 
 
-  Eric Schneider
-  E. J. Evans
-  Matthew Sheahan
+Many thanks to the kind people who have contributed code and other feedback:
+
+  Eric Schneider, Evolution Online Systems
+  E. J. Evans, Evolution Online Systems
+  Matthew Sheahan, Evolution Online Systems
+  Eduardo Iturrate, Evolution Online Systems
   Ron Savage
+  Christian Glahn, Innsbruck University
+  Michael Kroll, Innsbruck University
 
 =head2 Copyright
 
-Copyright 2002, 2003 Matthew Cavalletto. 
+Copyright 2001, 2002, 2003, 2004 Matthew Cavalletto. 
 
 Portions copyright 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
 
-Portions of the documentation are Copyright 2003 Ron Savage
+Portions copyright 2002 ZID, Innsbruck University (Austria).
+
+Portions of the documentation are copyright 2003 Ron Savage.
 
 =head2 License
 

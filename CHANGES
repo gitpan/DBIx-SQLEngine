@@ -1,14 +1,37 @@
 NAME
-    DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
+    DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Release 0.011
+
+    2004-03-10 Moved driver-specific subclasses to a new Driver:: namespace
+    and added documentation to each of them. The external public interface
+    is identical, but this may break naughty code that checked ref() or
+    isa(); however the fix is straightforward and this keeps our namespaces
+    clearer. If your code was negatively impacted by this, let me know!
+
+    2004-02-24 Integrated some patches from Michael Kroll, including new
+    Oracle subclass, and created a new Criteria::StringComparison class as
+    an alternate way of addressing an issue raised by another patch.
+
+  Release 0.010
+
+    2003-09-07 Released as DBIx-SQLEngine-0.010.
+
+  Release 0.009
+
+    2003-02-02 Released as DBIx-SQLEngine-0.009.
+
+    2003-02-02 Merged the "Default" class used by AnyDBD into base class via
+    stash aliasing, simplifying documentation.
+
   Release 0.008
 
     2002-11-02 Released as DBIx-SQLEngine-0.008.
 
     2002-11-02 Added basic subclass for MSSQL.
 
-    2002-11-02 Added "is null" support based on patches from Michael Kroell
+    2002-11-02 Added "is null" support based on patches from Michael Kroll
     at University of Innsbruck.
 
     2002-11-02 Added some introductory documentation to
@@ -30,7 +53,7 @@ HISTORY
     2002-05-24 Collect and return the results from visit_* methods.
 
     2002-05-24 Added DBIx::SQLEngine::Criteria::Not, contributed by
-    Christian Glahn.
+    Christian Glahn at University of Innsbruck.
 
     2002-04-10 Added "fetch without execute" to the catch_query_exception
     handler for MySQL and Pg.
@@ -65,6 +88,9 @@ HISTORY
 
     2002-01-31 Added catch_query_exception to Pg subclass for automatic
     reconnection.
+
+    2002-01-31 Created new Criteria::LiteralSQL package. Remove redundant
+    parentheses around single-item list in Criteria::Compound.
 
   Release 0.004
 
@@ -114,6 +140,9 @@ HISTORY
     2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved
     SQL-generation code from Table to SQLEngine.
 
+    2001-06-28 Ported some Criteria classes from earlier code into the new
+    SQLEngine class hierarchy.
+
     2001-06-27 Renamed from Adaptor to SQLEngine. Flattened class hierarchy;
     we're only going to support DBI. Expunged old code. Switched to new
     Class::MakeMethods distribution.
@@ -125,6 +154,8 @@ HISTORY
     2001-01-29 Fixed code to detect length and nullable column information.
 
     2001-01-13 Added retry on "Lost connection to MySQL" errors
+
+    2000-12-22 Added new_with_contents constructor to Criteria::Compound.
 
     2000-11-29 Switched to use of Class::MethodMaker 2.0 features.
 

@@ -1,5 +1,5 @@
 NAME
-    DBIx::SQLEngine::ToDo - Tasks, ideas, and bugs
+    DBIx::SQLEngine::Docs::ToDo - Tasks, ideas, and bugs
 
 TO DO
     There are a number of things that could be done to improve this module.
@@ -17,12 +17,7 @@ TO DO
     - Test for inserting, updating and selecting nulls, including "is null"
     test.
 
-    - Test with SQLite and temp file.
-
     - Test new transaction code.
-
-    Finish moving all license, change, and todo blocks to their appropriate
-    locations.
 
   Columns
 
@@ -62,7 +57,25 @@ TO DO
 
   Additional Criteria
 
-    The Criteria subclasses are woefully incomplete.
+    The Criteria subclasses are woefully incomplete. Candidates include:
+
+      package DBO::Criteria::SubString;
+      package DBO::Criteria::CaseInsensitiveSubString;
+      package DBO::Criteria::NumericEquality;
+      package DBO::Criteria::NumericInequality;
+      package DBO::Criteria::StringInequality;
+
+    Consider enabling pure-Perl interpretation of criteria:
+
+      package DBO::Criteria::Equality;
+  
+      sub inverse { 'DBO::Criteria::Inequality' }
+  
+      # $flag = $crit->matches( $record );
+      sub matches {
+        my ($crit, $record) = @_;
+        return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
+      }
 
   Future Database-specific Functionality
 

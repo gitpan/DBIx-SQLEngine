@@ -24,26 +24,15 @@ DBIx::SQLEngine::Criteria::And - Compound All Criteria
 
 DBIx::SQLEngine::Criteria::And objects are built around an array of other criteria, all of which must be satisified in order for the And criterion to be met.
 
-See L<DBIx::SQLEngine::Criteria::Compound> for more.
 
+=head1 SEE ALSO
 
-=head1 VERSION
+See L<DBIx::SQLEngine::Criteria> and L<DBIx::SQLEngine::Criteria::Comparison>
+for more information on using these objects.
 
-2001-06-28 Moved to DBIx::O2:: namespace. Separated from base Compound module.
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
-
-=head1 AUTHORS
-
-Developed by Evolution Online Systems:
-
-  M. Simon Cavalletto, simonm@evolution.com
-
-
-=head1 LICENSE
-
-This module is free software. It may be used, redistributed and/or
-modified under the same terms as Perl.
-
-Copyright (c) 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 =cut

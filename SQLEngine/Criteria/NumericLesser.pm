@@ -1,11 +1,7 @@
 package DBIx::SQLEngine::Criteria::NumericLesser;
 
-use DBIx::SQLEngine::Criteria::Comparison;
-@ISA = 'DBIx::SQLEngine::Criteria::Comparison';
-use strict;
-use Carp;
-
-__PACKAGE__->sql_comparator('<');
+use DBIx::SQLEngine::Criteria::Lesser;
+@ISA = 'DBIx::SQLEngine::Criteria::Lesser';
 
 1;
 
@@ -15,37 +11,26 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::NumericLesser - Basic Numeric Criteria
+DBIx::SQLEngine::Criteria::NumericLesser - Old name for Lesser
 
 =head1 SYNOPSIS
 
-  my $crit = DBIx::SQLEngine::Criteria::NumericLesser->new( $expr, $value );
+  my $crit = DBIx::SQLEngine::Criteria::Lesser->new( $expr, $value );
 
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Criteria::NumericLesser objects check that an expression is less than a given reference value.
-
-See L<DBIx::SQLEngine::Criteria::Comparison> for more.
+DBIx::SQLEngine::Criteria::NumericLesser is the old name for DBIx::SQLEngine::Criteria::Lesser.
 
 
-=head1 VERSION
+=head1 SEE ALSO
 
-2001-06-28 Cloned from StringEquality.
+See L<DBIx::SQLEngine::Criteria> and L<DBIx::SQLEngine::Criteria::Comparison>
+for more information on using these objects.
 
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
-=head1 AUTHORS
-
-Developed by Evolution Online Systems:
-
-  M. Simon Cavalletto, simonm@evolution.com
-
-
-=head1 LICENSE
-
-This module is free software. It may be used, redistributed and/or
-modified under the same terms as Perl.
-
-Copyright (c) 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 =cut

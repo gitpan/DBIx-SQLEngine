@@ -1,6 +1,34 @@
+package DBIx::SQLEngine::Criteria::LiteralSQL;
+
+@ISA = 'DBIx::SQLEngine::Criteria';
+use strict;
+
+########################################################################
+
+sub new {
+  my $package = shift;
+  bless [ @_ ], $package;
+}
+
+########################################################################
+
+sub sql_where {
+  my $self = shift;
+  @$self;
+}
+
+########################################################################
+
+1;
+
+########################################################################
+
+########################################################################
+
 =head1 NAME
 
 DBIx::SQLEngine::Criteria::LiteralSQL - Holder for SQL snippets
+
 
 =head1 SYNOPSIS
 
@@ -9,15 +37,12 @@ DBIx::SQLEngine::Criteria::LiteralSQL - Holder for SQL snippets
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Criteria::Comparison objects are built around an array of a SQL string, followed by values to be bound the the '?' placeholders in the string, if any.
+DBIx::SQLEngine::Criteria::LiteralSQL objects are built around an
+array of a SQL string, followed by values to be bound the the '?'
+placeholders in the string, if any.
 
 =cut
 
-package DBIx::SQLEngine::Criteria::LiteralSQL;
-@ISA = 'DBIx::SQLEngine::Criteria';
-use strict;
-
-########################################################################
 
 =head1 REFERENCE
 
@@ -37,27 +62,15 @@ Constructor.
 
 =cut
 
-sub new {
-  my $package = shift;
-  bless [ @_ ], $package;
-}
-
-########################################################################
-
-sub sql_where {
-  my $self = shift;
-  @$self;
-}
-
-########################################################################
-
-=head1 VERSION
-
-2002-01-31 Simon: Created.
-
 
 =head1 SEE ALSO
 
-L<DBIx::SQLEngine::ReadMe>.
+See L<DBIx::SQLEngine::Criteria> and L<DBIx::SQLEngine::Criteria::Comparison>
+for more information on using these objects.
+
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
+
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 =cut

@@ -6,99 +6,163 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
-=head2 Release 0.008
+=head2 Version 0.011
+
+2004-03-10 Moved driver-specific subclasses to a new Driver::
+namespace and added documentation to each of them. The external
+public interface is identical, but this may break naughty code that
+checked ref() or isa(); however the fix is straightforward and this
+keeps our namespaces clearer. If your code was negatively impacted
+by this, let me know!
+
+2004-02-24 Integrated some patches from Michael Kroll, including
+new Oracle subclass, and created a new Criteria::StringComparison
+class as an alternate way of addressing an issue raised by another patch.
+
+
+=head2 Version 0.010
+
+2003-09-07 Released as DBIx-SQLEngine-0.010.
+
+
+=head2 Version 0.009
+
+2003-02-02 Released as DBIx-SQLEngine-0.009.
+
+2003-02-02 Merged the "Default" class used by AnyDBD into base
+class via stash aliasing, simplifying documentation.
+
+
+=head2 Version 0.008
 
 2002-11-02 Released as DBIx-SQLEngine-0.008.
 
 2002-11-02 Added basic subclass for MSSQL.
 
-2002-11-02 Added "is null" support based on patches from Michael Kroell at University of Innsbruck.
+2002-11-02 Added "is null" support based on patches from Michael
+Kroll at University of Innsbruck.
 
 2002-11-02 Added some introductory documentation to Criteria::Comparison.
 
-2002-11-02 For compatibility with the CPAN installer and automated testing tools, the Makefile.PL now suggests that you set your environment's DBI_DSN, rather than prompting you to enter it interactively in test.pl.
+2002-11-02 For compatibility with the CPAN installer and automated
+testing tools, the Makefile.PL now suggests that you set your
+environment's DBI_DSN, rather than prompting you to enter it
+interactively in test.pl.
 
-2002-11-02 Refactored test script into several separate files. 
+2002-11-02 Refactored test script into several separate files.
 
 2002-11-02 Added initial basic transaction support.
 
 
 
-=head2 Release 0.007
+=head2 Version 0.007
 
-2002-05-24 Minor error-handling improvements. 
+2002-05-24 Minor error-handling improvements.
 
 2002-05-24 Collect and return the results from visit_* methods.
 
-2002-05-24 Added DBIx::SQLEngine::Criteria::Not, contributed by Christian Glahn.
+2002-05-24 Added DBIx::SQLEngine::Criteria::Not, contributed by
+Christian Glahn at University of Innsbruck.
 
-2002-04-10 Added "fetch without execute" to the catch_query_exception handler for MySQL and Pg.
+2002-04-10 Added "fetch without execute" to the catch_query_exception
+handler for MySQL and Pg.
 
 
-=head2 Release 0.006
+=head2 Version 0.006
 
 2002-03-23 Released as DBIx-SQLEngine-0.006.
 
-2002-03-23 Added basic support for passing SQL functions and expressions to SQLEngine::Default and SQLEngine::Critera::Comparison in a way that allows them to be used directly, rather than being treated as literals and bound to placeholders.
+2002-03-23 Added basic support for passing SQL functions and
+expressions to SQLEngine::Default and SQLEngine::Critera::Comparison
+in a way that allows them to be used directly, rather than being
+treated as literals and bound to placeholders.
 
-2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected Perl-version dependency (return from inside eval) in Default detect_any.
+2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected
+Perl-version dependency (return from inside eval) in Default
+detect_any.
 
 
-=head2 Release 0.005
+=head2 Version 0.005
 
 2002-03-01 Released as DBIx-SQLEngine-0.005.
 
-2002-02-19 Simon: Added Pg catch_query_exception REDO for "out of range 0..-1". I don't know what this error means but it always seems to succeed when we retry.
+2002-02-19 Simon: Added Pg catch_query_exception REDO for "out of
+range 0..-1". I don't know what this error means but it always
+seems to succeed when we retry.
 
 2002-02-10 Simon: Modified format of error messages in Default.pm
 
-2002-02-02 Eliminated complaint about empty subclauses in Criteria::Compound
+2002-02-02 Eliminated complaint about empty subclauses in
+Criteria::Compound
 
-2002-01-31 Extracted Default sql_* criteria handling into DBIx::SQLEngine::Criteria->auto* methods.
+2002-01-31 Extracted Default sql_* criteria handling into
+DBIx::SQLEngine::Criteria->auto* methods.
 
-2002-01-31 Added catch_query_exception to Pg subclass for automatic reconnection.
+2002-01-31 Added catch_query_exception to Pg subclass for automatic
+reconnection.
+
+2002-01-31 Created new Criteria::LiteralSQL package. Remove redundant
+parentheses around single-item list in Criteria::Compound. 
 
 
-=head2 Release 0.004
+=head2 Version 0.004
 
 2002-01-30 Released as DBIx-SQLEngine-0.004.
 
-2002-01-30 Expanded Pg subclass. Fixed Default's type_info handling to not fall over when a type has multiple info hashes (needed for Pg). Adjusted error handling to call $sth->finish() if there's an exception after we prepare but before we complete retrieving the results. 
+2002-01-30 Expanded Pg subclass. Fixed Default's type_info handling
+to not fall over when a type has multiple info hashes (needed for
+Pg). Adjusted error handling to call $sth->finish() if there's an
+exception after we prepare but before we complete retrieving the
+results.
 
-2002-01-27 Filled out documentation, especially of the public interface in SQLEngine.pm. Added skeletal Pg subclass.
+2002-01-27 Filled out documentation, especially of the public
+interface in SQLEngine.pm. Added skeletal Pg subclass.
 
 
-=head2 Release 0.003
+=head2 Version 0.003
 
 2002-01-25 Released as DBIx-SQLEngine-0.003
 
 2002-01-21 Fixed AnyData sql_create_column_text_long_type.
 
-2002-01-20 Fixed typo in sql_drop_table. Added detect_any and detect_table methods.
+2002-01-20 Fixed typo in sql_drop_table. Added detect_any and
+detect_table methods.
 
-2002-01-15 Improvements to sql_create_table to support primary key declarations. Completed DBIx::SQLEngine::Mixin::SeqTable. Added DBIx::SQLEngine::CSV.
+2002-01-15 Improvements to sql_create_table to support primary key
+declarations. Completed DBIx::SQLEngine::Mixin::SeqTable. Added
+DBIx::SQLEngine::CSV.
 
 2002-01-14 Added initial version of DBIx::SQLEngine::Mixin::SeqTable.
 
-2002-01-14 Fixed bug in test script; user and password were not used! (Bug report from Terrence Brannon.)
+2002-01-14 Fixed bug in test script; user and password were not
+used! (Bug report from Terrence Brannon.)
 
 
-=head2 Release 0.002
+=head2 Version 0.002
 
 2002-01-14 Released as DBIx-SQLEngine-0.002
 
-2002-01-13 Fixed logging scope errors. Filled in several mising chunks of documentation. Makefile.PL touchups for distribution.
+2002-01-13 Fixed logging scope errors. Filled in several mising
+chunks of documentation. Makefile.PL touchups for distribution.
 
-2001-12-01 Separated from object-relational mapping functionality. Moved to DBIx::SQLEngine namespace. 
+2001-12-01 Separated from object-relational mapping functionality.
+Moved to DBIx::SQLEngine namespace.
 
-2001-11-30 Began adjusting namespace for CPAN distribution. Fixed use of AnyDBD to not require non-standard patch.
+2001-11-30 Began adjusting namespace for CPAN distribution. Fixed
+use of AnyDBD to not require non-standard patch.
 
 
-=head2 Release 0.001
+=head2 Version 0.001
 
-2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved SQL-generation code from Table to SQLEngine.
+2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved
+SQL-generation code from Table to SQLEngine. 
 
-2001-06-27 Renamed from Adaptor to SQLEngine. Flattened class hierarchy; we're only going to support DBI. Expunged old code. Switched to new Class::MakeMethods distribution.
+2001-06-28 Ported some Criteria classes from earlier code into the
+new SQLEngine class hierarchy.
+
+2001-06-27 Renamed from Adaptor to SQLEngine. Flattened class
+hierarchy; we're only going to support DBI. Expunged old code.
+Switched to new Class::MakeMethods distribution.
 
 
 =head2 Prior Generation: DBO
@@ -108,6 +172,8 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 2001-01-29 Fixed code to detect length and nullable column information.
 
 2001-01-13 Added retry on "Lost connection to MySQL" errors
+
+2000-12-22 Added new_with_contents constructor to Criteria::Compound.
 
 2000-11-29 Switched to use of Class::MethodMaker 2.0 features.
 
@@ -119,9 +185,11 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 1999-07-27 Added use of DBO::Column package.
 
-1999-04-21 Added explicit disconnect if existing connection's ping fails.
+1999-04-21 Added explicit disconnect if existing connection's ping
+fails.
 
-1999-04-05 Added reconnect if can't ping server behaviour; add'l type codes
+1999-04-05 Added reconnect if can't ping server behaviour; add'l
+type codes
 
 1998-12-08 Cleanup of logging.
 
@@ -129,13 +197,14 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 1998-11-01 Changed importing style for Class::MethodMaker.
 
-1998-10-05 Revised. Rewrote POD. 
+1998-10-05 Revised. Rewrote POD.
 
-1998-05-09 Moved connection behaviour from SQL Table into Adaptor classes.
+1998-05-09 Moved connection behaviour from SQL Table into Adaptor
+classes.
 
 1998-03-16 DBAdaptor package (and subpackages) renamed to DBO::Table.
 
-1997-11-18 Simon: Updated to current practice. 
+1997-11-18 Simon: Updated to current practice.
 
 
 =head2 Generation Zero: DBAdaptor
@@ -145,7 +214,7 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 1997-08-20 Eric: Extracted DBAdaptor class from prior code.
 
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
 L<DBIx::SQLEngine::ReadMe>
 

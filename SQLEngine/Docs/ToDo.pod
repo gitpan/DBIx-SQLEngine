@@ -19,11 +19,7 @@ The test script is fairly minimal and really ought to exercise much more of the 
 
 - Test for inserting, updating and selecting nulls, including "is null" test.
 
-- Test with SQLite and temp file.
-
 - Test new transaction code.
-
-Finish moving all license, change, and todo blocks to their appropriate locations.
 
 
 =head2 Columns
@@ -31,21 +27,9 @@ Finish moving all license, change, and todo blocks to their appropriate location
 The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
 
 
-=head2 Database Feature-Specific Interfaces
+=head2 Helper Classes
 
-Proposed: Extend the base interface with the following interfaces: 
-
-=over 4
-
-=item *
-
-fetch_select_with_limit
-
-=item *
-
-do_insert_with_sequence
-
-=back
+Consider blessing the column info hashes into new Column and ColumnSet classes. 
 
 
 =head2 Proposed Array Select interface
@@ -73,7 +57,25 @@ Proposed "Named Query" interface:
 
 =head2 Additional Criteria
 
-The Criteria subclasses are woefully incomplete.
+The Criteria subclasses are woefully incomplete. Candidates include:
+
+  package DBO::Criteria::SubString;
+  package DBO::Criteria::CaseInsensitiveSubString;
+  package DBO::Criteria::NumericEquality;
+  package DBO::Criteria::NumericInequality;
+  package DBO::Criteria::StringInequality;
+
+Consider enabling pure-Perl interpretation of criteria:
+
+  package DBO::Criteria::Equality;
+  
+  sub inverse { 'DBO::Criteria::Inequality' }
+  
+  # $flag = $crit->matches( $record );
+  sub matches {
+    my ($crit, $record) = @_;
+    return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
+  }
 
 
 =head2 Future Database-specific Functionality
@@ -81,10 +83,6 @@ The Criteria subclasses are woefully incomplete.
 Additional subclass logic will be required to support the following:
 
 =over 4
-
-=item *
-
-All: type of long field
 
 =item *
 

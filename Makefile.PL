@@ -19,14 +19,14 @@ sub MY::postamble { q{
 
 docs : README CHANGES TODO
 
-README: SQLEngine/ReadMe.pod
-	pod2text SQLEngine/ReadMe.pod > README
+README: SQLEngine/Docs/ReadMe.pod
+	pod2text SQLEngine/Docs/ReadMe.pod > README
 
-CHANGES: SQLEngine/Changes.pod
-	pod2text SQLEngine/Changes.pod > CHANGES
+CHANGES: SQLEngine/Docs/Changes.pod
+	pod2text SQLEngine/Docs/Changes.pod > CHANGES
 
-TODO: SQLEngine/ToDo.pod
-	pod2text SQLEngine/ToDo.pod > TODO
+TODO: SQLEngine/Docs/ToDo.pod
+	pod2text SQLEngine/Docs/ToDo.pod > TODO
 
 cleanmanifest:
 	rm MANIFEST ; touch MANIFEST; make manifest

@@ -1,0 +1,62 @@
+=head1 NAME
+
+Class::MakeMethods::Docs::RelatedModules - Survey of Class Builders
+
+
+=head1 SYNOPSIS
+
+  http://search.cpan.org/search?mode=module&query=DBIx
+
+
+=head1 DESCRIPTION
+
+Several other CPAN modules provide a similar wrapper around DBI
+for purposes of simplification, abstraction, or portability. 
+
+=head2 Caution
+
+I've commented on a few of these below, but please remember that
+these notes were written some time ago and may be somewhat out of
+date, and many modules have been omitted.
+
+
+=head1 RELATED MODULES 
+
+Most of these provide simple wrappers around DBI's connect, prepare,
+and fetch methods, but do not appear to support any kind of cross-DBMS
+portability mechanism. See L<DBIx::Abstract>, L<DBIx::AbstractLite>,
+and L<DBIx::Broker> for examples of this group. (Single-platform
+solutions like L<MySQL::Easy> are also available.)
+
+Some provide at least partial cross-DBMS support via specialized
+subclasses for the DBDs they support. See L<DBIx::SearchBuilder>,
+L<DBIx::Easy>, and L<DBIx::DWIW> for examples of this group. An
+incomplete but interesting newcomer is available in L<DBIx::Portable>.
+
+The DBIx::Recordset framework provides similar functionality,
+including a substantial library of cross-DBMS compatibilty information.
+It also includes a tied-hash interface that allows automatic updates
+on retrieved rows. See L<DBIx::RecordSet>, L<DBIx::Database>, and
+L<DBIx::Compat>
+
+The Alzabo framework provides similar functionality, including
+DBMS-specific SQL generation, as part of an RDBMS-OO mapper; see
+L<Alzabo::Driver> and L<Alzabo::SQLMaker>.
+
+There are signs of ongoing development in the L<Class::DBI> framework
+to support cross-DBMS portability, so check CPAN for the latest in
+this area.
+
+The L<SQL::AnyDBD> is new addition which uses L<DBIx::AnyDBD>.
+
+
+=head1 SEE ALSO
+
+See L<DBIx::SQLEngine> for module interface and developer documentation.
+
+See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
+
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
+
+=cut

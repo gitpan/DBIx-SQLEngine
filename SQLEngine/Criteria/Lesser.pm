@@ -1,9 +1,11 @@
-package DBIx::SQLEngine::Criteria::Or;
-use DBIx::SQLEngine::Criteria::Compound;
-@ISA = 'DBIx::SQLEngine::Criteria::Compound';
-use strict;
+package DBIx::SQLEngine::Criteria::Lesser;
 
-__PACKAGE__->sql_join('or');
+use DBIx::SQLEngine::Criteria::Comparison;
+@ISA = 'DBIx::SQLEngine::Criteria::Comparison';
+use strict;
+use Carp;
+
+__PACKAGE__->sql_comparator('<');
 
 1;
 
@@ -13,16 +15,17 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Or - Compound Any Criteria
+DBIx::SQLEngine::Criteria::Lesser - Basic Comparison Criteria
 
 =head1 SYNOPSIS
 
-  my $crit = DBIx::SQLEngine::Criteria::Or->new( $crit, ... );
+  my $crit = DBIx::SQLEngine::Criteria::Lesser->new( $expr, $value );
 
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Criteria::Or objects are built around an array of other criteria, any of which may be satisified in order for the Or criterion to be met.
+DBIx::SQLEngine::Criteria::Lesser objects check that an expression 
+is less than a given reference value.
 
 
 =head1 SEE ALSO

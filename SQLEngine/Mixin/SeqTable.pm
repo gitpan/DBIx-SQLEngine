@@ -4,8 +4,8 @@ DBIx::SQLEngine::Mixin::SeqTable
 
 =head1 SYNOPSIS
 
-  # Classes can inherit this behavior if they don't have native sequences
-  push @DBIx::SQLEngine::AcmeDB::ISA, 'DBIx::SQLEngine::Mixin::SeqTable';
+  # Classes can import this behavior if they don't have native sequences
+  use DBIx::SQLEngine::Mixin::SeqTable ':all';
   
   # Public interface for SeqTable functionality
   $nextid = $sqldb->seq_increment( $table, $field );
@@ -18,7 +18,22 @@ DBIx::SQLEngine::Mixin::SeqTable
 
 =head1 DESCRIPTION
 
-This mixin supports SQL database servers which do natively support an auto-incrementing or unique sequence trigger. Instead, a special table is allocated to store sequence values, and queries are used to atomically retrieve and increment the sequence value to ensure uniqueness.
+This mixin supports SQL database servers which do natively support
+an auto-incrementing or unique sequence trigger. Instead, a special
+table is allocated to store sequence values, and queries are used
+to atomically retrieve and increment the sequence value to ensure
+uniqueness.
+
+=head2 Caution
+
+Because of the way DBIx::AnyDBD munges the inheritance tree,
+DBIx::SQLEngine subclasses can not reliably inherit from this
+package. To work around this, we export all of the methods into
+their namespace using Exporter and @EXPORT. 
+
+Note that, strictly speaking, this is not a real mixin class, but
+the above implementation issue was not discovered and worked around
+until after the class had already been put into service.
 
 =cut
 
@@ -26,12 +41,149 @@ This mixin supports SQL database servers which do natively support an auto-incre
 
 package DBIx::SQLEngine::Mixin::SeqTable;
 
+use Exporter;
+sub import { goto &Exporter::import } 
+@EXPORT_OK = qw( 
+  do_insert_with_sequence
+  seq_table_name seq_create_table seq_drop_table 
+  seq_insert_record seq_delete_record 
+  seq_fetch_current sql_fetch_current seq_increment seq_bootstrap_init
+);
+%EXPORT_TAGS = ( all => \@EXPORT_OK );
+
 use strict;
 use Carp;
 
 ########################################################################
 
 =head1 REFERENCE
+
+The following methods are provided:
+
+=cut
+
+########################################################################
+
+# $rows = $self->do_insert_with_sequence( $sequence, %clauses );
+sub do_insert_with_sequence { 
+  (shift)->_seq_do_insert_preinc( @_ )
+}
+
+########################################################################
+
+=head2 seq_fetch_current
+
+  $sqldb->seq_fetch_current( $table, $field ) : $current_value
+
+Fetches the current sequence value. 
+
+Implemented as an exception-handling wrapper around sql_fetch_current(), and attempts to create the sequence table if it doesn't exist.
+
+=head2 sql_fetch_current
+
+  $sqldb->sql_fetch_current( $table, $field ) : $sql, @params
+
+Returns a SQL statement to fetch the current value from the sequence table.
+
+=cut
+
+# $current_id = $sqldb->seq_fetch_current( $table, $field );
+sub seq_fetch_current {
+  my ($self, $table, $field) = @_;
+
+  my $seq_table = $self->seq_table_name;
+
+  my $current;
+  eval {
+    local $SIG{__DIE__};
+    return $self->fetch_one_value( 
+      sql => [ $self->sql_fetch_current($table, $field) ] 
+    )
+  };
+  if ( my $err = $@ ) {
+    eval {
+      local $SIG{__DIE__};
+      $self->seq_create_table();
+    };
+    if ( $@ ) {
+      confess "Unable to select from sequence table $seq_table: $err\n" . 
+	      "Also unable to automatically create sequence table: $@";
+    }
+    eval {
+      local $SIG{__DIE__};
+      $self->seq_insert_record( $table, $field );
+    };
+    if ( $@ ) {
+      confess "Unable to select from sequence table $seq_table: $err\n" . 
+	      "Created sequence table but unable to insert record: $@";
+    }
+    return;
+  }
+}
+
+# $sql, @params = $sqldb->sql_fetch_current( $table, $field );
+sub sql_fetch_current {
+  my ($self, $table, $field) = @_;
+  my $seq_table = $self->seq_table_name;
+  $self->sql_select(
+    table => $seq_table,
+    columns => 'seq_value',
+    criteria => [ 'seq_name = ?', "$table.$field" ],
+  );
+}
+
+########################################################################
+
+=head2 seq_increment
+
+  $sqldb->seq_increment( $table, $field ) : $new_value
+
+Increments the sequence, and returns the newly allocated value. 
+
+This is the primary "public" interface of this package. 
+
+If someone else has completed the same increment before we have, our update will have no effect and we'll immeidiately try again and again until successful.
+
+If the table does not yet exist, attempts to create it automatically. 
+
+If the sequence record does not yet exist, attempts to create it automatically.
+
+=cut
+
+# $nextid = $sqldb->seq_increment( $table, $field );
+# $nextid = $sqldb->seq_increment( $table, $field, $value);
+sub seq_increment {
+  my $self = shift;
+
+  my ($table, $field, $next) = @_;
+
+  my $current = $self->seq_fetch_current( $table, $field ) || 0;
+  
+  if ( ! defined $current ) {
+    $self->seq_insert_record( $table, $field ); 
+    $current = $self->seq_bootstrap_init( $table, $field ) || 0;
+  }
+  
+  ATTEMPT: {
+    $next = $current + 1 unless ( $next and $next > $current );
+    
+    return $next if $self->do_update(
+      table => $self->seq_table_name,
+      values => { seq_value => $next },
+      criteria => ['seq_value = ? and seq_name = ?', $current, "$table.$field"]
+    );
+    
+    $current = $self->fetch_one_value( 
+      sql => [ $self->sql_fetch_current($table, $field) ] 
+    );
+
+    redo ATTEMPT;
+  }
+}
+
+########################################################################
+
+########################################################################
 
 =head2 seq_table_name
 
@@ -143,93 +295,9 @@ sub seq_bootstrap_init {
 
 ########################################################################
 
-=head2 seq_fetch_current
-
-  $sqldb->seq_fetch_current( $table, $field ) : $current_value
-
-Fetches the current sequence value.
-
-=cut
-
-# $current_id = $sqldb->seq_fetch_current( $table, $field );
-sub seq_fetch_current {
-  my $self = shift;
-  my ($table, $field) = @_;
-  my $seq_table = $self->seq_table_name;
-  $self->fetch_one_value(
-    table => $seq_table,
-    columns => 'seq_value',
-    criteria => [ 'seq_name = ?', "$table.$field" ],
-  );
-}
-
-########################################################################
-
-=head2 seq_increment
-
-  $sqldb->seq_increment( $table, $field ) : $new_value
-
-Increments the sequence, and returns the newly allocated value. 
-
-This is the primary "public" interface of this package. 
-
-If someone else has completed the same increment before we have, our update will have no effect and we'll immeidiately try again and again until successful.
-
-If the table does not yet exist, attempts to create it automatically. 
-
-If the sequence record does not yet exist, attempts to create it automatically.
-
-=cut
-
-# $nextid = $sqldb->seq_increment( $table, $field );
-# $nextid = $sqldb->seq_increment( $table, $field, $value);
-sub seq_increment {
-  my $self = shift;
-
-  my ($table, $field, $next) = @_;
-
-  my $seq_table = $self->seq_table_name;
-  my $current;
-  eval {
-    local $SIG{__DIE__};
-    $current = $self->seq_fetch_current( $table, $field );
-  };
-  if ( my $err = $@ ) {
-    eval {
-      local $SIG{__DIE__};
-      $self->seq_create_table();
-    };
-    if ( $@ ) {
-      confess "Unable to select from sequence table $seq_table: $err\n" . 
-	      "Also unable to automatically create sequence table: $@";
-    }
-  }
-  if ( ! defined $current ) {
-    $self->seq_insert_record( $table, $field ); 
-    $current = $self->seq_bootstrap_init( $table, $field ) || 0;
-  }
-  
-  ATTEMPT: {
-    $next = $current + 1 unless ( $next and $next > $current );
-    
-    return $next if $self->do_update(
-      table => $self->seq_table_name,
-      values => { seq_value => $next },
-      criteria => ['seq_value = ? and seq_name = ?', $current, "$table.$field"]
-    );
-    
-    $current = $self->seq_fetch_current( $table, $field );
-    redo ATTEMPT;
-  }
-}
-
-########################################################################
-
 =head1 SEE ALSO
 
 See L<DBIx::Sequence> for another version of the sequence-table functionality, which greatly inspired this module.
-
-
 
 =cut
 

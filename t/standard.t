@@ -7,58 +7,22 @@ BEGIN {
     $ENV{DBI_DSN} ? ( map $ENV{$_}, qw( DBI_DSN DBI_USER DBI_PASS ) ) :
     ()
   );
-  $dsn = '' if ( $dsn eq '-' );
+  $dsn = '' if ( ! $dsn or $dsn eq '-' );
 }
+
+########################################################################
 
 use Test;
-BEGIN { plan tests => ( $dsn ? 39 : 10 ) }
-
-########################################################################
+BEGIN { plan tests => ( $dsn ? 25 : 1 ) }
 
 use DBIx::SQLEngine;
-BEGIN { ok( 1 ) }
-
-BEGIN { 
-  
-  eval "use DBIx::SQLEngine 0.001;";
-  ok( ! $@ );
-  
-  eval "use DBIx::SQLEngine 2.0;";
-  ok( $@ );
-
-}
-
-########################################################################
-
-EXAMPLEP: {
-
-  my $sqldb = DBIx::SQLEngine->new( 'dbi:ExampleP:',  );
-  ok( 2 );
-  
-  ok( ref($sqldb) eq 'DBIx::SQLEngine' );
-  
-  # $sqldb->DBILogging(1); 
-  
-  my @cols = $sqldb->detect_table( 'SQLEngine' );
-  ok( scalar( @cols ), 14 );
-  @cols = $sqldb->detect_table( 'area_51_secrets', 'quietly' );
-  ok( scalar( @cols ), 0 );
-  
-  my $rows = $sqldb->fetch_select( table => '.' );
-  ok( ref $rows and scalar @$rows > 1 );
-  ok( grep { $_->{name} =~ /SQLEngine/ } @$rows );
-
-}
 
 ########################################################################
 
 if ( ! $dsn ) {
-  skip(
-    "Skipping: specify DBI_DSN in environment to test your local server.\n",
-    0,
-  );
 
-  print <<'.';
+  warn <<'.';
+
   Note: By default, DBIx::SQLEngine will only perform a limited series of
   tests; to be fully tested, it must connect to a working DBI database driver.
 
@@ -66,10 +30,6 @@ if ( ! $dsn ) {
   environment variable to your connection string before running the tests, and 
   if needed, also set the DBI_USER and DBI_PASS variables. 
     Example:  > setenv DBI_DSN "DBI:mysql:test"; make test
-
-  Alternately, you can run test.pl and pass the DSN, user, and password as
-  command-line arguments.
-    Example:  > perl -Iblib test.pl "DBI:mysql:test"
 
   If you specify a database, this test script will create a table named 
   sqle_test, run several queries against it, and then drop it.
@@ -79,8 +39,13 @@ if ( ! $dsn ) {
 
   %common_cases = (
     'AnyData' => 'dbi:AnyData:',
-    'SQLite' => 'dbi:SQLite:dbname=test.sqlite',
+    'SQLite' => 'dbi:SQLite:dbname=test_data/test.sqlite',
     'mysql' => 'dbi:mysql:test',
+  );
+  @exclude_patterns = (
+    'blib$', 	  # for file-based DBDs, don't show the compilation directory
+    'SQLEngine$', # nor the source directory...
+    't$', 	  # nor the test directory -- this should leave test_data/
   );
   foreach my $driver ( DBI->available_drivers ) {
     eval {
@@ -89,9 +54,10 @@ if ( ! $dsn ) {
       eval {
 	@data_sources = DBI->data_sources($driver);
       };
-      push @data_sources, split(' ', $common_cases{$driver});
+      push @data_sources, split(' ', $common_cases{$driver} || '');
       if (@data_sources) {
 	foreach my $source ( @data_sources ) {
+	  next if grep { $source =~ /\b$_\b/ } @exclude_patterns;
 	  push @suggestions, ($source =~ /:/ ? $source : "dbi:$driver:$source");
 	} 
       } else { 
@@ -103,10 +69,15 @@ if ( ! $dsn ) {
   if ( scalar @suggestions ) {
     %suggestions = map { $_ => 1 } grep { ! /dbi:ExampleP/ } @suggestions;
     @suggestions = sort { lc($a) cmp lc($b) } keys %suggestions;
-    print join '', map "    $_\n", @suggestions;
+    warn join '', map "    $_\n", @suggestions;
   } else {
-    print "    (No suggestions found.)\n";
+    warn "    (No suggestions found.)\n";
   }
+
+  skip(
+    "Skipping: specify DBI_DSN in environment to test your local server.\n",
+    0,
+  );
 
   exit 0;
 
@@ -114,14 +85,13 @@ if ( ! $dsn ) {
 
 ########################################################################
 
-print <<".";
+warn <<".";
 
-  The remaining tests will use the DBI DSN specified on the command line, 
-  or in your environment variables, currently: 
+  The remaining tests will use the DBI DSN specified in your environment: 
     $dsn
 
-  In a few seconds, this script will connect to the database, create a 
-  table named sqle_test, run various queries aginst it, and then drop it.
+  In a few seconds, this script will connect to the above data source, create 
+  a table named sqle_test, run various queries aginst it, and then drop it.
   
 .
 
@@ -131,11 +101,14 @@ my $sqldb;
 ok( $sqldb = DBIx::SQLEngine->new($dsn, $user, $pass) );
 
 ok( ref($sqldb) =~ /DBIx::SQLEngine::(.+)/ );
-warn "  Using a DBI $sqldb->{dbh}->{Driver}->{Name} handle, SQLEngine subclass is $1... \n";
 
-if ( $^W ) {
-  $sqldb->DBILogging(1);
-}
+warn <<".";
+
+  Connected using DBIx::SQLEngine::$1 and DBD::$sqldb->{dbh}->{Driver}->{Name}.
+
+.
+
+# $sqldb->DBILogging(1);
 
 ok( $sqldb->detect_any );
 
@@ -189,7 +162,7 @@ INSERTS_AND_SELECTS: {
 
 SELECT_CRITERIA: {
 
-  my $rows = $sqldb->fetch_select( table => $table, criteria => { name=>'Dave' } );
+  my $rows = $sqldb->fetch_select( table => $table, criteria => {name=>'Dave'});
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
   
   $rows = $sqldb->fetch_select( table => $table, criteria => "name = 'Dave'" );
