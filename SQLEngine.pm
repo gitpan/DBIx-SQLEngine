@@ -234,7 +234,7 @@ for the various classes.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.025;
+$VERSION = 0.026;
 
 use strict;
 
@@ -528,6 +528,8 @@ Placing the following text in the target file will define all of the connections
 
 use Class::MakeMethods ( 'Standard::Global:hash' => 'named_connections' );
 
+use DBIx::SQLEngine::Utility::CloneWithParams ':all';
+
 # $cnxn_def = DBIx::SQLEngine->named_connection( $name )
 sub named_connection {
   my ( $self, $name ) = @_;
@@ -562,7 +564,7 @@ sub define_named_connections {
     $self->named_connections( splice( @_, 0, 2 ) )
   }
 }
-*define_named_connection = \&define_named_connections;
+sub define_named_connection { (shift)->define_named_connections(@_) }
 
 # DBIx::SQLEngine->define_named_connections_from_text( $name, $string )
 sub define_named_connections_from_text {
@@ -2245,9 +2247,11 @@ sub sql_drop_table {
   return $sql;
 }
 
-=pod
+########################################################################
 
-B<Column Type Info Methods>: The following methods are used by sql_create_table to specify column information in a DBMS-specific fashion.
+=head2 Column Type Methods
+
+The following methods are used by sql_create_table to specify column information in a DBMS-specific fashion.
 
 =over 4
 
@@ -2371,7 +2375,7 @@ sub define_named_queries {
     $self->named_queries( splice( @_, 0, 2 ) )
   }
 }
-*define_named_query = \&define_named_queries;
+sub define_named_query { (shift)->define_named_queries(@_) }
 
 # $sqldb->define_named_queries_from_text( $name, $string )
 sub define_named_queries_from_text {
@@ -2387,7 +2391,7 @@ sub define_named_queries_from_text {
 	$text
       }
     };
-    $self->define_named_query( $name, $query_def );
+    $self->define_named_queries( $name, $query_def );
   }
 }
 
@@ -3162,6 +3166,41 @@ sub sql_drop_index   {
 
 ########################################################################
 
+=head2 Call, Create and Drop Stored Procedures
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+These methods are all subclass hooks. Fail with message "DBMS-Specific Function".
+
+=over 4
+
+=item fetch_storedproc()
+
+  $sqldb->fetch_storedproc( $proc_name, @arguments ) : $rows
+
+=item do_storedproc()
+
+  $sqldb->do_storedproc( $proc_name, @arguments ) : $row_count
+
+=item create_storedproc()
+
+  $sqldb->create_storedproc( $proc_name, $definition )
+
+=item drop_storedproc()
+
+  $sqldb->drop_storedproc( $proc_name )
+
+=back
+
+=cut
+
+sub fetch_storedproc  { confess("DBMS-Specific Function") }
+sub do_storedproc     { confess("DBMS-Specific Function") }
+sub create_storedproc { confess("DBMS-Specific Function") }
+sub drop_storedproc   { confess("DBMS-Specific Function") }
+
+########################################################################
+
 =head2 Create and Drop Databases
 
 Note: this feature has been added recently, and the interface is subject to change.
@@ -3196,41 +3235,6 @@ sub sql_drop_database {
   my ( $self, $name ) = @_;
   return "drop database $name"
 }
-
-########################################################################
-
-=head2 Call, Create and Drop Stored Procedures
-
-Note: this feature has been added recently, and the interface is subject to change.
-
-These methods are all subclass hooks. Fail with message "DBMS-Specific Function".
-
-=over 4
-
-=item fetch_storedproc()
-
-  $sqldb->fetch_storedproc( $proc_name, @arguments ) : $rows
-
-=item do_storedproc()
-
-  $sqldb->do_storedproc( $proc_name, @arguments ) : $row_count
-
-=item create_storedproc()
-
-  $sqldb->create_storedproc( $proc_name, $definition )
-
-=item drop_storedproc()
-
-  $sqldb->drop_storedproc( $proc_name )
-
-=back
-
-=cut
-
-sub fetch_storedproc  { confess("DBMS-Specific Function") }
-sub do_storedproc     { confess("DBMS-Specific Function") }
-sub create_storedproc { confess("DBMS-Specific Function") }
-sub drop_storedproc   { confess("DBMS-Specific Function") }
 
 ########################################################################
 
@@ -3604,7 +3608,7 @@ The $result_method should be the name of a method supported by that SQLEngine in
 
 Prepare, bind, and execute a SQL statement to create a DBI statement handle.
 
-Uses prepare_cached(), bind_param(), and execute(). 
+Uses the DBI prepare_cached(), bind_param(), and execute() methods. 
 
 If you need to pass type information with your parameters, pass a reference to an array of the parameter and the type information.
 
@@ -4072,10 +4076,6 @@ This example, based on a writeup by Ron Savage, shows a connection being opened,
 =head1 BUGS
 
 Many types of database servers are not yet supported.
-
-Database driver/server combinations that do not support placeholders
-will fail.
-(http://groups.google.com/groups?selm=dftza.3519%24ol.117790%40news.chello.at)
 
 See L<DBIx::SQLEngine::ToDo> for additional bugs and missing
 features.

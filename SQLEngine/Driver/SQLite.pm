@@ -1,11 +1,15 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::SQLite - Extends SQLEngine for DBMS Idiosyncrasies
+DBIx::SQLEngine::Driver::SQLite - Support DBD::SQLite driver
 
 =head1 SYNOPSIS
 
+B<DBI Wrapper>: Adds methods to a DBI database handle.
+
   my $sqldb = DBIx::SQLEngine->new( 'dbi:SQLite:dbname=mydatafile.sqlite' );
   
+B<Portability Subclasses:> Uses driver's idioms or emulation.
+
   $hash_ary = $sqldb->fetch_select( 
     table => 'students' 
     limit => 5, offset => 10
@@ -14,6 +18,10 @@ DBIx::SQLEngine::Driver::SQLite - Extends SQLEngine for DBMS Idiosyncrasies
 =head1 DESCRIPTION
 
 This package provides a subclass of DBIx::SQLEngine which compensates for SQLite's idiosyncrasies.
+
+=head2 About Driver Subclasses
+
+You do not need to use this package directly; when you connect to a database, the SQLEngine object is automatically re-blessed in to the appropriate subclass.
 
 =cut
 

@@ -165,10 +165,6 @@ http://testers.cpan.org/show/DBIx-SQLEngine.html
 
 Many types of database servers are not yet supported.
 
-Database driver/server combinations that do not support placeholders
-will fail.
-(http://groups.google.com/groups?selm=dftza.3519%24ol.117790%40news.chello.at)
-
 See L<DBIx::SQLEngine::ToDo> for additional bugs and missing
 features.
 

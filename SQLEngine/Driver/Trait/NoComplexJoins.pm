@@ -24,6 +24,10 @@ select with inner and outer joins.
 
 This package causes inner joins to be replaced with cross joins and a where clause. Outer joins, including left and right joins, are not supported and will cause an exception.
 
+=head2 About Driver Traits
+
+You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
+
 Note: this feature has been added recently, and the interface is subject to change.
 
 Note: Because of the way DBIx::AnyDBD munges the inheritance tree,

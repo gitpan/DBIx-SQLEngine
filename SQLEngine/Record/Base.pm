@@ -18,7 +18,7 @@ B<Setup:> Several ways to create a class.
 
 B<Basics:> Common operations on a record.
 
-  $record = $class_name->fetch_record( $primary_key );
+  $record = $class_name->select_record( $primary_key );
   
   @records = $class_name->fetch_select(%clauses)->records;
   
@@ -57,8 +57,8 @@ use strict;
 
 use Carp;
 
-use DBIx::SQLEngine::Schema::Table;
-use DBIx::SQLEngine::Record::Set;
+require DBIx::SQLEngine::Schema::Table;
+require DBIx::SQLEngine::Record::Set;
 
 ########################################################################
 
@@ -224,7 +224,7 @@ These methods hide the distinctions between fetch/create and insert/update.
   $class_name->get_record ( ) : $new_empty_record
   $class_name->get_record ( $p_key ) : $fetched_record_or_undef
 
-Calls new if no primary key is provided, or if the primary key is zero; otherwise calls fetch_record.
+Calls new if no primary key is provided, or if the primary key is zero; otherwise calls select_record.
 
 =item save_record()
 
@@ -244,7 +244,7 @@ sub get_record {
   if ( ! $id ) {
     $package->new_empty_record();
   } else {
-    $package->fetch_record( $id );
+    $package->select_record( $id );
   }
 }
 
@@ -389,17 +389,17 @@ sub DESTROY {
 
   $class_name->fetch_select ( %select_clauses ) : $record_set
 
-Calls the corresponding SQLEngine method with the table name and the provided arguments. Return rows from the table that match the provided criteria, and in the requested order, by executing a SQL select statement. 
+Retrives records from the table using the provided SQL select clauses. 
 
-Each row hash is blessed into the record class before being wrapped in a Record::Set object.
+Calls the corresponding SQLEngine method with the table name and the provided arguments. Each row hash is blessed into the record class before being wrapped in a Record::Set object.
 
 =item fetch_one_record()
 
   $sqldb->fetch_one_record( %select_clauses ) : $record_hash
 
-Calls fetch_select, then returns only the first row of results.
+Retrives one record from the table using the provided SQL select clauses. 
 
-The row hash is blessed into the record class before being returned.
+Calls fetch_select, then returns only the first row of results. The row hash is blessed into the record class before being returned.
 
 =item select_record()
 
@@ -415,7 +415,7 @@ The row hash is blessed into the record class before being returned.
 
   $class_name->select_records ( @primary_key_values_or_hashrefs ) : $record_set
 
-Fetches a set of one or more by primary key.
+Fetches a set of one or more records by primary key.
 
 Each row hash is blessed into the record class before being wrapped in a Record::Set object.
 

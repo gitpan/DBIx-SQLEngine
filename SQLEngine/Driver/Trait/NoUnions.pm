@@ -19,6 +19,10 @@ This package supports SQL database servers which do natively provide a SQL
 select with unions. Instead, queries with unions are executed separately and
 their results combined.
 
+=head2 About Driver Traits
+
+You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
+
 Note: this feature has been added recently, and the interface is subject to change.
 
 Note: Because of the way DBIx::AnyDBD munges the inheritance tree,

@@ -40,11 +40,11 @@ You can use this package to create a class whose instances represent each of the
 ########################################################################
 
 package DBIx::SQLEngine::Record::Class;
-use strict;
 
+use strict;
 use Carp;
 
-use DBIx::SQLEngine::Record::Base;
+require DBIx::SQLEngine::Record::Base;
 
 ########################################################################
 

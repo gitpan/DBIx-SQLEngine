@@ -1,11 +1,15 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Pg - Extends SQLEngine for DBMS Idiosyncrasies
+DBIx::SQLEngine::Driver::Pg - Support DBD::Pg
 
 =head1 SYNOPSIS
 
+B<DBI Wrapper>: Adds methods to a DBI database handle.
+
   my $sqldb = DBIx::SQLEngine->new( 'dbi:pg:test' );
-  
+    
+B<Portability Subclasses:> Uses driver's idioms or emulation.
+
   $hash_ary = $sqldb->fetch_select( 
     table => 'students' 
     limit => 5, offset => 10
@@ -14,6 +18,10 @@ DBIx::SQLEngine::Driver::Pg - Extends SQLEngine for DBMS Idiosyncrasies
 =head1 DESCRIPTION
 
 This package provides a subclass of DBIx::SQLEngine which compensates for Postgres's idiosyncrasies.
+
+=head2 About Driver Subclasses
+
+You do not need to use this package directly; when you connect to a database, the SQLEngine object is automatically re-blessed in to the appropriate subclass.
 
 =cut
 

@@ -19,31 +19,38 @@ TO DO
 
     - Test new transaction code.
 
-    Figure out how to best write tests for features not supported on all
+    Add more tests to excercise various features not supported on all
     platforms, such as the null-value/empty-string distinction or
     transactions.
 
+    It would be nice to be able to split of up the tests in user_dsn.t.
     Consider prompting for DSN in Makefile.PL, and then saving the result in
-    a text file in the t/ dir.
+    a text file in the t/ dir, using EU::MM's prompt($message, $default);
 
-      my $value = prompt($message, $default);
-
-  Internals
-
-    How do we compensate for different versions of a database system? For
-    example, newer versions of MySQL support a number of features that the
-    old ones don't. Perhaps we should attempt to detect this, and rebless
-    into an appropriate subclass.
+  Object Mapping
 
     The handling of primary keys in Schema::Table and Schema::Column is not
     yet correct. The Record classes could also use a review to ensure
     primary keys are handled correctly throughout.
+
+  Driver Internals
+
+    Review DBIx::Compat; it seems like this information should map fairly
+    directly to candidate methods and subclasses.
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 
     Consider centralizing logging interface by making 'DBI', 'SQL' arguments
     to general function, or using log4perl.
+
+  Driver Subclassing
+
+    Collect subclasses for other drivers, including Sybase, Informix, ODBC.
+
+    Determine the right way to handle the multiplexing drivers,
+    DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may
+    reconnect to a different server in mid-stream.
 
     Consider becoming a subclass of DBI via RootClass and DbTypeSubclass,
     rather than using composition via DBIx::AnyDBD. This is somewhat
@@ -52,33 +59,42 @@ TO DO
     downside is loosing the flexibility of composition: if someone had their
     own DBI subclass, we could dynamically wrap around it if using
     composition, but it might be harder to dynamically inherit from it.
-    There's also a certain degree of inertia in favor of not changing it.
+    (There's also a certain degree of inertia in favor of not changing it.)
 
-    Determine the right way to handle the multiplexing drivers,
-    DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may
-    reconnect to a different server in mid-stream.
-
-    Determine the right way to code the driver traits currently stored in
-    Mixin::*.
+  Performance
 
     Consider simplifying reuse of SQL statements in similar situations, such
     as inserting hundreds of rows. (See the PERFORMANCE entry in the
     SQL::Abstract manpage.)
 
-  Database Subclasses
+    Perhaps there's some way to generalize this to a define_named_query_sql
+    method, but I can't quite see how to do this with the kind of syntax
+    users might expect:
 
-    Collect more subclasses: Sybase, Informix, ODBC, others.
+        $sqldb->define_named_query_sql( 'insert_foo' => {
+          table => 'foo', columns => [ ... ], values => { },
+        } );
+        $sqldb->do_named_query( 'insert_foo', { column1 => value1 } );
 
-    Review DBIx::Compat; it seems like this information should map fairly
-    directly to candidate methods and subclasses.
+    A more practical approach to this could take the form of a limited
+    interface such as do_bulk_insert, which would take an array of rows to
+    insert:
+
+      do_bulk_insert( table => foo, columns => [ ... ], values => [ {...}, {...} ] )
+      do_bulk_insert( table => foo, columns => [ ... ], values => [ [...], [...] ] )
+
+    Such an interface could also support specialty options like
+    statements_per_transaction => 100 in order to optimize performance on
+    servers such as Oracle, where auto-committing one statement at a time is
+    slow.
 
   Additional Criteria
 
-    The Criteria subclasses are incomplete. Candidates include: SubString,
-    CaseInsensitiveSubString, NumericEquality, NumericInequality,
-    StringInequality.
+    The Criteria subclasses are incomplete. Candidates include: Inequality,
+    SubString, CaseInsensitiveSubString.
 
-    Consider enabling pure-Perl interpretation of criteria:
+    Consider enabling pure-Perl interpretation of criteria to allow
+    post-fetch processing by Record::Set objects:
 
       package DBIx::SQLEngine::Criteria::Equality;
   

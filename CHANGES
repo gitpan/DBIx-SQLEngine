@@ -2,6 +2,70 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Version 0.026
+
+    2004-04-15 Released as DBIx-SQLEngine-0.026.
+
+    2004-04-15 Added subclasses to Driver::Mysql for various versions.
+
+    2004-04-15 Added Driver::Sybase and Driver::Sybase::MSSQL.
+
+    2004-04-15 Added Driver::Trait::DatabaseFlavors,
+    Driver::Trait::NoPlaceholders.
+
+    2004-04-15 Minor bits of documentation cleanup.
+
+    2004-04-14 Fixed missing import of clone_with_parameters for
+    interpret_named_connection(); thanks to Ron Savage for the bug report.
+
+    2004-04-14 Documentation fixes in Record::Trait::Cache POD.
+
+    2004-04-14 Added new makefile targets for convenience; the following are
+    now all supported:
+
+      make everything    - clean build with testsuite 
+      make again         - rebuilds Makefile and blib
+  
+      make cleandist     - clean build with manifest, docs, and dist 
+      make cleanmanifest - rebuilds MANIFEST
+      make docs          - runs pod2text on SQLEngine/Docs/*.pod files
+  
+      make testsuite     - runs tests against multiple data sources
+      make t/*.t         - runs whichever test scripts you name
+      make cover         - runs testsuite under Devel::Cover with report
+
+  Version 0.025
+
+    2004-04-14 Released as DBIx-SQLEngine-0.025.
+
+    2004-04-14 Fixed undocumented (and un-necessary) dependency on
+    String::Escape in Record::Trait::Cache which was causing a test failure.
+    Thanks to the folks running automated cpan smokers, which caught this a
+    few hours after I posted it.
+
+  Version 0.024
+
+    2004-04-14 Released as DBIx-SQLEngine-0.024.
+
+    2004-04-13 Fixed support for literal SQL in Schema::Table,
+    Record::Trait::Cache.
+
+    2004-04-13 Added a few more methods to Record::Trait::Extras for
+    compatibility with older DBO classes.
+
+    2004-04-11 Fixed a few problems in Record::Trait::Cache and
+    Cache::TrivialCache. Added initial test script for record caching.
+
+  Version 0.023
+
+    2004-04-10 Released as DBIx-SQLEngine-0.023.
+
+    2004-04-10 Added feature matrix to Docs::Related. Added
+    Docs::Comparison.
+
+    2004-04-10 Fixed test crasher in visit_select for
+    Driver::Trait::NoUnions.
+
   Version 0.022
 
     2004-04-09 Released as DBIx-SQLEngine-0.022.

@@ -127,11 +127,6 @@ BUGS AND SUPPORT
 
     Many types of database servers are not yet supported.
 
-    Database driver/server combinations that do not support placeholders
-    will fail.
-    (http://groups.google.com/groups?selm=dftza.3519%24ol.117790%40news.chel
-    lo.at)
-
     See the DBIx::SQLEngine::ToDo manpage for additional bugs and missing
     features.
 

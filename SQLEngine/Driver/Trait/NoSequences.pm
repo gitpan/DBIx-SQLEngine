@@ -24,6 +24,10 @@ table is allocated to store sequence values, and queries are used
 to atomically retrieve and increment the sequence value to ensure
 uniqueness.
 
+=head2 About Driver Traits
+
+You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
+
 Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
 DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
 around this, we export all of the methods into their namespace using Exporter

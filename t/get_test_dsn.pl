@@ -91,7 +91,6 @@ if ( ! $dsn ) {
 ########################################################################
 
 warn <<".";
-
   The remaining tests will use the DBI DSN specified in your environment: 
     $dsn
 

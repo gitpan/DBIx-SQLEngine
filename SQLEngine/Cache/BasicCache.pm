@@ -76,8 +76,8 @@ sub new {
 
 =cut
 
-use Class::MethodMaker::Compatibility (
-  get_set     => [ qw( 
+use Class::MakeMethods::Standard::Hash (
+  scalar     => [ qw( 
       __cache_namespace 
       __cache_expiration __cache_last_expired __cache_expire_freq
       __cache_item_limit __cache_last_pruned __cache_prune_freq
@@ -115,17 +115,17 @@ sub get {
   $cache->prune() if ( $cache->{'__cache_item_limit'} );
 
   unless ( exists $cache->{ $key } ) {
-    debug "RowCache", "$cache->{'__cache_namespace'} - cache miss for key $key";
+    debug("RowCache","$cache->{'__cache_namespace'} - cache miss for key $key");
     return undef;
   }
   my $entry = $cache->{ $key };
   if ( $entry->{'expires'} < time() ) {
-    debug "RowCache", "$cache->{'__cache_namespace'} - cache time out for key $key";
+    debug("RowCache", "$cache->{'__cache_namespace'} - cache time out for key $key");
     $cache->clear( $key );
     return;
   }
   $entry->{'last_used'} = time();
-  debug "RowCache", "$cache->{'__cache_namespace'} - cache hit for key $key";
+  debug("RowCache", "$cache->{'__cache_namespace'} - cache hit for key $key");
   return $entry->{'data'};
 }
 
@@ -135,9 +135,9 @@ sub set {
   my $key = shift;
   my $data = shift;
   return if ( not defined $key );
-  debug "RowCache", ( exists $cache->{$key} ) 
+  debug("RowCache", ( exists $cache->{$key} ) 
 		? "$cache->{'__cache_namespace'} - overwriting key $key"
-		: "$cache->{'__cache_namespace'} - inserting key $key";
+		: "$cache->{'__cache_namespace'} - inserting key $key" );
   $cache->{$key} = {
     'data' => $data,
     'last_used' => time(),
@@ -155,8 +155,8 @@ sub clear {
   if ( scalar @_ ) { 
     my $key = shift;
     delete $cache->{ $key };
-  } else 
-    debug "RowCache", "$cache->{'__cache_namespace'} - cache clear_all";
+  } else {
+    debug("RowCache", "$cache->{'__cache_namespace'} - cache clear_all" );
     %$cache = map { $_, $cache->{$_} } grep { /^__cache_/ }  keys %$cache;
   }
 }
@@ -188,7 +188,7 @@ sub expire {
   
   foreach my $key ( grep { $_ !~ /^__cache_/ } keys %$cache ) {
     if ( $cache->{ $key }->{'expires'} < $time ) {
-      debug "RowCache", "$cache->{'__cache_namespace'} - expiring key $key";
+      debug("RowCache", "$cache->{'__cache_namespace'} - expiring key $key");
       $cache->clear( $key );
     }
   }
@@ -214,7 +214,7 @@ sub prune {
   } @keys;
   
   foreach my $key ( splice @keys, $cache->{'__cache_item_limit'} ) {
-    debug "RowCache", "$cache->{'__cache_namespace'} - pruning key $key";
+    debug("RowCache", "$cache->{'__cache_namespace'} - pruning key $key");
     $cache->clear( $key );
   }
 }

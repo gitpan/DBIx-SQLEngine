@@ -39,8 +39,6 @@ use strict;
 
 use Carp;
 
-use DBIx::SQLEngine::Record::Class;
-
 ########################################################################
 
 =head2 Constructor 
@@ -115,7 +113,9 @@ $count = $rs->count();
 
 $record = $rs->record( $position );
 
-Return the record in the indicated position in the array.
+Return the record in the indicated position in the array. 
+
+Indexes start with zero. Negative indexes are counted back from the end, with -1 being the last, -2 being the one before that, and so forth.
 
 =item * 
 
@@ -137,6 +137,7 @@ sub count {
 sub record {
   my $self = shift;
   my $position = shift;
+  $position += $self->count if ( $position < 0 );
   return unless ( length $position and $position !~ /\D/ and $position <= $#$self);
   $self->[ $position ];
 }
@@ -193,6 +194,10 @@ sub range_records {
 ########################################################################
 
 =head2 Sorting
+
+Use of these methods requires the Data::Sorting module from CPAN. 
+
+See L<Data::Sorting> for more information.
 
 =over 4
 
@@ -251,6 +256,8 @@ sub reverse {
 
 =head2 Criteria Matching
 
+B<Caution:> This set of methods is currently not working.
+
 =over 4
 
 =item * 
@@ -286,7 +293,7 @@ sub filter {
   if (ref $criteria eq 'ARRAY') { 
     $criteria = new_group_from_values(@$criteria);
   } elsif (ref $criteria eq 'HASH') {
-    $criteria = DBO::Criteria->new_from_hashref($criteria);
+    $criteria = DBIx::SQLEngine::Criteria->new_from_hashref($criteria);
   } elsif (ref $criteria eq 'CODE') {
     @$self = grep { $criteria->( $_ ) } @$self;
     return;
@@ -378,7 +385,7 @@ __END__
 
 2001-04-10 Added last_record. 
 
-2000-12-13 Substantial revisions. Moved to EBiz::Database namespace. 
+2000-12-13 Simon: Substantial revisions. Moved to EBiz::Database namespace. 
 
 2000-12-01 Ed: Created. 
 

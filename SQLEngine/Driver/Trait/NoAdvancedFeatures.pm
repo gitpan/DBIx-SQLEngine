@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures - For pure-Perl Databases
+DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures - For Very Simple Databases
 
 =head1 SYNOPSIS
 
@@ -10,6 +10,10 @@ DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures - For pure-Perl Databases
 =head1 DESCRIPTION
 
 This package supports SQL database servers which do natively provide any advanced capabilities, like transactions, indexes, or stored procedures. 
+
+=head2 About Driver Traits
+
+You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
 
 Note: this feature has been added recently, and the interface is subject to change.
 

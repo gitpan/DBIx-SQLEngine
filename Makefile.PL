@@ -22,14 +22,23 @@ sub MY::postamble { q{
 everything:
 	make again; make cleanmanifest; make docs; make testsuite
 
+cleandist:
+	make again; make cleanmanifest; make docs; make dist
+
 again:
 	make clean; perl Makefile.PL; make pm_to_blib
 
 cleanmanifest:
 	rm MANIFEST ; touch MANIFEST; make manifest
 
-testsuite:
-	make; perl t/test_suite.pl
+testsuite: pm_to_blib FORCE
+	perl t/test_suite.pl
+
+%.t: pm_to_blib FORCE
+	perl -Iblib/lib $@
+
+compile: pm_to_blib FORCE
+	find blib -name '*.pm' -exec perl -Iblib/lib -wc {} \;
 
 cover:
 	cover -delete; HARNESS_PERL_SWITCHES=-MDevel::Cover make testsuite; cover
@@ -45,11 +54,7 @@ CHANGES: SQLEngine/Docs/Changes.pod
 TODO: SQLEngine/Docs/ToDo.pod
 	pod2text SQLEngine/Docs/ToDo.pod > TODO
 
-}; }
-
-########################################################################
-
-
+} }
 
 ########################################################################
 1;

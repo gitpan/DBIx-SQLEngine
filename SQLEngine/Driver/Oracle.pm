@@ -1,11 +1,15 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Oracle - Extends SQLEngine for DBMS Idiosyncrasies
+DBIx::SQLEngine::Driver::Oracle - Support DBD::Oracle and DBD::ODBC/Oracle
 
 =head1 SYNOPSIS
 
+B<DBI Wrapper>: Adds methods to a DBI database handle.
+
   my $sqldb = DBIx::SQLEngine->new( 'dbi:oracle:test' );
-  
+    
+B<Portability Subclasses:> Uses driver's idioms or emulation.
+
   $hash_ary = $sqldb->fetch_select( 
     table => 'students' 
     limit => 5, offset => 10
@@ -14,6 +18,10 @@ DBIx::SQLEngine::Driver::Oracle - Extends SQLEngine for DBMS Idiosyncrasies
 =head1 DESCRIPTION
 
 This package provides a subclass of DBIx::SQLEngine which compensates for Oracle's idiosyncrasies.
+
+=head2 About Driver Subclasses
+
+You do not need to use this package directly; when you connect to a database, the SQLEngine object is automatically re-blessed in to the appropriate subclass.
 
 =cut
 
@@ -24,9 +32,21 @@ use Carp;
 
 ########################################################################
 
-=head2 sql_limit
+########################################################################
+
+=head1 FETCHING DATA (SQL DQL)
+
+=head2 Methods Used By Complex Queries 
+
+=over 4
+
+=item sql_limit()
 
 Adds support for SQL select limit clause.
+
+Implemented as a subselect with ROWNUM.
+
+=back
 
 =cut
 
@@ -49,7 +69,15 @@ sub sql_limit {
 
 ########################################################################
 
-=head2 do_insert_with_sequence
+########################################################################
+
+=head1 EDITING DATA (SQL DML)
+
+=head2 Insert to Add Data 
+
+=over 4
+
+=item do_insert_with_sequence()
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
@@ -60,6 +88,8 @@ Implemented using _seq_do_insert_preinc and seq_increment.
   $sqldb->seq_increment( $table, $field ) : $new_value
 
 Increments the sequence, and returns the newly allocated value. 
+
+=back
 
 =cut
 
@@ -78,23 +108,23 @@ sub seq_increment {
 
 ########################################################################
 
-=head2 sql_detect_any
+########################################################################
 
-  $sqldb->sql_detect_any : %sql_select_clauses
+=head1 DEFINING STRUCTURES (SQL DDL)
 
-Implemented using Oracle's "select 1 from dual".
+=head2 Detect Tables and Columns
 
-=head2 sql_detect_table
+=over 4
+
+=item sql_detect_table()
 
   $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
 
 Implemented using Oracle's "select * from $tablename limit 1".
 
-=cut
+=back
 
-sub sql_detect_any {
-  return ( sql => 'select 1 from dual' )
-}
+=cut
 
 sub sql_detect_table {
   my ($self, $tablename) = @_;
@@ -107,7 +137,13 @@ sub sql_detect_table {
 
 ########################################################################
 
-=head2 dbms_create_column_types
+=head2 Column Type Methods
+
+The following methods are used by sql_create_table to specify column information in a DBMS-specific fashion.
+
+=over 4
+
+=item dbms_create_column_types()
 
   $sqldb->dbms_create_column_types () : %column_type_codes
 
@@ -116,11 +152,13 @@ Implemented using Oracle's blob and number types.
 I<Portability:> Note that this capability is currently limited, and 
 additional steps need to be taken to manually define sequences in Oracle.
 
-=head2 dbms_create_column_text_long_type
+=item dbms_create_column_text_long_type()
 
   $sqldb->dbms_create_column_text_long_type () : $col_type_str
 
 Implemented using Oracle's clob type.
+
+=back
 
 =cut
 
@@ -136,12 +174,101 @@ sub dbms_create_column_text_long_type {
 
 ########################################################################
 
-=head2 recoverable_query_exceptions
+########################################################################
+
+=head1 ADVANCED CAPABILITIES
+
+=head2 Call, Create and Drop Stored Procedures
+
+Note: this feature has been added recently, and not yet tested in real-world conditions.
+
+=over 4
+
+=item fetch_storedproc()
+
+  $sqldb->fetch_storedproc( $proc_name, @arguments ) : $rows
+
+Not yet supported.
+
+See L<DBD::Oracle/"Binding Cursors"> for more information.
+
+=item do_storedproc()
+
+  $sqldb->do_storedproc( $proc_name, @arguments ) : $row_count
+
+Calls do_sql with "execute procedure", the procedure name, and the arguments using placeholders.
+
+=item create_storedproc()
+
+  $sqldb->create_storedproc( $proc_name, $definition )
+
+Calls do_sql with "create or replace procedure", the procedure name, and the definition.
+
+=item drop_storedproc()
+
+  $sqldb->drop_storedproc( $proc_name )
+
+Calls do_sql with "drop procedure" and the procedure name.
+
+=back
+
+=cut
+
+sub fetch_storedproc  { 
+  confess("Oracle fetch_storedproc: Not yet implemented")
+}
+sub do_storedproc     { 
+  (shift)->do_sql(join("\n",
+		      "begin" . 
+		      (shift) . "(" . join(', ', ('?') x scalar(@_) ) . ")",
+		      "end"), @_)
+}
+sub create_storedproc { 
+  (shift)->do_sql(join("\n", 
+		    "create or replace procedure $_[0] is begin", @_, "end" ) ) 
+}
+sub drop_storedproc   { 
+  (shift)->do_sql( "drop procedure $_[0]" ) 
+}
+
+########################################################################
+
+########################################################################
+
+=head1 INTERNAL CONNECTION METHODS (DBI DBH)
+
+=head2 Checking For Connection
+
+=over 4
+
+=item sql_detect_any()
+
+  $sqldb->sql_detect_any : %sql_select_clauses
+
+Implemented using Oracle's "select 1 from dual".
+
+=back
+
+=cut
+
+sub sql_detect_any {
+  return ( sql => 'select 1 from dual' )
+}
+
+########################################################################
+
+=head2 Statement Error Handling 
+
+=over 4
+
+=item recoverable_query_exceptions()
 
   $sqldb->recoverable_query_exceptions() : @common_error_messages
 
 Provides a list of error messages which represent common
 communication failures or other incidental errors.
+
+=back
 
 =cut
 
@@ -150,6 +277,8 @@ sub recoverable_query_exceptions {
   'ORA-03113',	# ORA-03113 end-of-file on communication channel
   'ORA-03114',	# ORA-03114 not connected to ORACLE
 }
+
+########################################################################
 
 ########################################################################
 

@@ -11,6 +11,10 @@ DBIx::SQLEngine::Driver::Trait::NoColumnTypes - For Type-less Databases
 
 This package supports SQL database servers which do natively provide any column types, storing all numeric and string values in the same way. 
 
+=head2 About Driver Traits
+
+You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
+
 Note: this feature has been added recently, and the interface is subject to change.
 
 Note: Because of the way DBIx::AnyDBD munges the inheritance tree,

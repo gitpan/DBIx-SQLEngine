@@ -1,10 +1,14 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::CSV - Extends SQLEngine for DBMS Idiosyncrasies
+DBIx::SQLEngine::Driver::CSV - Support DBD::CSV driver
 
 =head1 SYNOPSIS
 
+B<DBI Wrapper>: Adds methods to a DBI database handle.
+
   my $sqldb = DBIx::SQLEngine->new( 'dbi:CSV:f_dir=my_data_path' );
+  
+B<Portability Subclasses:> Uses driver's idioms or emulation.
   
   $hash_ary = $sqldb->fetch_select( 
     table => 'students' 
@@ -19,6 +23,10 @@ some of DBD::CSV's idiosyncrasies.
 Note that DBD::CSV does not support the normal full range of SQL DBMS
 functionality. Upgrade to the latest versions of DBI and SQL::Statement and
 consult their documentation to understand their current limits.
+
+=head2 About Driver Subclasses
+
+You do not need to use this package directly; when you connect to a database, the SQLEngine object is automatically re-blessed in to the appropriate subclass.
 
 =cut
 

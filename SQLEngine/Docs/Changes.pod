@@ -6,6 +6,38 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.026
+
+2004-04-16 Released as DBIx-SQLEngine-0.026.
+
+2004-04-15 Added subclasses to Driver::Mysql for various versions.
+
+2004-04-15 Added Driver::Sybase and Driver::Sybase::MSSQL.
+
+2004-04-15 Added Driver::Trait::DatabaseFlavors, Driver::Trait::NoPlaceholders.
+
+2004-04-15 Minor bits of documentation cleanup.
+
+2004-04-14 Fixed missing import of clone_with_parameters for interpret_named_connection(); thanks to Ron Savage for the bug report.
+
+2004-04-14 Documentation fixes in Record::Trait::Cache POD.
+
+2004-04-14 Added new makefile targets for development convenience; the 
+following are now all supported:
+
+  make everything    - clean build with testsuite 
+  make again         - rebuilds Makefile and blib
+  
+  make cleandist     - clean build with manifest, docs, and dist 
+  make cleanmanifest - rebuilds MANIFEST
+  make docs          - runs pod2text on SQLEngine/Docs/*.pod files
+  
+  make compile       - makes sure that all of the modules compile
+  make testsuite     - runs tests against multiple data sources
+  make t/*.t         - runs whichever test scripts you name
+  make cover         - runs testsuite under Devel::Cover with report
+
+
 =head2 Version 0.025
 
 2004-04-14 Released as DBIx-SQLEngine-0.025.
