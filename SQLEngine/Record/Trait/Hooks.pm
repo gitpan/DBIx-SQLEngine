@@ -64,7 +64,6 @@ package DBIx::SQLEngine::Record::Trait::Hooks;
 
 use strict;
 use Carp;
-use vars qw( @MIXIN );
 
 ########################################################################
 
@@ -120,8 +119,7 @@ To make a class "read-only" by preventing all inserts, updates, and deletes:
 To have a particular record automatically save any changes you've made to it when it goes out of scope:
 
   my $record = MyClass->fetch_one( ... );
-  my $saver = sub { my $record = shift; $record->save_record };
-  $record->install_hooks( pre_destroy => $saver );
+  $record->install_hooks( pre_destroy => sub { (shift)->save_record } );
 
 =back
 
@@ -152,7 +150,7 @@ You may create your own records for new instances, or fetch records from the dat
 
   $class_name->new_empty_record() : $empty_record
 
-Adds support for post_new hook. Calls SUPER method, so implemented using MIXIN.
+Adds support for post_new hook. 
 
 =item post_new()
 
@@ -162,13 +160,11 @@ Inheritable Hook. Add functions which should be called immediately after each re
 
 =cut
 
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub new_empty_record {
-  my $record = (shift)->SUPER::new_empty_record( @_ );
+  my $record = (shift)->NEXT('new_empty_record', @_ );
   $record->post_new; 
   return $record;
 }
-/
 
 use Class::MakeMethods::Composite::Inheritable(hook=>'post_new' ); 
 
@@ -184,7 +180,7 @@ Automatically invoked when record is being garbage collected.
 
   $record->DESTROY()
 
-Adds support for pre_destroy hook. Calls SUPER method, so implemented using MIXIN.
+Adds support for pre_destroy hook. 
 
 =item pre_destroy
 
@@ -198,14 +194,12 @@ Inheritable Hook. Add functions which should be called when an individual record
 
 use Class::MakeMethods::Composite::Inheritable(hook=>'pre_destroy'); 
 
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub DESTROY {
   my $self = shift;
   $self->pre_destroy();
-  $self->SUPER::DESTROY();
+  $self->NEXT('DESTROY');
   $self;
 }
-/
 
 ########################################################################
 
@@ -225,7 +219,7 @@ These methods are called internally by the various select methods and do not nee
   $class_name->record_from_table( $hash_ref ) : $record
   $class_name->record_from_table( %hash_contents ) : $record
 
-Adds support for post_fetch hook. Calls SUPER method, so implemented using MIXIN.
+Adds support for post_fetch hook. 
 
 =item record_set_from_table()
 
@@ -233,7 +227,7 @@ Adds support for post_fetch hook. Calls SUPER method, so implemented using MIXIN
   $class_name->record_set_from_table( $hash_array_ref ) : $record_set
   $class_name->record_set_from_table( @hash_refs ) : $record_set
 
-Adds support for post_fetch hook. Calls SUPER method, so implemented using MIXIN.
+Adds support for post_fetch hook. 
 
 =item post_fetch()
 
@@ -249,21 +243,17 @@ use Class::MakeMethods::Composite::Inheritable( hook=>'post_fetch' );
 # $row_class->record_from_table( $hash_ref );
 # $row = $row_class->record_from_table( $hash_ref );
 # $row = $row_class->record_from_table( %hash_contents );
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub record_from_table {
-  my $record = (shift)->SUPER::record_from_table( @_ ) or return;
+  my $record = (shift)->NEXT('record_from_table', @_ ) or return;
   $record->post_fetch; 
   return $record;
 }
-/
 
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub record_set_from_table {
-  my $recordset = (shift)->SUPER::record_set_from_table( @_ ) or return;
+  my $recordset = (shift)->NEXT('record_set_from_table', @_ ) or return;
   foreach my $record ( @$recordset ) { $record->post_fetch }
   return $recordset;
 }
-/
 
 ########################################################################
 
@@ -281,7 +271,7 @@ After constructing a record with one of the new_*() methods, you may save any ch
 
   $record_obj->insert_record() : $flag
 
-Attempt to insert the record into the database. Calls SUPER method, so implemented using MIXIN.
+Attempt to insert the record into the database. 
 
 Calls ok_insert to ensure that it's OK to insert this row, and aborts if any of hook subroutines return 0. 
 
@@ -308,7 +298,6 @@ Inheritable Hook. Add functions which should be called after a row is inserted.
 use Class::MakeMethods::Composite::Inheritable(hook=>'ok_insert pre_insert post_insert'); 
 
 # $record->insert_record()
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub insert_record {
   my $self = shift;
   my $class = ref( $self ) or croak("Not a class method");
@@ -319,11 +308,10 @@ sub insert_record {
     return undef;
   } 
   $self->pre_insert();
-  $self->SUPER::insert_record();
+  $self->NEXT('insert_record');
   $self->post_insert();
   $self;
 }
-/
 
 ########################################################################
 
@@ -338,7 +326,6 @@ After retrieving a record with one of the fetch methods, you may save any change
   $record_obj->update_record() : $record_count
 
 Attempts to update the record using its primary key as a unique identifier. 
-Calls SUPER method, so implemented using MIXIN.
 
 Calls ok_update to ensure that it's OK to update this row, and aborts if any of hook subroutines return 0. 
 
@@ -365,7 +352,6 @@ Inheritable Hook. Add functions which should be called immediately after a row i
 use Class::MakeMethods::Composite::Inheritable(hook=>'ok_update pre_update post_update'); 
 
 # $record->update_record()
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub update_record {
   my $self = shift;
   my $class = ref( $self ) or croak("Not a class method");
@@ -376,11 +362,10 @@ sub update_record {
   } 
   # warn "About to update $self: " . join(', ', map "'$_'", @flags );
   $self->pre_update();
-  $self->SUPER::update_record();
+  $self->NEXT('update_record');
   $self->post_update();
   $self;
 }
-/
 
 ########################################################################
 
@@ -393,7 +378,6 @@ sub update_record {
   $record_obj->delete_record() : $record_count
 
 Delete this existing record based on its primary key. 
-Calls SUPER method, so implemented using MIXIN.
 
 Checks to see if any of the pre_delete results is "0". If not, calls the superclass method.
 
@@ -424,7 +408,6 @@ Inheritable Hook. Add functions which should be called after a row is deleted.
 use Class::MakeMethods::Composite::Inheritable(hook=>'ok_delete pre_delete post_delete'); 
 
 # $success = $record->delete_record();
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub delete_record {
   my $self = shift;
   my @flags = $self->ok_delete;
@@ -434,11 +417,10 @@ sub delete_record {
   } 
   # warn "About to delete $self: " . join(', ', map "'$_'", @flags );
   $self->pre_delete();
-  $self->SUPER::delete_record();
+  $self->NEXT('delete_record');
   $self->post_delete();
   return 1;
 }
-/
 
 ########################################################################
 

@@ -113,19 +113,31 @@ This release includes the following driver subclasses, which support the listed 
 
 =item Mysql
 
-MySQL via DBD::mysql (Free RDBMS)
+MySQL via DBD::mysql or DBD::ODBC (Free RDBMS)
 
 =item Pg
 
-PostgreSQL via DBD::Pg (Free RDBMS)
+PostgreSQL via DBD::Pg or DBD::ODBC (Free RDBMS)
 
 =item Oracle
 
-Oracle (Commercial RDBMS)
+Oracle via DBD::Oracle or DBD::ODBC (Commercial RDBMS)
+
+=item Sybase
+
+Sybase via DBD::Sybase or DBD::ODBC (Commercial RDBMS)
+
+=item Informix
+
+Informix via DBD::Informix or DBD::ODBC (Commercial RDBMS)
 
 =item MSSQL
 
-Microsoft SQL Server (Commercial RDBMS)
+Microsoft SQL Server via DBD::ODBC (Commercial RDBMS)
+
+=item Sybase::MSSQL
+
+Microsoft SQL Server via DBD::Sybase and FreeTDS libraries
 
 =item SQLite
 
@@ -137,7 +149,7 @@ AnyData via DBD::AnyData (Free Package)
 
 =item CSV
 
-DBD::CSV (Free Package)
+CSV files via DBD::CSV (Free Package)
 
 =back
 
@@ -485,7 +497,7 @@ sub interpret_named_connection {
   } elsif ( ! ref $cnxn_def ) {
     return ( $cnxn_def, @cnxn_args );
   } elsif ( ref($cnxn_def) eq 'ARRAY' ) {
-    return ( clone_with_parameters($cnxn_def, @cnxn_args) );
+    return ( @{ clone_with_parameters($cnxn_def, @cnxn_args) } );
   } elsif ( ref($cnxn_def) eq 'CODE' ) {
     my @results = $cnxn_def->( @cnxn_args );
     unshift @results, 'sql' if scalar(@results) == 1;
@@ -524,7 +536,7 @@ sub define_named_connections_from_text {
 
 ########################################################################
 
-# Provide aliases for methods that might be called on the base class
+# Provide aliases for methods that might be called on the factory class
 foreach my $method ( qw/ DBILogging SQLLogging 
 	named_queries define_named_queries define_named_queries_from_text / ) {
   no strict 'refs';
@@ -561,21 +573,23 @@ The following methods may be used to retrieve data using SQL select statements. 
 
 B<Public Methods:> There are several ways to retrieve information from a SELECT query.
 
+The fetch_* methods select and return matching rows.
+
 =over 4
 
 =item fetch_select()
 
   $sqldb->fetch_select( %sql_clauses ) : $row_hashes
-  $sqldb->fetch_select( %sql_clauses ) : ($row_hashes,$column_hashes)
+  $sqldb->fetch_select( %sql_clauses ) : ($row_hashes, $column_hashes)
 
 Retrieve rows from the datasource as an array of hashrefs. If called in a list context, also returns an array of hashrefs containing information about the columns included in the result set.
 
 =item fetch_select_rows()
 
   $sqldb->fetch_select_rows( %sql_clauses ) : $row_arrays
-  $sqldb->fetch_select_rows( %sql_clauses ) : ($row_arrays,$column_hashes)
+  $sqldb->fetch_select_rows( %sql_clauses ) : ($row_arrays, $column_hashes)
 
-Retrieve rows from the datasource as an array of arrayrefs. If called in a list context, also returns an array of hashrefs containing information about the columns included in the result set.
+Like fetch_select, but returns an array of arrayrefs, rather than hashrefs.
 
 =item fetch_one_row()
 
@@ -589,12 +603,20 @@ Calls fetch_select, then returns only the first row of results.
 
 Calls fetch_select, then returns the first value from the first row of results.
 
+=back
+
+The visit_* and fetchsub_* methods allow you to loop through the returned records without necessarily loading them all into memory at once.
+
+=over 4
+
 =item visit_select()
 
   $sqldb->visit_select( $code_ref, %sql_clauses ) : @results
   $sqldb->visit_select( %sql_clauses, $code_ref ) : @results
 
 Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. For your convenience, will accept a coderef as either the first or the last argument. Returns the results returned by each of those function calls. Processing with visit_select rather than fetch_select can be more efficient if you are looping over a large number of rows and do not need to keep them all in memory.
+
+Note that some DBI drivers do not support simultaneous use of more than one statement handle; if you are using such a driver, you will receive an error if you run another query from within your code reference.
 
 =item visit_select_rows()
 
@@ -603,19 +625,35 @@ Retrieve rows from the datasource as a series of hashrefs, and call the user pro
 
 Like visit_select, but for each row the code ref is called with the current row retrieved as a list of values, rather than a hash ref.
 
+=item fetchsub_select()
+
+  $self->fetchsub_select( %clauses ) : $coderef
+
+Execute a query and returns a code reference that can be called repeatedly to retrieve a row as a hashref. When all of the rows have been fetched it will return undef.
+
+The code reference is blessed so that when it goes out of scope and is destroyed it can call the statement handle's finish() method.
+
+Note that some DBI drivers do not support simultaneous use of more than one statement handle; if you are using such a driver, you will receive an error if you run another query while this code reference is still in scope. 
+
+=item fetchsub_select_rows()
+
+  $self->fetchsub_select_rows( %clauses ) : $coderef
+
+Like fetchsub_select, but for each row returns a list of values, rather than a hash ref. When all of the rows have been fetched it will return an empty list.
+
 =back
 
 B<SQL Select Clauses>: The above select methods accept a hash describing the clauses of the SQL statement they are to generate, using the values provided for the keys defined below. 
 
 =over 4
 
-=item 'named_query'
-
-Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
-
 =item 'sql'
 
 May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders. Can not be used in combination with the table and columns arguments. 
+
+=item 'named_query'
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
 =item 'union'
 
@@ -757,35 +795,57 @@ All of the SQL select clauses are accepted, including explicit SQL statements wi
 You can use visit_select to make a traversal of all rows that match a query without retrieving them all at once:
 
   $sqldb->visit_select( 
+    table => 'student',
     sub {
       my $student = shift;
       print $student->{id}, $student->{name}, $student->{age};
-    }, 
-    table => 'student'
+    }
   );
 
 You can collect values along the way:
 
   my @firstnames = $sqldb->visit_select( 
+    table => 'student',
     sub {
       my $student = shift;
       ( $student->{name} =~ /(\w+)\s/ ) ? $1 : $student->{name};
-    }, 
-    table => 'student'
+    }
   );
 
 You can visit with any combination of the other clauses supported by fetch_select:
 
    $sqldb->visit_select( 
-    sub {
-      my $student = shift;
-      print $student->{id}, $student->{name};
-    }, 
     table => 'student', 
     columns => 'id, name', 
     order => 'name, id desc',
     where => 'age < 22',
+    sub {
+      my $student = shift;
+      print $student->{id}, $student->{name};
+    }
   );
+
+=item *
+
+You can use fetchsub_select to make a traversal of some or all rows without retrieving them all at once:
+
+  my $fetchsub = $sqldb->fetchsub_select( 
+    table => 'student',
+    where => 'age < 22',
+  );
+  while ( my $student = $fetchsub->() ) {
+    print $student->{id}, $student->{name}, $student->{age};
+  }
+
+You can use fetchsub_select_rows to treat each row as a list of values instead of a hashref:
+
+  my $fetchsub = $sqldb->fetchsub_select_rows( 
+    table => 'student',
+    columns => 'id, name, age',
+  );
+  while ( my @student = $fetchsub->() ) {
+    print $student[0], $student[1], $student[2];
+  }
 
 =back
 
@@ -803,11 +863,21 @@ sub fetch_select_rows {
   $self->fetch_sql_rows( $self->sql_select( @_ ) );
 }
 
-# $row = $self->fetch_one_row( %clauses );
-sub fetch_one_row {
+# $row = $self->fetch_one( %clauses );
+sub fetch_one {
   my $self = shift;
   my $rows = $self->fetch_select( limit => 1, @_ ) or return;
   $rows->[0];
+}
+
+# $row = $self->fetch_one_row( %clauses );
+sub fetch_one_row { (shift)->fetch_one( @_ ) }
+
+# $row = $self->fetch_one_values( %clauses );
+sub fetch_one_values {
+  my $self = shift;
+  my $rows = $self->fetch_select_rows( limit => 1, @_ ) or return;
+  $rows->[0] ? @{ $rows->[0] } : ();
 }
 
 # $value = $self->fetch_one_value( %clauses );
@@ -829,6 +899,18 @@ sub visit_select {
 sub visit_select_rows {
   my $self = shift;
   $self->visit_sql_rows( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) )
+}
+
+# $coderef = $self->fetchsub_select( %clauses );
+sub fetchsub_select {
+  my $self = shift;
+  $self->fetchsub_sql( $self->sql_select( @_ ) );
+}
+
+# $coderef = $self->fetchsub_select_rows( %clauses );
+sub fetchsub_select_rows {
+  my $self = shift;
+  $self->fetchsub_sql_rows( $self->sql_select( @_ ) );
 }
 
 ########################################################################
@@ -1286,14 +1368,12 @@ sub sql_union {
 
 sub detect_union_supported {
   my $self = shift;
-  my $quietly = shift;
   my $result = 0;
   eval {
     local $SIG{__DIE__};
     $self->fetch_select( sql => 'select 1 union select 2' );
     $result = 1;
   };
-  $result or warn "Unable to detect_any: $@" unless $quietly;
   return $result;
 }
 
@@ -1317,6 +1397,18 @@ B<Public Methods:> You can perform database INSERTs with these methods.
 
 Insert a single row into a table in the datasource. Should return 1, unless there's an exception.
 
+=item do_bulk_insert()
+
+  $sqldb->do_bulk_insert( %sql_clauses, values => [ @array_or_hash_refs ] ) : $row_count
+
+Inserts several rows into a table. Returns the number of rows inserted.
+
+This is provided so that drivers which have alternate bulk-loader
+interfaces can hook into that support here, and to allow specialty
+options like C<statements_per_transaction => 100> in order to
+optimize performance on servers such as Oracle, where auto-committing
+one statement at a time is slow.
+
 =back
 
 B<Internal Methods:> The following method is called by do_insert() and does not need to be called directly. 
@@ -1335,13 +1427,13 @@ B<SQL Insert Clauses>: The above insert methods accept a hash describing the cla
 
 =over 4
 
-=item 'named_query' 
-
-Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
-
 =item 'sql'
 
 Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+
+=item 'named_query' 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
 =item 'table' 
 
@@ -1386,6 +1478,20 @@ Here's the same insert using separate arrays of column names and values to be in
 
 =item *
 
+Here's a bulk insert of multiple rows:
+
+  $sqldb->do_insert( 
+    table => 'students', 
+    columns => [ 'name', 'age', 'status' ], 
+    values => [
+      [ 'Dave', '19', 'minor' ],
+      [ 'Alice', '20', 'minor' ],
+      [ 'Sam', '22', 'adult' ],
+    ]
+  );
+
+=item *
+
 Of course you can also use your own arbitrary SQL and placeholder parameters.
 
   $sqldb->do_insert( 
@@ -1416,6 +1522,15 @@ sub do_insert {
     $self->do_insert_with_sequence( $seq_name, %args );
   } else {
     $self->do_sql( $self->sql_insert( @_ ) );
+  }
+}
+
+sub do_bulk_insert {
+  my $self = shift;
+  my %args = @_;
+  my $values = delete $args{values};
+  foreach my $value ( @$values ) {
+    $self->do_insert( %args, values => $value );
   }
 }
 
@@ -1630,13 +1745,13 @@ B<SQL Update Clauses>: The above update methods accept a hash describing the cla
 
 =over 4
 
-=item 'named_query' 
-
-Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
-
 =item 'sql'
 
 Optional; conflicts with table, columns and values arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+
+=item 'named_query' 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
 =item 'table' 
 
@@ -1843,13 +1958,13 @@ B<SQL Delete Clauses>: The above delete methods accept a hash describing the cla
 
 =over 4
 
-=item 'named_query' 
-
-Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
-
 =item 'sql'
 
 Optional; conflicts with 'table' argument. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+
+=item 'named_query' 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
 =item 'table' 
 
@@ -1995,7 +2110,7 @@ A reference to an array of a SQL string and placeholder parameters. Parameters w
 
 =item *
 
-A reference to a hash of a clauses supported by one of the SQL generation methods. Items which should later be replaced by per-query arguments can be represented by references to the special Perl variables $1, $2, $3, and so forth. 
+A reference to a hash of clauses supported by one of the SQL generation methods. Items which should later be replaced by per-query arguments can be represented by references to the special Perl variables $1, $2, $3, and so forth. 
 
 =item *
 
@@ -2511,6 +2626,12 @@ B<Internal Methods:> The above public methods use the following sql_ methods to 
 
 Generate a SQL create-table statement based on the column information. Text columns are checked with sql_create_column_text_length() to provide server-appropriate types.
 
+=item sql_create_columns()
+
+  $sqldb->sql_create_columns( $column, $fragment_array_ref ) : $sql_fragment
+
+Generates the SQL fragment to define a column in a create table statement.
+
 =item sql_drop_table()
 
   $sqldb->sql_drop_table ($tablename) : $sql_stmt
@@ -2531,6 +2652,20 @@ sub sql_create_table {
   
   $self->log_sql( $sql );
   return $sql;
+}
+
+sub sql_create_columns {
+  my($self, $table, $column, $columns) = @_;
+  my $name = $column->{name};
+  my $type = $self->sql_create_column_type( $table, $column, $columns ) ;
+  if ( $type eq 'primary' ) {
+    return "PRIMARY KEY ($name)";
+  } else {
+    return '  ' . $name . 
+	    ' ' x ( ( length($name) > 31 ) ? 1 : ( 32 - length($name) ) ) .
+	    $type . 
+	    ( $column->{required} ? " not null" : '' );
+  }
 }
 
 sub sql_drop_table {
@@ -2581,20 +2716,6 @@ Subclasses should, based on the datasource's server_type, return the appropriate
 =back
 
 =cut
-
-sub sql_create_columns {
-  my($self, $table, $column, $columns) = @_;
-  my $name = $column->{name};
-  my $type = $self->sql_create_column_type( $table, $column, $columns ) ;
-  if ( $type eq 'primary' ) {
-    return "PRIMARY KEY ($name)";
-  } else {
-    return '  ' . $name . 
-	    ' ' x ( ( length($name) > 31 ) ? 1 : ( 32 - length($name) ) ) .
-	    $type . 
-	    ( $column->{required} ? " not null" : '' );
-  }
-}
 
 sub sql_create_column_type {
   my($self, $table, $column, $columns) = @_;
@@ -2844,7 +2965,7 @@ This is obviously not very reliable, but may be of use in some ad-hoc utilities 
 
 sub are_transactions_supported {
   my $self = shift;
-  my $dbh = $self->dbh;
+  my $dbh = $self->get_dbh;
   eval {
     local $SIG{__DIE__};
     $dbh->begin_work;
@@ -2857,7 +2978,7 @@ sub as_one_transaction {
   my $self = shift;
   my $code = shift;
 
-  my $dbh = $self->dbh;
+  my $dbh = $self->get_dbh;
   my @results;
   $dbh->begin_work;
   my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
@@ -2877,7 +2998,7 @@ sub as_one_transaction_if_supported {
   my $self = shift;
   my $code = shift;
   
-  my $dbh = $self->dbh;
+  my $dbh = $self->get_dbh;
   my @results;
   my $in_transaction;
   my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
@@ -3327,7 +3448,7 @@ Execute a SQL query by sending it to the DBI connection, and returns any rows th
   $sqldb->fetch_sql_rows ($sql, @params) : $row_ary_ary
   $sqldb->fetch_sql_rows ($sql, @params) : ( $row_ary_ary, $columnset )
 
-Execute a SQL query by sending it to the DBI connection, and returns any rows that were produced, as an array of arrays, with the values in each entry keyed by column order. If called in a list context, also returns a reference to an array of information about the columns returned by the query.
+Execute a SQL query by sending it to the DBI connection, and returns any rows that were produced, as an array of arrayrefs, with the values in each entry keyed by column order. If called in a list context, also returns a reference to an array of information about the columns returned by the query.
 
 =item visit_sql()
 
@@ -3342,6 +3463,19 @@ Similar to fetch_sql, but calls your coderef on each row, passing it as a hashre
   $sqldb->visit_sql ($sql, @params, $coderef) : @results
 
 Similar to fetch_sql, but calls your coderef on each row, passing it as a list of values, and returns the results of each of those calls. For your convenience, will accept a coderef as either the first or the last argument.
+
+=item fetchsub_sql()
+
+  $sqldb->fetchsub_sql ($sql, @params) : $coderef
+
+Execute a SQL query by sending it to the DBI connection, and returns a code reference that can be called repeatedly to invoke the fetchrow_hashref() method on the statement handle. 
+
+=item fetchsub_sql_rows()
+
+  $sqldb->fetchsub_sql_rows ($sql, @params) : $coderef
+
+Execute a SQL query by sending it to the DBI connection, and returns a code reference that can be called repeatedly to invoke the fetchrow_array() method on the statement handle. 
+
 
 =back
 
@@ -3381,6 +3515,16 @@ sub visit_sql_rows {
   my $self = shift;
   my $coderef = ( ref($_[0]) ? shift : pop );
   $self->try_query( (shift), [ @_ ], 'visitall_array', $coderef )
+}
+
+# $coderef = $self->fetchsub_sql($sql, @params);
+sub fetchsub_sql {
+  (shift)->try_query( (shift), [ @_ ], 'fetchsub_hashref' )  
+}
+
+# $coderef = $self->fetchsub_sql_rows($sql, @params);
+sub fetchsub_sql_rows {
+  (shift)->try_query( (shift), [ @_ ], 'fetchsub_array' )  
 }
 
 ########################################################################
@@ -3544,7 +3688,7 @@ sub execute_query {
     $self->log_stop( $timer, "ERROR: $@" ) if $self->DBILogging;
     die $@;
   } else {
-    $self->done_with_query($sth);
+    $self->done_with_query($sth) if $sth;
     
     $self->log_stop( $timer, \@results ) if $self->DBILogging;
     
@@ -3626,13 +3770,29 @@ Calls the STH's fetchall_arrayref method, and if called in a list context, also 
 
   $sqldb->visitall_hashref ($sth, $coderef) : ()
 
-Calls coderef on each row with values as hashref; does not return them.
+Calls coderef on each row with values as hashref, and returns a list of results.
 
 =item visitall_array()
 
   $sqldb->visitall_array ($sth, $coderef) : ()
 
-Calls coderef on each row with values as list; does not return them.
+Calls coderef on each row with values as list, and returns a list of results.
+
+=item fetchsub_hashref()
+
+  $sqldb->fetchsub_hashref ($sth, $name_uc_or_lc) : $coderef
+
+Returns a code reference that can be called repeatedly to invoke the fetchrow_hashref() method on the statement handle. 
+
+The code reference is blessed so that when it goes out of scope and is destroyed it can call the statement handle's finish() method.
+
+=item fetchsub_array()
+
+  $sqldb->fetchsub_hashref ($sth) : $coderef
+
+Returns a code reference that can be called repeatedly to invoke the fetchrow_array() method on the statement handle. 
+
+The code reference is blessed so that when it goes out of scope and is destroyed it can call the statement handle's finish() method.
 
 =back
 
@@ -3695,6 +3855,54 @@ sub visitall_array {
   return @results;
 }
 
+# $fetchsub = $self->fetchsub_hashref( $sth )
+# $fetchsub = $self->fetchsub_hashref( $sth, $name_uc_or_lc )
+sub fetchsub_hashref {
+  my ($self, $sth, @args) = @_;
+  $_[1] = undef;
+  DBIx::SQLEngine::Driver::fetchsub->new( $sth, 'fetchrow_hashref', @args );
+}
+
+# $fetchsub = $self->fetchsub_array( $sth )
+sub fetchsub_array {
+  my ($self, $sth) = @_;
+  $_[1] = undef;
+  DBIx::SQLEngine::Driver::fetchsub->new( $sth, 'fetchrow_array' );
+}
+
+FETCHSUB_CLASS: { 
+  package DBIx::SQLEngine::Driver::fetchsub;
+  
+  my $Signal = \"Unique";
+  
+  sub new {
+    my ( $package, $sth, $method, @args ) = @_;
+    my $coderef = sub {
+      unless ( $_[0] eq $Signal ) {
+	$sth->$method( @args, @_ )
+      } elsif ( $_[1] eq 'DESTROY' ) {
+	$sth->finish() if $sth;
+	warn "Fetchsub finish for $sth\n";
+	$sth = undef;
+      } elsif ( $_[1] eq 'handle' ) {
+	return $sth;
+      } else {
+	Carp::croak( "Unsupported signal to fetchsub: '$_[1]'" );
+      }
+    };
+    bless $coderef, $package;
+  }
+  
+  sub handle {
+    my $coderef = shift;
+    &$coderef( $Signal => 'handle' )
+  }
+  
+  sub DESTROY {
+    my $coderef = shift;
+    &$coderef( $Signal => 'DESTROY' )
+  }
+}
 
 ########################################################################
 
@@ -3739,7 +3947,7 @@ sub retrieve_columns {
   my $type_codes = [ map { 
 	my $typeinfo = scalar $self->type_info($_);
 	# warn "Type $typeinfo";
-	scalar $typeinfo->{'DATA_TYPE'} 
+	ref($typeinfo) ? scalar $typeinfo->{'DATA_TYPE'} : $typeinfo;
   } @$types ];
   my $sizes = eval { $sth->{PRECISION} || [] };
   my $nullable = eval { $sth->{'NULLABLE'} || [] };
@@ -3946,12 +4154,53 @@ sub log_sql {
 
 ########################################################################
 
+=head2 About Driver Traits
+
+Some features that are shared by several Driver subclasses are implemented as a  package in the Driver::Trait::* namespace.
+
+Because of the way DBIx::AnyDBD munges the inheritance tree,
+DBIx::SQLEngine::Driver subclasses can not reliably inherit from mixins. 
+To work around this, we export all of the methods into their namespace using Exporter and @EXPORT.
+
+In addition we go through some effort to re-dispatch methods because we can't
+rely on SUPER and we don't want to require NEXT. This isn't too complicated,
+as we know the munged inheritance tree only uses single inheritance.
+
+Note: this mechanism has been added recently, and the implementation is subject to change.
+
+B<Internal Methods:>
+
+=over 4
+
+=item NEXT()
+
+  $sqldb->NEXT( $method, @args ) : @results
+
+Used by driver traits to redispatch to base-class implementations.
+
+=back
+
+=cut
+
+sub NEXT {
+  my ( $self, $method, @args ) = @_;
+  
+  no strict 'refs';
+  my $super = ${ ref($self) . '::ISA' }[0] . "::" . $method;
+  # warn "_super_d: $super " . wantarray() . "\n";
+  $self->$super( @args );
+}
+
+########################################################################
+
+########################################################################
+
 =head1 SEE ALSO
 
 See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
-See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
-this distribution, including installation and license information.
+For distribution, installation, support, copyright and license 
+information, see L<DBIx::SQLEngine::Docs::ReadMe>.
 
 =cut
 

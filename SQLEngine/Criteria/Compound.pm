@@ -105,17 +105,34 @@ Constructor.
 
 =over 4
 
-=item subs () : @criteria
+=item subs()
 
-Accessor
+  $criteria->subs() : @criteria
 
-=item push_subs ( @criteria ) 
+Returns all of the contained criteria.
 
-=item unshift_subs ( @criteria ) 
+=item push_subs()
+
+  $criteria->push_subs ( @criteria ) 
+
+=item unshift_subs()
+
+  $criteria->unshift_subs ( @criteria ) 
 
 =back
 
-=cut
+
+=head2 SQL Where Generation
+
+=over 4
+
+=item sql_where()
+
+  $criteria->sql_where() : $sql, @params
+
+Generates SQL criteria expression. 
+
+=back
 
 
 =head1 SEE ALSO

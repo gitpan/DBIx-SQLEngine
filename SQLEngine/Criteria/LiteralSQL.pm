@@ -52,11 +52,23 @@ placeholders in the string, if any.
 
 =item new
 
-  DBIx::SQLEngine::Criteria::LiteralSQL->new( $sql ) : $Comparison
+  DBIx::SQLEngine::Criteria::LiteralSQL->new( $sql ) : $comparison
 
-  DBIx::SQLEngine::Criteria::LiteralSQL->new( $sql, @params ) : $Comparison
+  DBIx::SQLEngine::Criteria::LiteralSQL->new( $sql, @params ) : $comparison
 
 Constructor.
+
+=back
+
+=head2 SQL Where Generation
+
+=over 4
+
+=item sql_where()
+
+  $criteria->sql_where() : $sql, @params
+
+Returns the SQL fragment and parameters stored by the constructor.
 
 =back
 

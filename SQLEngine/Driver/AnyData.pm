@@ -34,75 +34,9 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
+use DBIx::SQLEngine::Driver::Trait::PerlDBLib ':all';
 
 ########################################################################
-
-=head2 fetch_one_value
-
-Special handling for simple functions.
-
-=cut
-
-sub fetch_one_value {
-  my $self = shift;
-  my %args = @_;
-  if ( my $column_clause = $args{columns} ) {
-    if ( $column_clause =~ /\A\s*count\((.*?)\)\s*\Z/ ) {
-      $args{columns} = $1;
-      my $rows = $self->fetch_select( %args );
-      return( $rows ? scalar( @$rows ) : 0 )
-    } elsif ( $column_clause =~ /\A\s*max\((.*?)\)\s*\Z/ ) {
-      $args{columns} = $1;
-      $args{order} = "$1 desc";
-    } elsif ( $column_clause =~ /\A\s*min\((.*?)\)\s*\Z/ ) {
-      $args{columns} = $1;
-      $args{order} = "$1";
-    } 
-  } 
-  $self->SUPER::fetch_one_value( %args );
-}
-
-########################################################################
-
-=head2 sql_limit
-
-Adds support for SQL select limit clause.
-
-TODO: Needs workaround to support offset.
-
-=cut
-
-sub sql_limit {
-  my $self = shift;
-  my ( $limit, $offset, $sql, @params ) = @_;
-  
-  # You can't apply "limit" to non-table fetches
-  $sql .= " limit $limit" if ( $sql =~ / from / );
-  
-  return ($sql, @params);
-}
-
-########################################################################
-
-=head2 do_insert_with_sequence
-
-  $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
-
-Implemented using DBIx::SQLEngine::Driver::Trait::NoSequences.
-
-=cut
-
-use DBIx::SQLEngine::Driver::Trait::NoSequences ':all';
-
-########################################################################
-
-=head2 detect_any
-
-  $sqldb->detect_any ( )  : $boolean
-
-Returns 1, as we presume that the requisite driver modules are
-available or we wouldn't have reached this point.
 
 =head2 sql_detect_table
 
@@ -112,44 +46,9 @@ Implemented using AnyData's "select * from $tablename limit 1".
 
 =cut
 
-sub detect_any { 
-  return 1
-}
-
 sub sql_detect_table {
   my ($self, $tablename) = @_;
   return ( table => $tablename, limit => 1 )
-}
-
-########################################################################
-
-=head2 dbms_create_column_types
-
-  $sqldb->dbms_create_column_types () : %column_type_codes
-
-Implemented using AnyData's varchar and int types.
-
-=head2 dbms_create_column_text_long_type
-
-  $sqldb->dbms_create_column_text_long_type () : $col_type_str
-
-Implemented as varchar(16384).
-
-=cut
-
-sub dbms_create_column_types {
-  'sequential' => 'int',
-}
-
-sub dbms_create_column_text_long_type {
-  'varchar(16384)'
-}
-
-# Filter out primary keys
-sub sql_create_columns {
-  my($self, $table, $column , $columns) = @_;
-  return if ( $column->{type} eq 'primary' );
-  $self->SUPER::sql_create_columns( $table, $column , $columns );
 }
 
 ########################################################################
@@ -181,40 +80,6 @@ communication failures or other incidental errors.
 sub recoverable_query_exceptions {
   'resource',
 }
-
-########################################################################
-
-=head2 dbms_select_table_as_unsupported
-
-  $sqldb->dbms_select_table_as_unsupported () : 1
-
-Capability Limitation: This driver does not support table aliases such as "select * from foo as bar".
-
-=head2 dbms_column_types_unsupported
-
-  $sqldb->dbms_column_types_unsupported () : 1
-
-Capability Limitation: This driver does not store column type information.
-
-=head2 dbms_indexes_unsupported
-
-  $sqldb->dbms_indexes_unsupported () : 1
-
-Capability Limitation: This driver does not support indexes.
-
-=head2 dbms_storedprocs_unsupported
-
-  $sqldb->dbms_storedprocs_unsupported () : 1
-
-Capability Limitation: This driver does not support stored procedures.
-
-=cut
-
-use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );
-
-use DBIx::SQLEngine::Driver::Trait::NoColumnTypes ':all';
-
-sub dbms_select_table_as_unsupported { 1 }
 
 ########################################################################
 

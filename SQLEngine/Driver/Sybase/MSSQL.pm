@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Sybase::MSSQL - Support DBD::Sybase with Microsoft SQL
+DBIx::SQLEngine::Driver::Sybase::MSSQL - Support Microsoft SQL via DBD::Sybase
 
 =head1 SYNOPSIS
 
@@ -64,9 +64,9 @@ When using DBD::Sybase to talk to a Microsoft SQL Server, "?"-style placeholders
 
 Uses the NoPlaceholders trait. For more information, see L<DBIx::SQLEngine::Driver::Trait::NoPlaceholders>.
 
-=back
+=cut
 
-use DBIx::SQLEngine::Driver::Trait::NoPlaceholders ':all !prepare_execute';
+use DBIx::SQLEngine::Driver::Trait::NoPlaceholders qw( :all !prepare_execute );
 
 ########################################################################
 

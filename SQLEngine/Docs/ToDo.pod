@@ -8,36 +8,24 @@ DBIx::SQLEngine::Docs::ToDo - Tasks, ideas, and bugs
 There are a number of things that could be done to improve this module.
 
 
-=head2 Distribution
-
-Consider bumping the version number; the leading zero may deter some potential users by suggesting a less complete package.
-
-
 =head2 Tests
 
 The test scripts are incomplete and really ought to exercise much more of the public interface. Specific things to add to the test include:
 
-- Test for inserting, updating and selecting nulls, including "is null" test.
+Test for inserting, updating and selecting nulls, including "is null" test.
 
-- Test new transaction code.
+Tests for new transaction code.
 
-Add more tests to excercise various features not supported on all platforms, such as the null-value/empty-string distinction or transactions.
+Add more tests to excercise null-value/empty-string distinction.
 
-It would be nice to be able to split of up the tests in user_dsn.t. Consider prompting for DSN in Makefile.PL, and then saving the result in a text file in the t/ dir, using EU::MM's prompt($message, $default);
-
-Find people to test drivers for Sybase, MS SQL.
+Find people to test drivers for Informix, Sybase, MS SQL.
 
 
 =head2 Object Mapping
 
 The handling of primary keys in Schema::Table and Schema::Column is not yet correct. The Record classes could also use a review to ensure primary keys are handled correctly throughout.
 
-
-=head2 Driver Internals
-
-The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
-
-Consider centralizing logging interface by making 'DBI', 'SQL' arguments to general function, or using log4perl.
+Use superclass NEXT method for redispatching instead of recompiling with @MIXINS for SUPER support.
 
 
 =head2 Driver Features
@@ -51,38 +39,14 @@ Consider interface for handling multiple simultaneous statement handles on drive
 
 Determine which features, if any, should be handled by an ODBC driver subclass.
 
+Determine the right way to handle the multiplexing drivers, DBD::Multiplex,
+DBIx::DBCluster, and DBIx::HA, given that they may reconnect to a different
+server in mid-stream. In practice, all of the servers in a pool are
+typically of the same type so this may not be a major issue.
 
-=head2 Driver Subclassing
+The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
 
-Determine the right way to handle the multiplexing drivers, DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may reconnect to a different server in mid-stream.
-
-Consider becoming a subclass of DBI via RootClass and DbTypeSubclass, rather
-than using composition via DBIx::AnyDBD. This is somewhat attractive: it
-might run faster by eliminating a layer of delegation, and it would facilitate
-separation of the DBH and STH methods. The downside is loosing the flexibility
-of composition: if someone had their own DBI subclass, we could dynamically
-wrap around it if using composition, but it might be harder to dynamically
-inherit from it. (There's also a certain degree of inertia in favor of not
-changing it.)
-
-
-=head2 Performance
-
-Consider simplifying reuse of SQL statements in similar situations, such as inserting hundreds of rows. (See L<SQL::Abstract/PERFORMANCE>.) 
-
-Perhaps there's some way to generalize this to a define_named_query_sql method, but I can't quite see how to do this with the kind of syntax users might expect:
-
-    $sqldb->define_named_query_sql( 'insert_foo' => {
-      table => 'foo', columns => [ ... ], values => { },
-    } );
-    $sqldb->do_named_query( 'insert_foo', { column1 => value1 } );
-
-A more practical approach to this could take the form of a limited interface such as do_bulk_insert, which would take an array of rows to insert:
-
-  do_bulk_insert( table => foo, columns => [ ... ], values => [ {...}, {...} ] )
-  do_bulk_insert( table => foo, columns => [ ... ], values => [ [...], [...] ] )
-
-Such an interface could also support specialty options like statements_per_transaction => 100 in order to optimize performance on servers such as Oracle, where auto-committing one statement at a time is slow.
+Consider centralizing logging interface by making 'DBI', 'SQL' arguments to general function, or using log4perl.
 
 
 =head2 Additional Criteria

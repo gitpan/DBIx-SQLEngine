@@ -321,6 +321,13 @@ Calls fetch_select, then returns the first value from the first row of results.
 
 Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
 
+=item try_count_rows()
+
+  $table->try_count_rows ( ) : $number
+  $table->try_count_rows ( $criteria ) : $number
+
+Exception catching wrapper around count_rows. If the eval block catches an exception, undef is returned.
+
 =item fetch_max()
 
   $table->count_rows ( $colname, CRITERIA ) : $number
@@ -343,7 +350,7 @@ sub count_rows {
 }
 
 sub try_count_rows {
-  my $count = eval { (shift)->count_rows  };
+  my $count = eval { (shift)->count_rows( @_ )  };
   wantarray ? ( $count, $@ ) : $count
 }
 
@@ -572,6 +579,28 @@ sub get_columnset {
   );
 }
 
+########################################################################
+
+=head2 Primary Keys
+
+=over 4
+
+=item column_primary_is_sequence()
+
+Inheritable boolean which can be set for the table class or any instance.
+Indicates that the primary key column uses an auto-incrementing sequence.
+
+=item column_primary_name()
+
+Returns the name of the primary key column. (TODO: Currently hard-coded to the first column in the column set.)
+
+=item primary_criteria()
+
+Returns a hash of key-value pairs which could be used to select this record by its primary key.
+
+=back
+
+=cut
 
 # To-do: finish adding support for tables with multiple-column primary keys.
 use Class::MakeMethods (
@@ -625,8 +654,16 @@ Create the table's remote storage if it does not already exist.
 =item recreate_table()
 
   $table->recreate_table ()
+  $table->recreate_table ( $column_ary )
 
-Remove and then recreate the table's remote storage.
+Drop and then recreate the table's remote storage.
+
+=item recreate_table_with_rows
+
+  $table->recreate_table_with_rows ()
+  $table->recreate_table_with_rows ( $column_ary )
+
+Selects all of the existing rows, then drops and recreates the table, then re-inserts all of the rows.
 
 =back
 

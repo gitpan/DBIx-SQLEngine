@@ -1,12 +1,12 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::CSV - Support DBD::CSV driver
+DBIx::SQLEngine::Driver::XBase - Support DBD::XBase driver
 
 =head1 SYNOPSIS
 
 B<DBI Wrapper>: Adds methods to a DBI database handle.
 
-  my $sqldb = DBIx::SQLEngine->new( 'dbi:CSV:f_dir=my_data_path' );
+  my $sqldb = DBIx::SQLEngine->new( 'dbi:XBase:my_data_path' );
   
 B<Portability Subclasses:> Uses driver's idioms or emulation.
   
@@ -18,11 +18,10 @@ B<Portability Subclasses:> Uses driver's idioms or emulation.
 =head1 DESCRIPTION
 
 This package provides a subclass of DBIx::SQLEngine which compensates for
-some of DBD::CSV's idiosyncrasies.
+some of DBD::XBase's idiosyncrasies.
 
-Note that DBD::CSV does not support the normal full range of SQL DBMS
-functionality. Upgrade to the latest versions of DBI and SQL::Statement and
-consult their documentation to understand their current limits.
+Note that DBD::XBase does not support the normal full range of SQL DBMS
+functionality. Consult the documentation to understand its current limits.
 
 =head2 About Driver Subclasses
 
@@ -32,34 +31,21 @@ You do not need to use this package directly; when you connect to a database, th
 
 ########################################################################
 
-package DBIx::SQLEngine::Driver::CSV;
+package DBIx::SQLEngine::Driver::XBase;
 
 use strict;
 use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::Driver::Trait::PerlDBLib qw( :all !sql_seq_increment );
+use DBIx::SQLEngine::Driver::Trait::PerlDBLib qw( :all !sql_limit );
 
 use DBIx::SQLEngine::Driver::Trait::NoJoins ':all';
 
-########################################################################
+use DBIx::SQLEngine::Driver::Trait::NoLimit ':all';
 
-=head2 sql_seq_increment
-
-Overrides behavior of DBIx::SQLEngine::Driver::Trait::NoSequences.
-
-=cut
-
-# $sql, @params = $sqldb->sql_seq_increment( $table, $field, $current, $next );
-sub sql_seq_increment {
-  my ($self, $table, $field, $current, $next) = @_;
-  my $seq_table = $self->seq_table_name;
-  $self->sql_update(
-    table => $seq_table,
-    values => { seq_value => $next },
-    criteria => ['seq_name = ?', "$table.$field"]
-  );
+sub _init {
+  (shift)->get_dbh()->{FetchHashKeyName} = 'NAME_lc';
 }
 
 ########################################################################
@@ -68,13 +54,13 @@ sub sql_seq_increment {
 
   $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
 
-Implemented using DBD::CSV's "select * from $tablename where 1 = 0".
+Implemented using DBD::XBase's "select * from $tablename where 1 = 0".
 
 =cut
 
 sub sql_detect_table {
   my ($self, $tablename) = @_;
-  return ( table => $tablename, criteria => '1 = 0' )
+  return ( table => $tablename )
 }
 
 ########################################################################

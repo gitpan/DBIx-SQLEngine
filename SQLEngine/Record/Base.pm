@@ -102,7 +102,7 @@ sub get_table {
 
 ########################################################################
 
-=head2 Table Delegation Methods
+=head2 Methods Delegated to Table
 
 These methods all call the same method on the associated table.
 
@@ -152,6 +152,55 @@ use Class::MakeMethods (
     ) ] => { target=>'get_table' },
   ],
 );
+
+########################################################################
+
+=head2 Table Delegation Methods
+
+The following methods are used internally to facilitate delegation to the table object.
+
+=over 4
+
+=item table_fetch_one_method()
+
+  $class->table_fetch_one_method( $method, @args );
+
+Calls the named method on the table and inflates the result with record_from_table.
+
+=item table_fetch_set_method()
+
+  $class->table_fetch_set_method( $method, @args );
+
+Calls the named method on the table and inflates the result with record_set_from_table.
+
+=item table_record_method()
+
+  $record->table_record_method( $method, @args );
+
+Calls the named method on the table, passing the record itself as the first argument.
+
+=back
+
+=cut
+
+sub table_fetch_one_method {
+  my $self = shift;
+  my $method = shift;
+  $self->record_from_table( $self->get_table()->$method( @_ ) )
+}
+
+sub table_fetch_set_method {
+  my $self = shift;
+  my $method = shift;
+  $self->record_set_from_table( scalar $self->get_table()->$method( @_ ) )
+}
+
+sub table_record_method {
+  my $self = shift;
+  my $method = shift;
+  ref($self) or croak("Can't call this object method on a record class");
+  $self->get_table()->$method( $self, @_ );
+}
 
 ########################################################################
 
@@ -282,6 +331,13 @@ Returns the values associated with the keys in the provided record.
 
 Sets the associated key-value pairs in the provided record.
 
+=item hash_from_record()
+
+  $record->hash_from_record() : $hash_ref
+  $record->hash_from_record() : %hash_values
+
+Returns an unblessed copy of the values in the record.
+
 =back
 
 =cut
@@ -308,6 +364,26 @@ sub hash_from_record {
 }
 
 ########################################################################
+
+=head2 Primary Keys
+
+=over 4
+
+=item primary_criteria()
+
+  $record->primary_criteria() : $hash_ref
+
+Returns a hash of key-value pairs which could be used to select this record by its primary key.
+
+=item primary_key_value()
+
+  $record->primary_key_value() : $id_value
+
+Returns the primary key value for this object.
+
+=back
+
+=cut
 
 sub primary_criteria {
   (shift)->table_record_method('primary_criteria');
@@ -490,18 +566,6 @@ Converts an array of hashrefs retrieved from the table to a Record::Set object c
 
 =cut
 
-sub table_fetch_one_method {
-  my $self = shift;
-  my $method = shift;
-  $self->record_from_table( $self->get_table()->$method( @_ ) )
-}
-
-sub table_fetch_set_method {
-  my $self = shift;
-  my $method = shift;
-  $self->record_set_from_table( scalar $self->get_table()->$method( @_ ) )
-}
-
 # $record_class->record_from_table( $hash_ref );
 # $record = $record_class->record_from_table( $hash_ref );
 # $record = $record_class->record_from_table( %hash_contents );
@@ -595,11 +659,42 @@ sub delete_record {
 
 ########################################################################
 
-sub table_record_method {
-  my $self = shift;
-  my $method = shift;
-  ref($self) or croak("Can't call this object method on a record class");
-  $self->get_table()->$method( $self );
+########################################################################
+
+=head2 Mixin Class Redispatch
+
+=over 4
+
+=item NEXT
+
+Enhanced superclass method dispatch for use inside mixin class methods. Allows mixin classes to redispatch to other classes in the inheritance tree without themselves inheriting from anything. 
+
+(This is similar to the functionality provided by NEXT::ACTUAL, but without using AUTOLOAD; for a more generalized approach to this issue see L<NEXT>.)
+
+=back
+
+=cut
+
+sub NEXT {
+  my ( $self, $method, @args ) = @_;
+
+  my $package = caller();
+  
+  my @classes = ref($self) || $self;
+  my @isa;
+  while ( my $class = shift @classes ) {
+    push @isa, $class;
+    no strict;
+    unshift @classes, @{ $class . "::ISA" };
+  }
+  while ( my $class = shift @isa ) {
+    last if ( $class eq $package )
+  }
+  while ( my $class = shift @isa ) {
+    next unless my $sub = $class->can( $method );
+    return &$sub( $self, @args );
+  }
+  Carp::confess( "Can't find NEXT method" );
 }
 
 ########################################################################

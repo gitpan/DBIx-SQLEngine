@@ -19,7 +19,7 @@ DBIx::SQLEngine::Schema::TableSet - Array of Schema::Table objects
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Schema::TableSet objects contain an array of DBIx::SQLEngine::Schema::Table objects
+DBIx::SQLEngine::Schema::TableSet objects contain an array of DBIx::SQLEngine::Schema::Table objects.
 
 =cut
 
@@ -33,6 +33,20 @@ use DBIx::SQLEngine::Schema::Table;
 
 ########################################################################
 
+=head2 Creation
+
+=over 4
+
+=item new()
+
+  DBIx::SQLEngine::Schema::TableSet->new( @tables ) : $tableset
+
+Creates a new instance.
+
+=back
+
+=cut
+
 sub new {
   my $package = shift;
   my @tables = map {
@@ -42,15 +56,65 @@ sub new {
   bless \@tables, $package;
 }
 
+########################################################################
+
+=head2 Access to Tables
+
+=over 4
+
+=item tables()
+
+  $tableset->tables : @table_objects
+
+Returns a list of tables contained in this set.
+
+=item call_method_on_tables()
+
+  $tableset->call_method_on_tables( $method, @args ) : @results
+
+Calls the provided method on each of the tables in this set.
+
+=back
+
+=cut
+
 sub tables {
   my $tables = shift;
   @$tables
 }
 
+sub call_method_on_tables {
+  my $tables = shift;
+  my $method = shift;
+  return map { $_->$method( @_ ) } @$tables;
+}
+
+
+########################################################################
+
+=head2 Table Names
+
+=over 4
+
+=item table_names()
+
+  $tableset->table_names : @table_names
+
+Returns a list of the names of each of the tables in this set.
+
+=item table_named()
+
+  $tableset->table_named( $table_name ); : $table_object
+
+Searches through the tables in the set until it finds one with the given name. Throws an exception if none are found.
+
+=back
+
+=cut
+
 # @colnames = $tables->table_names;
 sub table_names {
-  my $tables = shift;
-  return map { $_->name } @$tables;
+  (shift)->call_method_on_tables( 'name' )
 }
 
 # $table = $tables->table_named( $table_name );
@@ -69,38 +133,52 @@ sub table_named {
 
 ########################################################################
 
+=head2 Schema Definition
+
+=over 4
+
+=item create_tables()
+
+  $tableset->create_tables : ()
+
+Calls create_table() on each table in the set.
+
+=item ensure_tables_exist()
+
+  $tableset->ensure_tables_exist : ()
+
+Calls ensure_table_exists() on each table in the set.
+
+=item recreate_tables()
+
+  $tableset->recreate_tables : ()
+
+Calls recreate_table_with_rows() on each table in the set.
+
+=item drop_tables()
+
+  $tableset->drop_tables : ()
+
+Calls drop_table() on each table in the set.
+
+=back
+
+=cut
+
 sub create_tables {
-  my $self = shift;
-  
-  foreach my $table ( $self->tables ) {
-    $table->table_create;
-  }
+  (shift)->call_method_on_tables( 'create_table' )
 }
 
 sub ensure_tables_exist {
-  my $self = shift;
-  
-  foreach my $table ( $self->tables ) {
-    next if $table->table_exists;
-    $table->table_create;
-  }
+  (shift)->call_method_on_tables( 'ensure_table_exists' )
 }
 
-sub refresh_tables_schema {
-  my $self = shift;
-  
-  foreach my $table ( $self->tables ) {
-    next if $table->table_exists;
-    $table->table_recreate_with_rows;
-  }
+sub recreate_tables {
+  (shift)->call_method_on_tables( 'recreate_table_with_rows' )
 }
 
 sub drop_tables {
-  my $self = shift;
-  
-  foreach my $table ( $self->tables ) {
-    $table->table_drop;
-  }
+  (shift)->call_method_on_tables( 'drop_table' )
 }
 
 ########################################################################

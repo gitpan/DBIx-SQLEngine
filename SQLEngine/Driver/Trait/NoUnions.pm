@@ -23,17 +23,7 @@ their results combined.
 
 You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
 
-Note: this feature has been added recently, and the interface is subject to change.
-
-Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
-DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
-around this, we export all of the methods into their namespace using Exporter
-and @EXPORT.
-
-In addition we go through some effort to re-dispatch methods because we can't
-rely on SUPER and we don't want to require NEXT. This isn't too complicated,
-as we know the munged inheritance tree only uses single inheritance. See the
-source code for the _super_dispatch function that handles this.
+For more information about Driver Traits, see L<DBIx::SQLEngine::Driver/"About Driver Traits">.
 
 =cut
 
@@ -52,17 +42,6 @@ sub import { goto &Exporter::import }
 
 use strict;
 use Carp;
-
-########################################################################
-
-sub _super_dispatch {
-  my ( $self, $method, @args ) = @_;
-  
-  no strict 'refs';
-  my $super = ${ ref($self) . '::ISA' }[0] . "::" . $method;
-  # warn "_super_d: $super " . wantarray() . "\n";
-  $self->$super( @args );
-}
 
 ########################################################################
 
@@ -132,6 +111,22 @@ To Do: This method doesn't yet munge the column names retrived by the later quer
 Unless passed a "union" argument pair, simply calls the superclass method. 
 Runs each of the provided queries separately and concatenates their results.
 
+=item fetchsub_select()
+
+  $sqldb->fetchsub_select( %sql_clauses ) : $coderef
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
+Runs each of the provided queries separately and concatenates their results.
+
+To Do: This method doesn't yet munge the column names retrived by the later queries to match the first.
+
+=item fetchsub_select_rows()
+
+  $sqldb->fetchsub_select_rows( %sql_clauses ) : $coderef
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
+Runs each of the provided queries separately and concatenates their results.
+
 =item sql_union()
 
 Calls Carp::confess(). 
@@ -143,7 +138,7 @@ Calls Carp::confess().
 sub fetch_select {
   my ( $self, %clauses ) = @_;
   my $union = delete $clauses{'union'} 
-    or return _super_dispatch($self, 'fetch_select', %clauses);
+    or return $self->NEXT('fetch_select', %clauses);
 
   my ( $union_rows, $union_columns );
   foreach my $query ( @$union ) {
@@ -170,7 +165,7 @@ sub fetch_select {
 sub fetch_select_rows {
   my ( $self, %clauses ) = @_;
   my $union = delete $clauses{'union'}
-	or return _super_dispatch($self, 'fetch_select_rows', %clauses );
+	or return $self->NEXT('fetch_select_rows', %clauses );
 
   my ( $union_rows, $union_columns );
   foreach my $query ( @$union ) {
@@ -193,7 +188,7 @@ sub visit_select {
   my %clauses = @_;
 
   my $union = delete $clauses{'union'}
-	or return _super_dispatch($self, 'visit_select', $code, %clauses );
+	or return $self->NEXT('visit_select', $code, %clauses );
 
   my @results;
   foreach my $query ( @$union ) {
@@ -212,7 +207,7 @@ sub visit_select_rows {
   my %clauses = @_;
 
   my $union = delete $clauses{'union'}
-	or return _super_dispatch($self, 'visit_select_rows', $code, %clauses );
+	or return $self->NEXT('visit_select_rows', $code, %clauses );
 
   my @results;
   foreach my $query ( @$union ) {
@@ -220,6 +215,42 @@ sub visit_select_rows {
 	( ref($query) eq 'ARRAY' ) ? @$query : %$query );
   }
   @results;
+}
+
+sub fetchsub_select {
+  my $self = shift;
+  my %clauses = @_;
+
+  my $union = delete $clauses{'union'}
+	or return $self->NEXT('fetchsub_select', %clauses );
+  my @queries = @$union;
+  my $subsub;
+  
+  # INCOMPLETE -- this should mangle the column names to match first query
+  
+  sub {
+    UNIONSUB: { 
+      $subsub ||= $self->fetchsub_select( shift @queries or return );
+      &$subsub( @_ ) or ( undef($subsub), redo UNIONSUB )
+    }
+  }
+}
+
+sub fetchsub_select_rows {
+  my $self = shift;
+  my %clauses = @_;
+
+  my $union = delete $clauses{'union'}
+	or return $self->NEXT('fetchsub_select_rows', %clauses );
+  my @queries = @$union;
+  my $subsub;
+  
+  sub {
+    UNIONSUB: { 
+      $subsub ||= $self->fetchsub_select_rows( shift @queries or return );
+      &$subsub( @_ ) or ( undef($subsub), redo UNIONSUB )
+    }
+  }
 }
 
 sub sql_union { confess("Union unsupported on this platform") }

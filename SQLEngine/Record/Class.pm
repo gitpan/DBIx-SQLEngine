@@ -176,6 +176,18 @@ sub new_subclass {
 
 ########################################################################
 
+=pod
+
+=over 4
+
+=item generate_subclass_name_for_table()
+
+Called internally by new_subclass() if no class name is provided.
+
+=back
+
+=cut
+
 my %generated_names_for_table;
 sub generate_subclass_name_for_table {
   my ($factory, $table) = @_;
@@ -307,10 +319,7 @@ sub base_class_with_traits {
     my $new_class = $factory . "::" . $name;
     
     no strict;
-    @{ "$new_class\::ISA" } or eval join "\n",
-					"package $new_class;", 
-					"\@ISA = qw( $t_class $package );",
-					@{$t_class . "::MIXIN"};
+    @{ "$new_class\::ISA" } or @{ "$new_class\::ISA" } = ( $t_class, $package );
     $package = $new_class;
   }
   

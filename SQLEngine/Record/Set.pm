@@ -105,21 +105,23 @@ sub records {
 
 =over 4
 
-=item * 
+=item count()
 
-$count = $rs->count();
+  $count = $rs->count();
 
-=item * 
+Returns the number of records in this set.
 
-$record = $rs->record( $position );
+=item record()
+
+  $record = $rs->record( $position );
 
 Return the record in the indicated position in the array. 
 
 Indexes start with zero. Negative indexes are counted back from the end, with -1 being the last, -2 being the one before that, and so forth.
 
-=item * 
+=item last_record
 
-$record = $rs->last_record();
+  $record = $rs->last_record();
 
 Return the last record in the array.
 
@@ -155,15 +157,15 @@ sub last_record {
 
 =over 4
 
-=item * 
+=item range_set()
 
-$clone = $rs->range_set( $start_pos, $stop_pos );
+  $clone = $rs->range_set( $start_pos, $stop_pos );
 
 Return a copy of the current set containing only those records at or between the start and stop positions.
 
-=item * 
+=item range_records()
 
-@records = $rs->range_records( $start_pos, $stop_pos );
+  @records = $rs->range_records( $start_pos, $stop_pos );
 
 Return the records at or between the start and stop positions.
 
@@ -201,21 +203,21 @@ See L<Data::Sorting> for more information.
 
 =over 4
 
-=item * 
+=item sort()
 
-$rs->sort( @fieldnames );
+  $rs->sort( @fieldnames );
 
 Sort the contents of the set.
 
-=item * 
+=item sorted_set()
 
-$clone = $rs->sorted_set( @fieldnames );
+  $clone = $rs->sorted_set( @fieldnames );
 
 Return a sorted copy of the current set.
 
-=item * 
+=item sorted_records()
 
-@records = $rs->sorted_records( @fieldnames );
+  @records = $rs->sorted_records( @fieldnames );
 
 Return the records from the current set, in sorted order.
 
@@ -260,21 +262,21 @@ B<Caution:> This set of methods is currently not working.
 
 =over 4
 
-=item * 
+=item filter()
 
-$rs->filter( $criteria );
+  $rs->filter( $criteria );
 
 Remove non-matching records from the set.
 
-=item * 
+=item filtered_set()
 
-$clone = $rs->filtered_set( $criteria );
+  $clone = $rs->filtered_set( $criteria );
 
 Return a set containing only the matching records from the current set.
 
-=item * 
+=item filtered_records()
 
-@records = $rs->filtered_records( $criteria );
+  @records = $rs->filtered_records( $criteria );
 
 Return the matching records from the current set.
 

@@ -243,7 +243,7 @@ sub debug {
 
 For a more full-featured cache, see L<Cache::Cache>.
 
-For more about the Cache classes, see L<DBIx::SQLEngine::Record::Cache>.
+For more about the Cache classes, see L<DBIx::SQLEngine::Record::Trait::Cache>.
 
 For more about the Record classes, see L<DBIx::SQLEngine::Record::Class>.
 

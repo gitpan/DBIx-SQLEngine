@@ -61,9 +61,15 @@ Each key-value pair is converted to a StringComparison Criteria, except if the v
 
 =over 4
 
-=item sql_where () : $sql_where_expression
+=item sql_where () $sql_where_expression
+
+  $criteria->sql_where() : $sql, @params
 
 Generates SQL criteria expression. 
+
+=item normalized()
+
+Called by sql_where to convert the hash structure into simpler criteria objects.
 
 =back
 

@@ -15,12 +15,7 @@ This package supports SQL database servers which do natively provide any advance
 
 You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
 
-Note: this feature has been added recently, and the interface is subject to change.
-
-Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
-DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
-around this, we export all of the methods into their namespace using Exporter
-and @EXPORT.
+For more information about Driver Traits, see L<DBIx::SQLEngine::Driver/"About Driver Traits">.
 
 =cut
 

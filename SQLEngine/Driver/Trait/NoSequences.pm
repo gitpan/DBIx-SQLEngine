@@ -28,10 +28,7 @@ uniqueness.
 
 You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
 
-Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
-DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
-around this, we export all of the methods into their namespace using Exporter
-and @EXPORT.
+For more information about Driver Traits, see L<DBIx::SQLEngine::Driver/"About Driver Traits">.
 
 =cut
 
@@ -170,6 +167,12 @@ If someone else has completed the same increment before we have, our update will
 If the table does not yet exist, attempts to create it automatically. 
 
 If the sequence record does not yet exist, attempts to create it automatically.
+
+=item sql_seq_increment()
+
+  $sqldb->sql_seq_increment( $table, $field, $current, $next ) : $sql, @params
+
+Generates a SQL statement for use by seq_increment().
 
 =cut
 

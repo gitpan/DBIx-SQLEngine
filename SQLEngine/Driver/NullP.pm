@@ -63,6 +63,12 @@ Sets up the values that will be returned by the next query.
 
 Returns the most recent query and parameters captured by prepare_execute(). Parameters are joined by "/" characters. 
 
+=item last_result()
+
+  $sqldb->last_result() : $result_hash_ref
+
+Returns the values set with next_result() and used by the most recent query.
+
 =back
 
 =cut
@@ -175,6 +181,12 @@ Returns the value stored by next_result() using the key "arrayref".
 
 Returns the value stored by next_result() using the key "arrayref", and if called in a list context, also returns the value for the key "columns".
 
+=item retrieve_columns()
+
+  $sqldb->retrieve_columns ($sth) : $column_info
+
+Retrieves the value stored by next_result() using the key "columns". 
+
 =item visitall_hashref()
 
   $sqldb->visitall_hashref ($sth, $coderef) : ()
@@ -233,18 +245,6 @@ sub visitall_array {
 __END__
 
 ########################################################################
-
-
-
-=head2 Internal Methods
-
-=over 4
-
-=item prepare_execute()
-
-
-=back
-
 
 =head1 SEE ALSO
 

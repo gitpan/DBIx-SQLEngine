@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::MSSQL - Support DBD::ODBC with Microsoft SQL Server
+DBIx::SQLEngine::Driver::MSSQL - Support Microsoft SQL Server via DBD::ODBC
 
 =head1 SYNOPSIS
 

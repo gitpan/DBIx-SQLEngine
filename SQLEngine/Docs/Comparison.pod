@@ -27,7 +27,7 @@ For comparison purposes, this document reviews some of the points of comparison 
 
 =head2 Supported databases
 
-Any database supported by one of the following: DBD::AnyData, DBD::CSV, DBD::MySQL, DBD::Oracle, DBD::Pg, DBD::SQLite.
+Any database supported by one of the following: DBD::AnyData, DBD::CSV, DBD::Informix, DBD::MySQL, DBD::Oracle, DBD::Pg, DBD::SQLite, or DBD::Sybase.
 
 Providing support for other drivers involves creating a DBD-specific subclass of DBIx::SQLEngine::Driver (which will be loaded via DBIx::AnyDBD when appropriate), and should only require a limited amount of coding.
 
@@ -59,7 +59,7 @@ DBIx::SQLEngine can return all matching records at once, or accept a code ref wh
 
 Basic caching support has recently been added and may be enabled on a class-by-class basis. (Support for LRU caching and ensuring that there is only a single instance of a given object in memory at any time are both expected in an upcoming release.)
 
-=item Transactions
+=head2 Transactions
 
 DBIx::SQLEngine provides basic support for transactions.
 

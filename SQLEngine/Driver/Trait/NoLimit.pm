@@ -1,15 +1,15 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Trait::NoColumnTypes - For Type-less Databases
+DBIx::SQLEngine::Driver::Trait::NoLimit - For databases without select limit
 
 =head1 SYNOPSIS
 
-  # Classes can import this behavior if they don't have types
-  use DBIx::SQLEngine::Driver::Trait::NoColumnTypes ':all';
-
+  # Classes can import this behavior if they don't have limit
+  use DBIx::SQLEngine::Driver::Trait::NoLimit ':all';
+  
 =head1 DESCRIPTION
 
-This package supports SQL database servers which do natively provide any column types, storing all numeric and string values in the same way. 
+This package works with DBD drivers which are implemented in Perl using SQL::Statement. It combines several other traits and methods which can be shared by most such drivers.
 
 =head2 About Driver Traits
 
@@ -21,43 +21,53 @@ For more information about Driver Traits, see L<DBIx::SQLEngine::Driver/"About D
 
 ########################################################################
 
-package DBIx::SQLEngine::Driver::Trait::NoColumnTypes;
-
-use Exporter;
-sub import { goto &Exporter::import } 
-@EXPORT_OK = qw( 
-  dbms_column_types_unsupported
-);
-%EXPORT_TAGS = ( all => \@EXPORT_OK );
+package DBIx::SQLEngine::Driver::Trait::NoLimit;
 
 use strict;
 use Carp;
+use vars qw( @EXPORT_OK %EXPORT_TAGS );
 
 ########################################################################
 
-=head1 ADVANCED CAPABILITIES
+use Exporter;
+sub import { goto &Exporter::import } 
+@EXPORT_OK = ( 
+  qw( 
+    sql_limit
+  ),
+);
+%EXPORT_TAGS = ( all => \@EXPORT_OK );
+
+########################################################################
+
+=head1 REFERENCE
+
+The following methods are provided:
 
 =cut
 
 ########################################################################
 
-=head2 Database Capability Information
-
-The following methods are provided:
+=head2 Select to Retrieve Data
 
 =over 4
 
-=item dbms_column_types_unsupported
+=item sql_limit
 
-  $sqldb->dbms_column_types_unsupported () : 1
+  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
 
-Capability Limitation: This driver does not store column type information or enforce type restrictions.
+Not supported.
 
 =back
 
 =cut
 
-sub dbms_column_types_unsupported { 1 }
+sub sql_limit {
+  my $self = shift;
+  my ( $limit, $offset, $sql, @params ) = @_;
+    
+  return ($sql, @params);
+}
 
 ########################################################################
 
@@ -67,6 +77,8 @@ See L<DBIx::SQLEngine> for the overall interface and developer documentation.
 
 See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
 this distribution, including installation and license information.
+
+See L<DBIx::Sequence> for another version of the sequence-table functionality, which greatly inspired this module.
 
 =cut
 

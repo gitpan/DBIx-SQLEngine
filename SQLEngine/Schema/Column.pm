@@ -33,21 +33,45 @@ use strict;
 
 These methods are available for all types of column.
 
-=head2
+=head2 Constructor
 
 =over 4
 
-=item new - Template::Hash:new
+=item new()
 
-Constructor
+  DBIx::SQLEngine::Schema::Column->new() : $column
 
-=item type - Template::ClassName:subclass_name
+Constructor.
+
+=item new_from_hash
+
+  DBIx::SQLEngine::Schema::Column->new( %attrs ) : $column
+
+Constructor.
+
+=back
+
+=head2 Accessors
+
+=over 4
+
+=item type
 
 Dynamically reblesses instances into different subclasses of DBIx::SQLEngine::Schema::Column.
 
-=item name - Template::Hash:string
+=item name
 
-=item required - Template::Hash:boolean
+  $column->name() : $name
+  $column->name( $name ) 
+
+Basic string accessor.
+
+=item required
+
+  $column->required() : $flag
+  $column->required( $flag ) 
+
+Basic boolean accessor.
 
 =back
 

@@ -37,7 +37,6 @@ package DBIx::SQLEngine::Record::Trait::Accessors;
 
 use strict;
 use Carp;
-use vars qw( @MIXIN );
 
 ########################################################################
 

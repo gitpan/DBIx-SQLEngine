@@ -6,6 +6,45 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.91
+
+2004-11-12 Ran coverage tests and added test cases and documentation for missing items. We're now at over 90% for POD coverage, but still under 60% overall.
+
+2004-11-12 Changed test_core/examplep.t to case-insensitive regex to compensate for case mangling on VMS file system, thanks to pitch from Peter (Stig) Edwards.
+
+2004-11-09 Additional work on driver tests. 
+
+2004-11-09 Bumped up version number in preparation for a 1.0 release soon.
+
+2004-11-08 Moved common behaviors of CSV and AnyData drivers to new shared trait named PerlDBLib. Added driver class for XBase.
+
+2004-11-08 Additional work on test scripts.
+
+2004-11-06 Added test.pl and reorganized test scripts for better driver testing.
+
+2004-11-06 Reorganized ReadMe.pod and clipped credits from end of SQLEngine.pod. Other minor documentation cleanups.
+
+2004-10-08 Fixed problem with define_named_connections and array reference reported via CPAN RT ticket 7464.
+
+2004-06-06 Applied Driver::Oracle patch from Michael Kroll that should improve optimization of queries with rownum limits.
+
+
+=head2 Version 0.028
+
+2004-04-19 Released as DBIx-SQLEngine-0.028.
+
+2004-04-19 Fixed file missing from manifest which made 027 totally broken.
+
+
+=head2 Version 0.027
+
+2004-04-19 Released as DBIx-SQLEngine-0.027.
+
+2004-04-19 Moved Driver docs and Default code to a separate Driver module.
+
+2004-04-18 Documentation tweaks, including labeling methods public or internal.
+
+
 =head2 Version 0.026
 
 2004-04-16 Released as DBIx-SQLEngine-0.026.

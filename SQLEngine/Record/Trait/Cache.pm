@@ -58,7 +58,6 @@ package DBIx::SQLEngine::Record::Trait::Cache;
 
 use strict;
 use Carp;
-use vars qw( @MIXIN );
 
 use Storable 'freeze';
 
@@ -493,7 +492,6 @@ Uses the table to call the sql_select method on the current SQLEngine driver.
 =cut
 
 # $records = $record_class->fetch_select( %select_clauses );
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub fetch_select {
   my $self = shift;
   my %clauses = @_;
@@ -503,13 +501,12 @@ sub fetch_select {
   my ($records, $update) = $self->cache_get( \@sql );
   
   if ( ! defined $records ) {
-    $records = $self->SUPER::fetch_select( sql => \@sql );
+    $records = $self->NEXT('fetch_select', sql => \@sql );
     $update->( $records ) if ( $update and $records );
   }
   
   return $records;
 }
-/
 
 sub fetch_one_record {
   local $SIG{__DIE__} = \&Carp::confess;
@@ -529,7 +526,6 @@ sub select_records {
 }
 
 # @results = $self->visit_select( %select_clauses, $sub );
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub visit_select {
   my $self = shift;
   my $sub = ( ref($_[0]) ? shift : pop );
@@ -544,7 +540,6 @@ sub visit_select {
   } 
   $self->sqlengine_do('visit_select', @_, $sub )
 }
-/
 
 ########################################################################
 
@@ -583,24 +578,20 @@ Adds records to the cache.
 =cut
 
 # $record_class->record_from_table( $hash_ref );
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub record_from_table {
   my $self = shift;
-  my $record = $self->SUPER::record_from_table( @_ );
+  my $record = $self->NEXT('record_from_table', @_ );
   $self->cache_records( $record );
   $record;
 }
-/
 
 # $record_class->record_set_from_table( $hash_array_ref );
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub record_set_from_table {
   my $self = shift;
-  my $recordset = $self->SUPER::record_set_from_table( @_ );
+  my $recordset = $self->NEXT('record_set_from_table', @_ );
   $self->cache_records( @$recordset );
   $recordset;
 }
-/
 
 sub cache_records {
   my $self = shift;
@@ -638,13 +629,11 @@ Clears the cache.
 =cut
 
 # $record->insert_record()
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub insert_record {
   my $self = shift;
   $self->cache_clear();
-  $self->SUPER::insert_record( @_ );
+  $self->NEXT('insert_record', @_ );
 }
-/
 
 ########################################################################
 
@@ -668,13 +657,11 @@ Clears the cache.
 =cut
 
 # $record->update_record()
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub update_record {
   my $self = shift;
   $self->cache_clear();
-  $self->SUPER::update_record( @_ );
+  $self->NEXT('update_record', @_ );
 }
-/
 
 ########################################################################
 
@@ -696,13 +683,11 @@ Clears the cache.
 =cut
 
 # $record->delete_record()
-BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub delete_record {
   my $self = shift;
   $self->cache_clear();
-  $self->SUPER::delete_record( @_ );
+  $self->NEXT('delete_record', @_ );
 }
-/
 
 ########################################################################
 
@@ -789,13 +774,13 @@ sub insert_row {
     $row_cache->replace( $row->{$id_col}, $row );
   }
   
-  return $row->SUPER::insert_row(@_);
+  return $row->NEXT('insert_row', @_);
 }
 
 sub update_row {
   my $row = shift;
   $row->query_cache->clear_all() if ( $row->query_cache );
-  return $row->SUPER::update_row(@_);
+  return $row->NEXT('update_row', @_);
 }
 
 sub delete_row {
@@ -808,7 +793,7 @@ sub delete_row {
   }
   
   $row->query_cache->clear_all() if ( $row->query_cache );
-  return $row->SUPER::delete_row(@_);
+  return $row->NEXT('delete_row, @_);
 }
 
 

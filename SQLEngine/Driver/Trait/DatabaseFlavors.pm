@@ -27,12 +27,7 @@ This is handled by the "dbms_flavor" interface. When a flavor is selected, detec
 
 You do not need to use this package directly; it is used internally by those driver subclasses which need it. 
 
-Note: this feature has been added recently, and the interface is subject to change.
-
-Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
-DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
-around this, we export all of the methods into their namespace using Exporter
-and @EXPORT.
+For more information about Driver Traits, see L<DBIx::SQLEngine::Driver/"About Driver Traits">.
 
 =cut
 
@@ -137,8 +132,10 @@ Calls select_dbms_flavor() with the result of detect_dbms_flavor() or default_db
 sub select_dbms_flavor {
   my ($self, $flavor) = @_;
   my $class = ref( $self ) or croak("This is not a class method");
+  # warn "Reblessing object of class '$class'\n";
   $class =~ s/(Driver::\w+)::.*$/$1/;
   my $flavor_class = $class . ( $flavor ? "::$flavor" : '' );
+  # warn "          ... new class is '$flavor_class'\n";
   bless $self, $flavor_class;
 }
 

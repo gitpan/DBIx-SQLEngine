@@ -56,14 +56,15 @@ sub sql_limit {
 
   # remove tablealiases and group-functions from outer query properties
   my ($properties) = ($sql =~ /^\s*SELECT\s(.*?)\sFROM\s/i);
-  $properties =~ s/[^\s]+\s*as\s*//ig;
+  $properties =~ s/[^\s]+\s+as\s+//ig;
+  $properties =~ s/DISTINCT//ig;
   $properties =~ s/\w+\.//g;
   
   $offset ||= 0;
   my $position = ( $offset + $limit );
   
-  $sql = "SELECT $properties FROM ( SELECT $properties, ROWNUM AS sqle_position FROM ( $sql ) ) WHERE sqle_position > $offset AND sqle_position <= $position";
-  
+  $sql = "SELECT $properties FROM ( SELECT $properties, ROWNUM AS sqle_position FROM ( $sql ) WHERE ROWNUM <= $position ) WHERE sqle_position > $offset";
+
   return ($sql, @params);
 }
 

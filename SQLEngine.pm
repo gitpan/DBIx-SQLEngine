@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.028;
+$VERSION = 0.91;
 
 use DBIx::SQLEngine::Driver;
 @ISA = qw( DBIx::SQLEngine::Driver );
@@ -146,11 +146,11 @@ a SQL statement and parameters, pass it to the DBI data source, and return
 information about the results of the query. Error handling is standardized,
 and routine annoyances like timed-out connections are retried automatically.
 
-The SQLEngine also allows direct access to the wrapped database handle,
+The Driver also allows direct access to the wrapped database handle,
 enabling use of the entire DBI API for cases when high-level interfaces are
 insufficient.
 
-Relevant methods are descrbed in L<DBIx::SQLEngine::Driver/"Driver Object Creation">, L<DBIx::SQLEngine::Driver/"CONNECTION METHODS (DBI DBH)">, and L<DBIx::SQLEngine::Driver/"STATEMENT METHODS (DBI STH)">.
+Relevant methods are descrbed in the L<"Driver Object Creation"|DBIx::SQLEngine::Driver/"Driver Object Creation">, L<"Connection Methods"|DBIx::SQLEngine::Driver/"CONNECTION METHODS (DBI DBH)">, and L<"Statement Methods"|DBIx::SQLEngine::Driver/"STATEMENT METHODS (DBI STH)"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 High-Level Interface
 
@@ -162,8 +162,8 @@ The various fetch_*, visit_* and do_* methods that don't end in _sql, like
 fetch_select and do_insert, are wrappers that combine a SQL-generation and a
 SQL-execution method to provide a simple ways to perform a query in one call.
 
-These methods are defined in L<DBIx::SQLEngine::Driver/"FETCHING DATA (SQL DQL)">, L<DBIx::SQLEngine::Driver/"EDITING DATA
-(SQL DML)">, and L<DBIx::SQLEngine::Driver/"DEFINING STRUCTURES (SQL DDL)">.
+These methods are defined in L<"Fetching Data"|DBIx::SQLEngine::Driver/"FETCHING DATA (SQL DQL)">, L<"Editing Data"|DBIx::SQLEngine::Driver/"EDITING DATA
+(SQL DML)">, and L<"Defining Structures"|DBIx::SQLEngine::Driver/"DEFINING STRUCTURES (SQL DDL)"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 Data-Driven SQL
 
@@ -189,18 +189,18 @@ placeholders to be replaced by additional values at run-time. References to
 subroutines can also be registed as definitions, to be called at run-time with
 any additional values to produce the connection or query arguments.
 
-This functionality is described in L<DBIx::SQLEngine::Driver/"Named Connections"> and L<DBIx::SQLEngine::Driver/"NAMED QUERY
-CATALOG">.
+This functionality is described in L<"Named Connections"|DBIx::SQLEngine::Driver/"Named Connections"> and L<"Named Query Catalog"|DBIx::SQLEngine::Driver/"NAMED QUERY
+CATALOG"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 Portability Subclasses
 
 Behind the scenes, different subclasses of SQLEngine are instantiated
 depending on the type of server to which you connect, thanks to DBIx::AnyData.
 
-This release includes subclasses for connections to MySQL, PostgreSQL, Oracle,
-and Microsoft SQL servers, as well as for the standalone SQLite, AnyData, and
-CSV packages. For more information about supported drivers, see L</"Driver
-Subclasses">.
+This release includes subclasses for connections to MySQL, PostgreSQL,
+Oracle, Informix, Sybase, and Microsoft SQL servers, as well as for the
+standalone SQLite, AnyData, CSV and XBase packages. For more information
+about supported drivers, see L<DBIx::SQLEngine::Driver/"Driver Subclasses">.
 
 As a result, if you use the data-driven query interface, some range of SQL
 dialect ideosyncracies can be compensated for.  For example, the sql_limit
@@ -345,6 +345,8 @@ Defines one or more named connections using the names and definitions provided.
 
 =back
 
+Examples:
+
 =over 2
 
 =item *
@@ -395,6 +397,8 @@ Retrieve rows from the datasource as an array of hashrefs. If called in a list c
 Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. Returns the results returned by each of those function calls. 
 
 =back
+
+Examples:
 
 =over 2
 
@@ -496,6 +500,8 @@ Delete one or more rows in a table in the datasource.
 
 =back
 
+Examples:
+
 =over 2
 
 =item *
@@ -540,6 +546,8 @@ These methods manage a collection of named query definitions.
 Defines one or more named queries using the names and definitions provided.
 
 =back
+
+Examples:
 
 =over 2
 
@@ -596,32 +604,6 @@ The placeholder in this defined query is replaced at run-time.
 
 The following provides a brief overview of methods provided by the schema classes. 
 
-=head2 Enumerating TableSets
-
-A Schema::TableSet is simply an array of Schema::Table objects.
-
-=over 2
-
-=item *
-
-  $tableset = $sqldb->tables();
-
-=item *
-
-  print $tableset->count;
-
-=item *
-
-  foreach my $table ( $tableset->tables ) {
-    print $table->name;
-  }
-
-=item *
-
-  $table = $tableset->table_named( $name );
-
-=back
-
 =head2 Querying Table Objects
 
 Table objects pass the various fetch_ and do_ methods through to the SQLEngine  Driver along with their table name.
@@ -630,23 +612,80 @@ Table objects pass the various fetch_ and do_ methods through to the SQLEngine  
 
 =item *
 
+Create a Table object for the given driver and table name.
+
   $table = $sqldb->table( $table_name );
 
 =item *
+
+Perform a select query on the named table.
 
   $hash_ary = $table->fetch_select( where => { status=>2 } );
 
 =item *
 
+Perform an insert query.
+
   $table->do_insert( values => { somefield=>'A Value', status=>3 } );
 
 =item *
+
+Perform an update query.
 
   $table->do_update( values => { status=>3 }, where => { status=>2 } );
 
 =item *
 
+Perform a delete query.
+
   $table->do_delete( where => { somefield=>'A Value' } );
+
+=back
+
+=head2 Enumerating TableSets
+
+A Schema::TableSet is simply an array of Schema::Table objects.
+
+=over 4
+
+=item count()
+
+  $tableset->count : $number_of_tables
+
+=item tables()
+
+  $tableset->tables : @table_objects
+
+=item table_named()
+
+  $tableset->table_named( $name ) : $table_object
+
+=back
+
+Examples:
+
+=over 2
+
+=item *
+
+Get a TableSet object for the current Driver and print the number of tables it has.
+
+  $tableset = $sqldb->tables();
+  print $tableset->count;
+
+=item *
+
+Iterate over the tables.
+
+  foreach my $table ( $tableset->tables ) {
+    print $table->name;
+  }
+
+=item *
+
+Find a table by name.
+
+  $table = $tableset->table_named( $name );
 
 =back
 
@@ -872,60 +911,14 @@ See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
 
 =head1 SEE ALSO 
 
-The driver interface is described in L<DBIx::SQLEngine::Driver>.
-
-See L<DBIx::SQLEngine::ReadMe> for distribution and support information.
-
 See L<DBI> and the various DBD modules for information about the underlying database interface.
 
 See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
+The driver interface is described in L<DBIx::SQLEngine::Driver>.
 
-=head1 CREDITS AND COPYRIGHT
-
-=head2 Author
-
-Developed by Matthew Simon Cavalletto at Evolution Softworks.
-
-You may contact the author directly at C<evo@cpan.org> or
-C<simonm@cavalletto.org>. More free Perl software is available at
-C<www.evoscript.org>.
-
-=head2 Contributors 
-
-Many thanks to the kind people who have contributed code and other feedback:
-
-  Eric Schneider, Evolution Online Systems
-  E. J. Evans, Evolution Online Systems
-  Matthew Sheahan, Evolution Online Systems
-  Eduardo Iturrate, Evolution Online Systems
-  Ron Savage
-  Christian Glahn, Innsbruck University
-  Michael Kroll, Innsbruck University
-
-=head2 Source Material
-
-Inspiration, tricks, and bits of useful code were mined from these CPAN modules:
-
-  Alzabo by Dave Rolsky 
-  DBIx::AnyDBD by Matt Sergeant 
-  DBIx::Compat by G. Richter
-  DBIx::Datasource by Ivan Kohler 
-  DBIx::Renderer by Marcel Grunauer 
-
-=head2 Copyright
-
-Copyright 2001, 2002, 2003, 2004 Matthew Cavalletto. 
-
-Portions copyright 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
-
-Portions copyright 2002 ZID, Innsbruck University (Austria).
-
-Portions of the documentation are copyright 2003 Ron Savage.
-
-=head2 License
-
-You may use, modify, and distribute this software under the same terms as Perl.
+For distribution, installation, support, copyright and license 
+information, see L<DBIx::SQLEngine::Docs::ReadMe>.
 
 =cut
 

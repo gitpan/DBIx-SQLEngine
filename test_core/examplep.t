@@ -21,7 +21,7 @@ ok( 1 );
   
   my $rows = $sqldb->fetch_select( table => '.' );
   ok( ref $rows and scalar @$rows > 1 );
-  ok( grep { $_->{name} =~ /SQLEngine/ } @$rows );
+  ok( grep { $_->{name} =~ /SQLEngine/i } @$rows );
 }
 
 ########################################################################
@@ -41,5 +41,5 @@ local $^W;
   
   my $rows = $sqldb->fetch_select( table => '.' );
   ok( ref $rows and scalar @$rows > 1 );
-  ok( grep { $_->{name} =~ /SQLEngine/ } @$rows );
+  ok( grep { $_->{name} =~ /SQLEngine/i } @$rows );
 }

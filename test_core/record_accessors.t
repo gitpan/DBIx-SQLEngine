@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 7 }
+BEGIN { plan tests => 9 }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -24,6 +24,13 @@ ok( $record->foo(), 'Foozle' );
 
 $record->bar('Basil');
 ok( $record->bar(), 'Basil' );
+
+########################################################################
+
+ok( $record->get_values('bar'), 'Basil' );
+
+$record->change_values('bar', 'Beserk' );
+ok( $record->get_values('bar'), 'Beserk' );
 
 ########################################################################
 
