@@ -6,25 +6,9 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
-=head2 Release 0.008
-
-2002-11-02 Released as DBIx-SQLEngine-0.008.
-
-2002-11-02 Added basic subclass for MSSQL.
-
-2002-11-02 Added "is null" support based on patches from Michael Kroell at University of Innsbruck.
-
-2002-11-02 Added some introductory documentation to Criteria::Comparison.
-
-2002-11-02 For compatibility with the CPAN installer and automated testing tools, the Makefile.PL now suggests that you set your environment's DBI_DSN, rather than prompting you to enter it interactively in test.pl.
-
-2002-11-02 Refactored test script into several separate files. 
-
-2002-11-02 Added initial basic transaction support.
-
-
-
 =head2 Release 0.007
+
+2002-08-25 Fixed select statements so that group-by precedes order-by.
 
 2002-05-24 Minor error-handling improvements. 
 
@@ -136,7 +120,6 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 1998-03-16 DBAdaptor package (and subpackages) renamed to DBO::Table.
 
 1997-11-18 Simon: Updated to current practice. 
-
 
 =head2 Generation Zero: DBAdaptor
 

@@ -2,47 +2,67 @@ NAME
     DBIx::SQLEngine::ToDo - Tasks, ideas, and bugs
 
 TO DO
-    Although it based on earlier code that was extensively tested over
-    several years of production use, this code has recently been majorly
-    refactored, and has not yet been sufficiently tested in its new form.
+    There are a number of things that could be done to improve this module.
 
   Internals
 
-    Review, perhaps switch to use of new DBI subclassing functionality in
-    place of DBIx::AnyDBD.
+    Centralize logging interface by making 'DBI', 'SQL' arguments to general
+    function.
 
   Distribution
 
-    The test script is fairly minimal and really ought to exercise the
-    entire public interface.
+    The test script is fairly minimal and really ought to exercise much more
+    of the public interface. Specific things to add to the test include:
 
-    For comapbility with the CPAN installer and automated testing tools, it
-    may be more appropriate to query for a test DSN in the Makefile.PL,
-    rather than in the test.pl.
+    - Test for inserting, updating and selecting nulls, including "is null"
+    test.
+
+    - Test new transaction code.
+
+    Finish moving all license, change, and todo blocks to their appropriate
+    locations.
 
   Columns
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 
-  Interface
+  Database Feature-Specific Interfaces
 
-    Extend the base interface with the following interfaces:
+    Proposed: Extend the base interface with the following interfaces:
 
     *   fetch_select_with_limit
 
     *   do_insert_with_sequence
 
-  Transactions
+  Proposed Array Select interface
 
-    There's no transaction support at this point; at least a basic version
-    should be added.
+    # ( $row_arrays, $column_hashes ) = $self->fetch_rows( %clauses );
 
-  Criteria
+    // Also visit_rows, fetch_named_query_rows... [?]
+
+  Pre-defined Query Library
+
+    Proposed "Named Query" interface:
+
+    # $sqldb->define_named_query( name , string_or_sub ) // or return
+    current
+
+    # %clauses = $sqldb->prepare_named_query( name, args ) // with
+    conversion, recursion
+
+    # ( $row_hashes, $column_hashes ) = $sqldb->fetch_named_query( name,
+    args )
+
+    # @results = $sqldb->visit_named_query( code, name, args )
+
+    # $result = $sqldb->do_named_query( name, args )
+
+  Additional Criteria
 
     The Criteria subclasses are woefully incomplete.
 
-  Subclasses
+  Future Database-specific Functionality
 
     Additional subclass logic will be required to support the following:
 

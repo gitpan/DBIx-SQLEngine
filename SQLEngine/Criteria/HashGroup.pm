@@ -8,7 +8,7 @@ use DBIx::SQLEngine::Criteria::Or;
 use DBIx::SQLEngine::Criteria::StringEquality;
 
 use Class::MakeMethods (
-  'Template::Hash:new --with_values' => 'new',
+  'Composite::Hash:new' => [ 'new', {modifier => 'with_values'} ],
 );
 
 sub normalized {
@@ -20,10 +20,14 @@ sub normalized {
       ( ref( $hashref->{$key} ) eq 'ARRAY' ) 
 	? DBIx::SQLEngine::Criteria::Or->new( 
 	    map {
-	      DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($_) ? $_ : '' ) 
+              DBIx::SQLEngine::Criteria::StringEquality->new( $key, $_ ) 
+	      # 2002-11-02 Patch from Michael Kroell, University of Innsbruck
+	      # DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($_) ? $_ : '' ) 
 	    } @{ $hashref->{$key} }
 	  )
-        : DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($hashref->{$key}) ? $hashref->{$key} : '' ) 
+	: DBIx::SQLEngine::Criteria::StringEquality->new($key, $hashref->{$key})
+	# 2002-11-02 Patch from Michael Kroell, University of Innsbruck
+	# : DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($hashref->{$key}) ? $hashref->{$key} : '' ) 
     } keys %$hashref 
   );
 }

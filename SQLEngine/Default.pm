@@ -48,6 +48,8 @@ use DBIx::SQLEngine::Criteria::HashGroup;
 
 ########################################################################
 
+########################################################################
+
 =head1 PUBLIC INTERFACE
 
 The public interface described below is shared by all SQLEngine subclasses. To facilitate cross-platform subclassing, many these methods are implemented by calling combinations of other methods described in the INTERNALS sections below.
@@ -289,6 +291,99 @@ sub do_drop_table {
 
 ########################################################################
 
+=head2 Transactions
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+DBIx::SQLEngine assumes auto-commit is on by default, so unless otherwise specified, each query is executed as a separate transaction. To execute multiple queries within a single transaction, use the as_one_transaction method.
+
+=over 4
+
+=item are_transactions_supported  
+
+  $boolean = $sqldb->are_transactions_supported( );
+
+Checks to see if the database has transaction support.
+
+=item as_one_transaction  
+
+  @results = $sqldb->as_one_transaction( $sub_ref, @args );
+
+Will fail if we don't have transaction support.
+
+For example:
+
+  my $sqldb = DBIx::SQLEngine->new( ... );
+  $sqldb->as_one_transaction( sub { 
+    $sqldb->do_insert( ... );
+    $sqldb->do_update( ... );
+    $sqldb->do_delete( ... );
+  } );
+
+=item as_one_transaction_if_supported  
+
+  @results = $sqldb->as_one_transaction_if_supported( $sub_ref, @args );
+
+If transaction support is available, this is equivalent to as_one_transaction. If transactions are not supported, simply performs the code in $sub_ref with no transaction protection.
+
+=back
+
+=cut
+
+sub are_transactions_supported {
+  my $self = shift;
+  my $dbh = $self->dbh;
+  eval {
+    $dbh->begin_work;
+    $dbh->rollback;
+  };
+  return ( $@ ) ? 0 : 1;
+}
+
+sub as_one_transaction {
+  my $self = shift;
+  my $code = shift;
+
+  my $dbh = $self->dbh;
+  my @results;
+  $dbh->begin_work;
+  eval {
+    @results = wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    $dbh->commit;  
+  };
+  if ($@) {
+    warn "DBIx::SQLEngine Transaction Aborted: $@";
+    $dbh->rollback;
+  }
+  wantarray ? @results : $results[0]
+}
+
+sub as_one_transaction_if_supported {
+  my $self = shift;
+  my $code = shift;
+  
+  my $dbh = $self->dbh;
+  my @results;
+  my $in_transaction;
+  eval {
+    $dbh->begin_work;
+    $in_transaction = 1;
+  };
+  eval {
+    @results = wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    $dbh->commit if ( $in_transaction );
+  };
+  if ($@) {
+    warn "DBIx::SQLEngine Transaction Aborted: $@";
+    $dbh->rollback if ( $in_transaction );
+  }
+  wantarray ? @results : $results[0]
+}
+
+########################################################################
+
+########################################################################
+
 =head1 INTERNAL DBH METHODS
 
 The following methods manage the DBI database handle through which we communicate with the datasource.
@@ -360,6 +455,8 @@ sub get_dbh {
 sub check_or_reconnect {
 
 }
+
+########################################################################
 
 ########################################################################
 
@@ -859,6 +956,8 @@ __PACKAGE__->column_type_codes(
 
 ########################################################################
 
+########################################################################
+
 =head1 INTERNAL SQL METHODS
 
 The various sql_* methods below each accept a hash of arguments and combines then to return a SQL statement and corresponding parameters. Data for each clause of the statement is accepted in a variety of formats to facilitate query abstraction. 
@@ -966,21 +1065,6 @@ sub sql_select {
     $sql .= " where $criteria";
     push @params, @cp;
   }
- 
-  my $order = $clauses{'order'};
-  delete $clauses{'order'};
-  if ( ! $order ) {
-    $order = '';
-  } elsif ( ! ref( $order ) and length( $order ) ) {
-    # should be one or more comma-separated column names with optional 'desc'
-  } elsif ( ref($order) eq 'ARRAY' ) {
-    $order = join ', ', @$order;
-  } else {
-    confess("Unsupported order spec '$order'");
-  }
-  if ( $order ) {
-    $sql .= " order by $order";
-  }
   
   my $group = $clauses{'group'};
   delete $clauses{'group'};
@@ -995,6 +1079,21 @@ sub sql_select {
   }
   if ( $group ) {
     $sql .= " group by $group";
+  }
+ 
+  my $order = $clauses{'order'};
+  delete $clauses{'order'};
+  if ( ! $order ) {
+    $order = '';
+  } elsif ( ! ref( $order ) and length( $order ) ) {
+    # should be one or more comma-separated column names with optional 'desc'
+  } elsif ( ref($order) eq 'ARRAY' ) {
+    $order = join ', ', @$order;
+  } else {
+    confess("Unsupported order spec '$order'");
+  }
+  if ( $order ) {
+    $sql .= " order by $order";
   }
   
   if ( scalar keys %clauses ) {
@@ -1553,6 +1652,8 @@ sub log_sql {
   my $params = join( ', ', map { defined $_ ? "'$_'" : 'undef' } @params );
   warn "SQL: $sql; $params\n";
 }
+
+########################################################################
 
 ########################################################################
 

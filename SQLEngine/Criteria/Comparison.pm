@@ -9,7 +9,13 @@ DBIx::SQLEngine::Criteria::Comparison - Superclass for comparisons
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Criteria::Comparison objects are built around an array of other criteria.
+DBIx::SQLEngine::Criteria::Comparison objects provide a structured representation of certain simple kinds of SQL criteria clauses, those of the form C<column_or_expression comparison_operator comparison_value>.
+
+Each Criteria::Comparison object is implemented in the form of blessed arrayref, with two items in the array. The first is the column name (or SQL expression) to be compared against, and the second is the comparison value. The type of comparison operator to use is indicated by which subclass of Criteria::Comparison the object is blessed into. 
+
+The comparison value is assumed by default to be a literal string or numeric value, and uses parameter substitution to avoid having to deal with quoting. If you actually want to compare against another column or expression, pass a reference to the column name or expression string. For example, to select records where C<first_name = last_name>, you could use:
+
+  DBIx::SQLEngine::Criteria::StringEquality->('first_name', \'last_name');
 
 =cut
 
@@ -75,10 +81,16 @@ sub sql_where {
   my $expr = $self->expr;
   ( length $expr ) or Carp::confess("Expression is missing or empty");
   my $compv = $self->compv;
-  ( defined $compv ) or Carp::confess("Comparison value is missing or empty");
+  # 2002-11-02 Patch from Michael Kroell, University of Innsbruck
+  #( defined $compv ) or Carp::confess("Comparison value is missing or empty");
   my $cmp = $self->sql_comparator;
   ( length $cmp ) or Carp::confess("sql_comparator is missing or empty");
-  if ( ! ref($compv) ) {
+  
+  # 2002-11-02 Based on patch from Michael Kroell, University of Innsbruck
+  if ( ! defined($compv) ) {
+    if ( $cmp eq '=' ) { $cmp = 'IS' }
+    join(' ', $expr, $cmp, 'NULL' );
+  } elsif ( ! ref($compv) ) {
     join(' ', $expr, $cmp, '?' ), $compv;
   } elsif ( ref($compv) eq 'SCALAR' ) {
     join(' ', $expr, $cmp, $$compv );
@@ -88,6 +100,7 @@ sub sql_where {
 }
 
 ########################################################################
+
 
 =head1 VERSION
 

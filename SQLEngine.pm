@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.007;
+$VERSION = 0.008;
 
 use strict;
 use Carp;
@@ -515,8 +515,9 @@ See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
 =head2 Contributors 
 
-  Eric Schneider, roark@evolution.com
+  Eric Schneider
   E. J. Evans, piglet@piglet.org
+  Matthew Sheahan
 
 =head2 Copyright
 
