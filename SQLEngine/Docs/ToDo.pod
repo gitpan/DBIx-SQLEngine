@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::ToDo - Tasks, ideas, and bugs
+DBIx::SQLEngine::Docs::ToDo - Tasks, ideas, and bugs
 
 
 =head1 TO DO

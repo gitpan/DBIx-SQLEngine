@@ -1,5 +1,4 @@
 CHANGES
-Changes.pod
 MANIFEST
 MANIFEST.SKIP
 Makefile.PL
@@ -7,7 +6,6 @@ README
 SQLEngine.pm
 SQLEngine/AnyData.pm
 SQLEngine/CSV.pm
-SQLEngine/Changes.pod
 SQLEngine/Criteria.pm
 SQLEngine/Criteria/And.pm
 SQLEngine/Criteria/Comparison.pm
@@ -19,13 +17,15 @@ SQLEngine/Criteria/NumericLesser.pm
 SQLEngine/Criteria/Or.pm
 SQLEngine/Criteria/StringEquality.pm
 SQLEngine/Criteria/unfinished_code
+SQLEngine/Docs/Changes.pod
+SQLEngine/Docs/ReadMe.pod
+SQLEngine/Docs/ToDo.pod
 SQLEngine/File.pm
 SQLEngine/MSSQL.pm
 SQLEngine/Mixin/SeqTable.pm
 SQLEngine/Mysql.pm
 SQLEngine/Pg.pm
-SQLEngine/ReadMe.pod
 SQLEngine/SQLite.pm
-SQLEngine/ToDo.pod
 TODO
 test.pl
+test.sqlite

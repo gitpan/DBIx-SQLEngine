@@ -63,7 +63,7 @@ The other fetch_*, visit_* and do_* methods, like do_insert, are wrappers that c
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.009;
+$VERSION = 0.010;
 
 use strict;
 use Carp;
@@ -204,7 +204,7 @@ B<Examples:>
 
 =item *
 
-Each query can be written out explicitly or generated on demand:
+Each query can be written out explicitly or generated on demand using whichever syntax is most appropriate to your application:
 
   $hashes = $sqldb->fetch_select( 
     sql => "select * from students where status = 'minor'"
@@ -215,12 +215,25 @@ Each query can be written out explicitly or generated on demand:
   );
 
   $hashes = $sqldb->fetch_select( 
+    table => 'students', criteria => [ 'status = ?', 'minor' ]
+  );
+
+  $hashes = $sqldb->fetch_select( 
     table => 'students', criteria => { 'status' => 'minor' } 
+  );
+
+  $hashes = $sqldb->fetch_select( 
+    table => 'students', criteria => { 'status' => 'minor' } 
+  );
+
+  $crit = DBIx::SQLEngine::Criteria::StringEquality->new('status' => 'minor');
+  $hashes = $sqldb->fetch_select( 
+    table => 'students', criteria => $crit
   );
 
 =item *
 
-Limiting the columns returned, and specifying an order:
+Optional clauses limiting the columns returned, and specifying an order:
 
   $hashes = $sqldb->fetch_select( 
     table => 'students', columns => 'name, age', order => 'name'
@@ -269,7 +282,7 @@ And when you know that there will only be one row and one column in your result 
 All of the SQL select clauses are accepted, including explicit SQL statements with parameters:
 
   $maxid = $sqldb->fetch_one_value( 
-    sql => 'select max(id) from students where status = ?'
+    sql => [ 'select max(id) from students where status = ?', 'minor' ]
   );
 
 =item *
@@ -1223,6 +1236,8 @@ Note: this feature has been added recently, and the interface is subject to chan
 
 DBIx::SQLEngine assumes auto-commit is on by default, so unless otherwise specified, each query is executed as a separate transaction. To execute multiple queries within a single transaction, use the as_one_transaction method.
 
+=head2 Transaction Methods
+
 =over 4
 
 =item are_transactions_supported  
@@ -1245,6 +1260,17 @@ For example:
     $sqldb->do_update( ... );
     $sqldb->do_delete( ... );
   } );
+
+Or using a reference to a predefined subroutine:
+
+  sub do_stuff {
+    my $sqldb = shift;
+    $sqldb->do_insert( ... );
+    $sqldb->do_update( ... );
+    $sqldb->do_delete( ... );
+  }
+  my $sqldb = DBIx::SQLEngine->new( ... );
+  $sqldb->as_one_transaction( \&do_stuff, $sqldb );
 
 =item as_one_transaction_if_supported  
 
@@ -1310,7 +1336,7 @@ sub as_one_transaction_if_supported {
 
 ########################################################################
 
-=head1 CONNECTION HANDLE (DBI DBH)
+=head1 INTERNAL CONNECTION METHODS (DBI DBH)
 
 The following methods manage the DBI database handle through which we communicate with the datasource.
 
@@ -1389,6 +1415,8 @@ B<SQL Generation>: The above detect_ method uses the following sql_ method to ge
 Subclass hook. Retrieve something from the database that is guaranteed to exist. 
 Defaults to SQL literal "select 1", which may not work on all platforms. Your subclass might prefer one of these: "select SYSDATE() from dual", (I'm unsure of the others)...
 
+=back
+
 =cut
 
 sub sql_detect_any {
@@ -1445,7 +1473,7 @@ sub check_or_reconnect {
 
 ########################################################################
 
-=head1 INTERNAL STH METHODS
+=head1 INTERNAL STATEMENT METHODS (DBI STH)
 
 The following methods manipulate DBI statement handles as part of processing queries and their results.
 
@@ -1463,7 +1491,8 @@ Error handling wrapper around the internal execute_query method.
 
 =item catch_query_exception
 
-  $sqldb->catch_query_exception ( $exception, $sql, \@params, $result_method, @result_args ) : $resolution
+  $sqldb->catch_query_exception ( $exception, $sql, \@params, 
+			$result_method, @result_args ) : $resolution
 
 This is a subclass hook that does nothing in the superclass but should be overridden in subclasses. Exceptions are passed to catch_query_exception; if it returns "REDO" the query will be retried up to five times.
 
@@ -1934,6 +1963,69 @@ sub log_sql {
 
 ########################################################################
 
+=head1 EXAMPLE
+
+This example, based on a writeup by Ron Savage, shows a connection being opened, a table created, several rows of data inserted, and then retrieved again:
+
+  #!/usr/bin/perl
+  
+  use strict;
+  use warnings;
+  
+  use DBIx::SQLEngine;
+  
+  eval {
+    my $engine = DBIx::SQLEngine->new(
+      'DBI:mysql:test:127.0.0.1', 'route', 'bier',
+      {
+	RaiseError => 1,
+	ShowErrorStatement => 1,
+      }
+    );
+    my $table_name = 'sqle';
+    my $columns = [
+      {
+	name   => 'sqle_id',
+	type   => 'sequential',
+      },
+      {
+	name   => 'sqle_name',
+	type   => 'text',
+	length => 255,
+      },
+    ];
+    $engine->do_drop_table($table_name);
+    $engine->do_create_table($table_name, $columns);
+  
+    $engine->do_insert(table => $table_name, values => {sqle_name => 'One'});
+    $engine->do_insert(table => $table_name, values => {sqle_name => 'Two'});
+    $engine->do_insert(table => $table_name, values => {sqle_name => 'Three'});
+  
+    my $dataset = $engine->fetch_select(table => $table_name);
+    my $count = 0;
+    for my $data (@$dataset) {
+      $count++;
+      print "Row $count: ", map( {"\t$_ => " . 
+	(defined $$data{$_} ? $$data{$_} : 'NULL')} sort keys %$data), "\n";
+    }
+  };
+  if ( $@ ) {
+    warn "Unable to build sample table: $@";
+  }          
+
+=head1 BUGS
+
+Many types of database servers are not yet supported.
+
+Database driver/server combinations that do not support placeholders will fail.
+(http://groups.google.com/groups?selm=dftza.3519%24ol.117790%40news.chello.at)
+
+There has been a few small discussions of this module on PerlMonks and Usenet:
+
+  http://groups.google.com/groups?q=dbix+sqlengine+-ports&scoring=d
+  http://perlmonks.org/index.pl?node_id=3989&BIT=sqlengine&go=Search
+
+
 =head1 SEE ALSO 
 
 See L<DBIx::SQLEngine::Default> for implementation details.
@@ -1949,20 +2041,24 @@ See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
 =head2 Developed By
 
-  M. Simon Cavalletto, simonm@cavalletto.org
-  Evolution Softworks, www.evoscript.org
+Developed by Matthew Simon Cavalletto at Evolution Softworks. 
+You may contact the author directly at C<simonm@cavalletto.org>.
+More free Perl software is available at C<www.evoscript.org>.
 
 =head2 Contributors 
 
   Eric Schneider
-  E. J. Evans, piglet@piglet.org
+  E. J. Evans
   Matthew Sheahan
+  Ron Savage
 
 =head2 Copyright
 
-Copyright 2002 Matthew Cavalletto. 
+Copyright 2002, 2003 Matthew Cavalletto. 
 
 Portions copyright 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
+
+Portions of the documentation are Copyright 2003 Ron Savage
 
 =head2 License
 

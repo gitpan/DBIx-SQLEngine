@@ -65,18 +65,23 @@ if ( ! $dsn ) {
   In order to test DBIx::SQLEngine against your local database, set the DBI_DSN 
   environment variable to your connection string before running the tests, and 
   if needed, also set the DBI_USER and DBI_PASS variables. 
-    Example:  > setenv DBI_DSN "DBI:mysql:test"
-              > make test
+    Example:  > setenv DBI_DSN "DBI:mysql:test"; make test
 
   Alternately, you can run test.pl and pass the DSN, user, and password as
   command-line arguments.
     Example:  > perl -Iblib test.pl "DBI:mysql:test"
 
-  A table named sqle_test will be created in this database, queried, and 
-  then dropped.
+  If you specify a database, this test script will create a table named 
+  sqle_test, run several queries against it, and then drop it.
 
+  Querying DBI for available driver types and suggested DSNs: 
 .
 
+  %common_cases = (
+    'AnyData' => 'dbi:AnyData:',
+    'SQLite' => 'dbi:SQLite:dbname=test.sqlite',
+    'mysql' => 'dbi:mysql:test',
+  );
   foreach my $driver ( DBI->available_drivers ) {
     eval {
       DBI->install_driver($driver);
@@ -84,9 +89,10 @@ if ( ! $dsn ) {
       eval {
 	@data_sources = DBI->data_sources($driver);
       };
+      push @data_sources, split(' ', $common_cases{$driver});
       if (@data_sources) {
 	foreach my $source ( @data_sources ) {
-	  push @suggestions, ( $source =~ /:/ ? $source : "dbi:$driver:$source" );
+	  push @suggestions, ($source =~ /:/ ? $source : "dbi:$driver:$source");
 	} 
       } else { 
 	push @suggestions, "dbi:$driver";
@@ -94,24 +100,12 @@ if ( ! $dsn ) {
     };
   } 
 
-  eval { require DBD::AnyData };
-  unless ( $@ ) {
-    push @suggestions, 'dbi:AnyData:';
-  }
-
-  eval { require DBD::SQLite };
-  unless ( $@ ) {
-    push @suggestions, 'dbi:SQLite:dbname=test.sqlite';
-  }
-
-  eval { require DBD::mysql };
-  unless ( $@ ) {
-    push @suggestions, 'dbi:mysql:test';
-  }
   if ( scalar @suggestions ) {
     %suggestions = map { $_ => 1 } grep { ! /dbi:ExampleP/ } @suggestions;
     @suggestions = sort { lc($a) cmp lc($b) } keys %suggestions;
-    print join '', map "$_\n", "  You may wish to try one or more of the following suggested DSN values:", map "    $_", @suggestions;
+    print join '', map "    $_\n", @suggestions;
+  } else {
+    print "    (No suggestions found.)\n";
   }
 
   exit 0;

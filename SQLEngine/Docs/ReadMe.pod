@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::ReadMe - Introduction to DBIx::SQLEngine.
+DBIx::SQLEngine::Docs::ReadMe - Introduction to DBIx::SQLEngine.
 
 =head1 DESCRIPTION
 
@@ -57,7 +57,7 @@ In order for the test to succeed, you must also have at least one working DBD mo
 
 =head1 STATUS AND SUPPORT
 
-This version is routine release of DBIx::SQLEngine intended for public use.
+This version is a routine release of DBIx::SQLEngine intended for public use.
 
 The proposed CPAN module list entry is as follows:
 
@@ -68,16 +68,20 @@ The proposed CPAN module list entry is as follows:
 
 Further information and support for this module is available at http://www.evoscript.org.
 
-Please report bugs or other problems to C<E<lt>simonm@cavalletto.orgE<gt>>.
-
 See L<DBIx::SQLEngine::ToDo> for bugs and missing features.
+
+Bug reports or general feedback would be welcomed by the author at simonm@cavalletto.org.
+
+To report bugs via the CPAN web tracking system, go to 
+C<http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBIx-SQLEngine> or send mail 
+to C<Dist=DBIx-SQLEngine#rt.cpan.org>, replacing C<#> with C<@>.
 
 
 =head1 SEE ALSO 
 
 See L<DBIx::SQLEngine> for interface documentation.
 
-See L<DBIx::SQLEngine::Changes> for revision history.
+See L<DBIx::SQLEngine::Docs::Changes> for revision history.
 
 
 =head2 Similar Modules

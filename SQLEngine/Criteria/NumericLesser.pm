@@ -15,7 +15,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::NumericLesser- Basic Numeric Criteria
+DBIx::SQLEngine::Criteria::NumericLesser - Basic Numeric Criteria
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
+DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 
 =head1 HISTORY
