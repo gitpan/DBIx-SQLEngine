@@ -19,6 +19,8 @@ The test script is fairly minimal and really ought to exercise much more of the 
 
 - Test for inserting, updating and selecting nulls, including "is null" test.
 
+- Test with SQLite and temp file.
+
 - Test new transaction code.
 
 Finish moving all license, change, and todo blocks to their appropriate locations.

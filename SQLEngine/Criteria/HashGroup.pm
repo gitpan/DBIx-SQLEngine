@@ -21,13 +21,9 @@ sub normalized {
 	? DBIx::SQLEngine::Criteria::Or->new( 
 	    map {
               DBIx::SQLEngine::Criteria::StringEquality->new( $key, $_ ) 
-	      # 2002-11-02 Patch from Michael Kroell, University of Innsbruck
-	      # DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($_) ? $_ : '' ) 
 	    } @{ $hashref->{$key} }
 	  )
 	: DBIx::SQLEngine::Criteria::StringEquality->new($key, $hashref->{$key})
-	# 2002-11-02 Patch from Michael Kroell, University of Innsbruck
-	# : DBIx::SQLEngine::Criteria::StringEquality->new( $key, defined($hashref->{$key}) ? $hashref->{$key} : '' ) 
     } keys %$hashref 
   );
 }

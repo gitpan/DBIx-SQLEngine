@@ -1,9 +1,13 @@
-package DBIx::SQLEngine::Mysql;
+package DBIx::SQLEngine::SQLite;
 
 use strict;
 use Carp;
 
 ########################################################################
+
+sub detect_any {
+  return 1;
+}
 
 sub sql_detect_any {
   return ( sql => 'select 1' )
@@ -14,8 +18,6 @@ sub sql_detect_table {
   return ( sql => "select * from $tablename limit 1" );
 }
 
-########################################################################
-
 sub sql_create_column_type {
   my($self, $table, $column, $columns) = @_;
   my $type = $column->{type};
@@ -24,7 +26,7 @@ sub sql_create_column_type {
   } elsif ( $type eq 'binary' ) {
     return 'blob';
   } else {
-    $self->SUPER::sql_create_column_type( $table, $column, $columns );
+    $self->SUPER::sql_create_columns( $table, $column, $columns );
   }
 }
 
@@ -80,27 +82,25 @@ sub do_insert_with_sequence {
   my %args = @_;
   
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
-    croak "DBIx::SQLEngine::MySQL insert with sequence requires values to be hash-ref"
+    croak "DBIx::SQLEngine::SQLite insert with sequence requires values to be hash-ref"
   }
   
   my $rv = $self->do_insert( %args );
   
-  $args{values}->{$seq_name} = $self->fetch_one_value( 
-    sql => 'select LAST_INSERT_ID()'
-  );
+  $args{values}->{$seq_name} = $self->get_dbh->func('last_insert_rowid');
   
   $rv;
 }
 
 ########################################################################
 
-sub catch_query_exception {
+sub x_catch_query_exception {
   my $self = shift;
   my $error = shift;
-  if ( $error =~ /Lost connection to MySQL server/i 
-    or $error =~ /MySQL server has gone away/i
-    or $error =~ /no statement executing/i
-    or $error =~ /fetch without execute/i ) {
+  if ( $error =~ /\Q{TYPE}: unrecognised attribute\E/i ) {
+      # This means the query failed; we'll return nothing.
+      return 'OK';
+  } elsif ( 0 and $error =~ / /i or $error =~ / /i ) {
       $self->reconnect() and return 'REDO';
   } else {
     $self->SUPER::catch_query_exception( $error, @_ );

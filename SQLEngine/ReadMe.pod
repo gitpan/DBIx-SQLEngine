@@ -41,7 +41,7 @@ This module requires these other modules and libraries:
   Class::MakeMethods		1.003
   Class::MakeMethods::Template	1.003
 
-You must also have at least one working DBD module installed. (If you run into trouble, check that your DBI and DBD modules are up-to-date; in particular, if you are using DBD::CSV or DBD::AnyData, make sure you have upgraded to SQL::Statement 1.0 or later.)
+You must also have at least one working DBD module installed. If you run into trouble, check that your DBI and DBD modules are up-to-date; in particular, if you are using DBD::CSV or DBD::AnyData, make sure you have upgraded to SQL::Statement 1.0 or later.
 
 =head1 INSTALLATION
 
@@ -86,7 +86,7 @@ Several other CPAN modules provide a similar wrapper around DBI for purposes of 
 
 Most of these provide simple wrappers around DBI's connect, prepare, and fetch methods, but do not appear to support any kind of cross-DBMS portability mechanism. See L<DBIx::Abstract>, L<DBIx::AbstractLite>, and L<DBIx::Broker> for examples of this group. (Single-platform solutions like L<MySQL::Easy> are also available.)
 
-Some provide a limited degree of cross-DBMS support via specialized subclasses for the DBDs they support. See L<DBIx::SearchBuilder>, L<DBIx::Easy>, and L<DBIx::DWIW> for examples of this group.
+Some provide at least some cross-DBMS support via specialized subclasses for the DBDs they support. See L<DBIx::SearchBuilder>, L<DBIx::Easy>, and L<DBIx::DWIW> for examples of this group. An incomplete but interesting newcomer is available in L<DBIx::Portable>.
 
 The DBIx::Recordset framework provides similar functionality, including a substantial library of cross-DBMS compatibilty information. It also includes a tied-hash interface that allows automatic updates on retrieved rows. See L<DBIx::RecordSet>, L<DBIx::Database>, L<DBIx::Compat>
 

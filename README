@@ -88,10 +88,11 @@ SEE ALSO
     this group. (Single-platform solutions like the MySQL::Easy manpage are
     also available.)
 
-    Some provide a limited degree of cross-DBMS support via specialized
-    subclasses for the DBDs they support. See the DBIx::SearchBuilder
-    manpage, the DBIx::Easy manpage, and the DBIx::DWIW manpage for examples
-    of this group.
+    Some provide at least some cross-DBMS support via specialized subclasses
+    for the DBDs they support. See the DBIx::SearchBuilder manpage, the
+    DBIx::Easy manpage, and the DBIx::DWIW manpage for examples of this
+    group. An incomplete but interesting newcomer is available in the
+    DBIx::Portable manpage.
 
     The DBIx::Recordset framework provides similar functionality, including
     a substantial library of cross-DBMS compatibilty information. It also

@@ -1,4 +1,4 @@
-package DBIx::SQLEngine::CSV;
+package DBIx::SQLEngine::File;
 
 use strict;
 use Carp;
@@ -37,11 +37,11 @@ sub sql_create_column_type {
   my($self, $table, $column, $columns) = @_;
   my $type = $column->{type};
   if ( $type eq 'sequential' ) {
-    return 'int';
+    return 'int primary key';
   } elsif ( $type eq 'binary' ) {
     return $self->sql_create_column_text_long_type;
   } else {
-    $self->SUPER::sql_create_column_type( $table, $column, $columns );
+    $self->SUPER::sql_create_columns( $table, $column, $columns );
   }
 }
 
@@ -111,13 +111,13 @@ sub do_insert_with_sequence {
   my $seq_name = shift;
   my %args = @_;
   
-  push @DBIx::SQLEngine::CSV::ISA, 'DBIx::SQLEngine::Mixin::SeqTable'
-    unless ( grep $_ eq 'DBIx::SQLEngine::Mixin::SeqTable', @DBIx::SQLEngine::CSV::ISA );
+  push @DBIx::SQLEngine::File::ISA, 'DBIx::SQLEngine::Mixin::SeqTable'
+    unless ( grep $_ eq 'DBIx::SQLEngine::Mixin::SeqTable', @DBIx::SQLEngine::File::ISA );
 
   # $self->SQLLogging(1);
 
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
-    croak "DBIx::SQLEngine::CSV insert with sequence requires values to be hash-ref"
+    croak "DBIx::SQLEngine::File insert with sequence requires values to be hash-ref"
   }
   
   $args{values}->{$seq_name} = $self->seq_increment($args{table}, $seq_name);

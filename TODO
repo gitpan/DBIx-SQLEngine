@@ -17,6 +17,8 @@ TO DO
     - Test for inserting, updating and selecting nulls, including "is null"
     test.
 
+    - Test with SQLite and temp file.
+
     - Test new transaction code.
 
     Finish moving all license, change, and todo blocks to their appropriate
