@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.005;
+$VERSION = 0.006;
 
 use strict;
 use Carp;
@@ -106,7 +106,7 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 Optional. May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
 
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.  Criteria values may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior.
 
@@ -126,11 +126,15 @@ I<Examples:>
 
 =item *
 
+Literal SQL:
+
   $hashes = $sqldb->fetch_select( 
     sql => 'select * from students where id > 200'
   );
 
 =item *
+
+Literal SQL with placeholders:
 
   $hashes = $sqldb->fetch_select( 
     sql => [ 'select * from students where id > ?', 200 ]
@@ -138,17 +142,31 @@ I<Examples:>
 
 =item *
 
+Generation of basic SQL statements:
+
   $hashes = $sqldb->fetch_select( 
     table => 'students', criteria => { 'status'=>'minor' } 
   );
 
 =item *
 
+Limiting the columns returned, and specifying an order:
+
   $hashes = $sqldb->fetch_select( 
     table => 'students', columns => 'name, age', order => 'name'
   );
 
 =item *
+
+Here's a criteria clause that uses a function to find the youngest people; note the use of a backslash to indicate that "min(age)" is an expression to be evaluated by the database server, rather than a literal value:
+
+  $hashes = $sqldb->fetch_select( 
+    table => 'students', criteria => { 'age' => \"min(age)" } 
+  );
+
+=item *
+
+Here's a join of two tables:
 
   $hashes = $sqldb->fetch_select( 
     tables => 'students, grades', 
@@ -162,13 +180,15 @@ I<Examples:>
 
   $sqldb->visit_select( $code_ref, %sql_clauses ) : @results
 
-Takes the same arguments as fetch_select. Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. Returns the results returned by each of those function calls. This can allow for more efficient processing if you are processing a large number of rows and do not need to keep them all in memory.
+Takes the same arguments as fetch_select, with the addition of a leading subroutine reference. Retrieve rows from the datasource as a series of hashrefs, and call the user provided subroutine for each one. Returns the results returned by each of those calls. This can allow for more efficient processing if you are processing a large number of rows and do not need to keep them all in memory.
 
 I<Examples:>
 
 =over 2
 
 =item *
+
+A basic traversal of all rows:
 
   $sqldb->visit_select( 
     sub {
@@ -180,12 +200,17 @@ I<Examples:>
 
 =item *
 
+You can use any combination of the other clauses supported by fetch_select:
+
    $sqldb->visit_select( 
     sub {
       my $student = shift;
       ... do something with $student->{id} and $student->{name} ...
     }, 
-    table => 'student', columns => 'id, name', order => 'name, id desc'
+    table => 'student', 
+    columns => 'id, name', 
+    order => 'name, id desc',
+    criteria => 'age < 22',
   );
 
 =back
@@ -268,7 +293,7 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item values
 
-Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted.
+Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 =back
 
@@ -322,13 +347,13 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item values
 
-Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted.
+Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 =item criteria
 
 Optional, but remember that ommitting this will cause all of your rows to be updated! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
 
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details. Criteria values may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior.
 
@@ -383,7 +408,7 @@ Required (unless explicit "sql => ..." is used). The name of the table to delete
 
 Optional, but remember that ommitting this will cause all of your rows to be deleted! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
 
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.  Criteria values may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior.
 

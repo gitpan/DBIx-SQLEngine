@@ -2,6 +2,18 @@ NAME
     DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Release 0.006
+
+    2002-03-23 Released as DBIx-SQLEngine-0.006.
+
+    2002-03-23 Added basic support for passing SQL functions and expressions
+    to SQLEngine::Default and SQLEngine::Critera::Comparion in a way that
+    allows them to be used directly, rather than being treated as literals
+    and bound to placeholders.
+
+    2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected
+    Perl-version dependency (return from inside eval) in Default detect_any.
+
   Release 0.005
 
     2002-03-01 Released as DBIx-SQLEngine-0.005.

@@ -6,6 +6,15 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Release 0.006
+
+2002-03-23 Released as DBIx-SQLEngine-0.006.
+
+2002-03-23 Added basic support for passing SQL functions and expressions to SQLEngine::Default and SQLEngine::Critera::Comparion in a way that allows them to be used directly, rather than being treated as literals and bound to placeholders.
+
+2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected Perl-version dependency (return from inside eval) in Default detect_any.
+
+
 =head2 Release 0.005
 
 2002-03-01 Released as DBIx-SQLEngine-0.005.
@@ -54,6 +63,7 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 2001-12-01 Separated from object-relational mapping functionality. Moved to DBIx::SQLEngine namespace. 
 
 2001-11-30 Began adjusting namespace for CPAN distribution. Fixed use of AnyDBD to not require non-standard patch.
+
 
 =head2 Release 0.001
 

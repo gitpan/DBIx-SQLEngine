@@ -21,8 +21,7 @@ sub sql_select {
   }
   
   delete $args{limit};
-
-
+  
   my ($sql, @params) = $self->SUPER::sql_select( %args );
   
   # You can't apply "limit" to non-table fetches like "select LAST_INSERT_ID"
@@ -89,12 +88,12 @@ sub sql_create_column_text_long_type { 'text' }
 sub catch_query_exception {
   my $self = shift;
   my $error = shift;
-  if ( $error =~ /backend closed the channel unexpectedly/ ) {
+  if ( $error =~ /backend closed the channel unexpectedly/i 
+    or $error =~ /there is no connection to the backend/i 
+    or $error =~ /reconnect to the database system and repeat your query/i
+    or $error =~ /no statement executing/i
+    or $error =~ /field number \d+ is out of range 0\.\.\-1/i ) {
       $self->reconnect() and return 'REDO';
-  } elsif ( $error =~ /There is no connection to the backend/ ) {
-      $self->reconnect() and return 'REDO';
-  } elsif ( $error =~ /field number \d is out of range 0\.\.-1/ ) {
-      return 'REDO';
   } else {
     $self->SUPER::catch_query_exception( $error, @_ );
   }

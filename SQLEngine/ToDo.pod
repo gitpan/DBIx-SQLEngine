@@ -6,15 +6,20 @@ DBIx::SQLEngine::ToDo - Tasks, ideas, and bugs
 
 Although it based on earlier code that was extensively tested over several years of production use, this code has recently been majorly refactored, and has not yet been sufficiently tested in its new form.
 
+
 =head2 Distribution
 
 This version to be posted for review and discussion on DBI list, Perl Monks, and Perl Modules list.
 
-The test script is very minimal and really ought to exercise the entire public interface.
+The test script is fairly minimal and really ought to exercise the entire public interface.
 
-=head2 Immediate
+
+=head2 Columns
 
 The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
+
+
+=head2 Interface
 
 Extend the base interface with the following interfaces:
 
@@ -30,14 +35,20 @@ do_insert_with_sequence
 
 =back
 
-Basic transaction support.
+
+=head2 Transactions
+
+There's no transaction support at this point; at least a basic version should be added.
 
 
-=head2 General
+=head2 Criteria
 
 The Criteria subclasses are woefully incomplete. See the unfinished_code file for more.
 
-Additional subclasses will be required to support the following:
+
+=head2 Subclasses
+
+Additional subclass logic will be required to support the following:
 
 =over 4
 

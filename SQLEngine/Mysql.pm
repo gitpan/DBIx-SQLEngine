@@ -11,14 +11,7 @@ sub sql_detect_any {
 
 sub sql_detect_table {
   my ($self, $tablename) = @_;
-  return ( sql => "select * from $tablename limit 1" )
-  return ( sql => "select * from $tablename where 1 = 0" )
-  
-  return (
-    table => $tablename,
-    criteria => '1 = 0',
-    limit => 1,
-  )
+  return ( sql => "select * from $tablename limit 1" );
 }
 
 sub sql_create_column_text_long_type {
@@ -71,7 +64,7 @@ sub do_insert_with_sequence {
   my $self = shift;
   my $seq_name = shift;
   my %args = @_;
-
+  
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
     croak "DBIx::SQLEngine::MySQL insert with sequence requires values to be hash-ref"
   }
@@ -94,7 +87,7 @@ sub sql_create_columns {
   if ( $type eq 'sequential' ) {
     return '  ' . $name . 
 	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
-	    'auto_increment';
+	    'int auto_increment primary key';
   } elsif ( $type eq 'binary' ) {
     return '  ' . $name . 
 	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
@@ -109,9 +102,9 @@ sub sql_create_columns {
 sub catch_query_exception {
   my $self = shift;
   my $error = shift;
-  if ( $error =~ /Lost connection to MySQL server/ ) {
-      $self->reconnect() and return 'REDO';
-  } elsif ( $error =~ /MySQL server has gone away/ ) {
+  if ( $error =~ /Lost connection to MySQL server/i 
+    or $error =~ /MySQL server has gone away/i
+    or $error =~ /no statement executing/i ) {
       $self->reconnect() and return 'REDO';
   } else {
     $self->SUPER::catch_query_exception( $error, @_ );

@@ -3,9 +3,10 @@ WriteMakefile(
     'NAME'		=> 'DBIx::SQLEngine',
     'VERSION_FROM'	=> 'SQLEngine.pm', 
     'PREREQ_PM'		=> {
-	DBI			=> 1.0,
-	DBIx::AnyDBD		=> 2.0,
-	Class::MakeMethods	=> 1.000_015,
+	DBI				=> 1.0,
+	DBIx::AnyDBD			=> 2.0,
+	Class::MakeMethods		=> 1.003,
+	Class::MakeMethods::Template	=> 1.003,
     }, 
     ($] >= 5.005 ? (
       ABSTRACT_FROM => 'SQLEngine.pm', 

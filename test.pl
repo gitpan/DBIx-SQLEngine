@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 23 }
+BEGIN { plan tests => 25 }
 
 ########################################################################
 
@@ -47,7 +47,7 @@ ok( $ds->detect_any );
 
 ########################################################################
 
-$ds->do_drop_table('test1') if $ds->detect_table('test1');
+$ds->do_drop_table('test1') if $ds->detect_table('test1', 'quietly');
 $ds->do_create_table( 'test1', [
   { name => 'id', type => 'sequential' },
   { name => 'name', type => 'text', length => 16 },
@@ -59,23 +59,25 @@ ok( 1 );
 
 my @cols = $ds->detect_table( 'test1' );
 ok( scalar( @cols ) == 3 );
-@cols = $ds->detect_table( 'table42' );
+@cols = $ds->detect_table( 'table42', 'quietly' );
 ok( scalar( @cols ) == 0 );
 
 ###
 
 $ds->do_insert( table => 'test1', values => { name=>'Sam', color=>'green' }, sequence => 'id' );
+$ds->do_insert( table => 'test1', values => { name=>'Ellen', color=>'orange' }, sequence => 'id' );
+$ds->do_insert( table => 'test1', values => { name=>'Sue', color=>'purple' }, sequence => 'id' );
 ok( 1 );
 
-my $rows = $ds->fetch_select( table => 'test1' );
-ok( ref $rows and scalar @$rows == 1 );
+my $rows = $ds->fetch_select( table => 'test1', order => 'id' );
+ok( ref $rows and scalar @$rows == 3 );
 ok( $rows->[0]->{'name'} eq 'Sam' and $rows->[0]->{'color'} eq 'green' );
 
 $ds->do_insert( table => 'test1', values => { name=>'Dave', color=>'blue' }, sequence => 'id' );
 ok( 1 );
 
 my $rows = $ds->fetch_select( table => 'test1' );
-ok( ref $rows and scalar @$rows == 2 );
+ok( ref $rows and scalar @$rows == 4 );
 
 ###
 
@@ -99,13 +101,21 @@ ok( 1 );
 my $rows = $ds->fetch_select( table => 'test1', criteria => { name=>'Dave' } );
 ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'color'} eq 'yellow' );
 
+### Now do the same thing using literal expressions
+
+$ds->do_update( table => 'test1', criteria => { name=>\"'Dave'" }, values => { color=>\"'mauve'" } );
+ok( 1 );
+
+my $rows = $ds->fetch_select( table=>'test1', criteria=>{ name=>\"'Dave'" } );
+ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'color'} eq 'mauve' );
+
 ###
 
 $ds->do_delete( table => 'test1', criteria => { name=>'Sam' } );
 ok( 1 );
 
 my $rows = $ds->fetch_select( table => 'test1' );
-ok( ref $rows and scalar @$rows == 1 );
+ok( ref $rows and scalar @$rows == 3 );
 
 ###
 

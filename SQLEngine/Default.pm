@@ -200,16 +200,20 @@ To determine if the connection is working and whether a table exists.
 =item detect_any
 
   $sqldb->detect_any () : $boolean
+  $sqldb->detect_any ( 1 ) : $boolean
 
 Attempts to confirm that values can be retreived from the database, using a server-specific "trivial" or "guaranteed" query provided by sql_detect_any.
-Catches any exceptions; if the query fails for any reason we return nothing.
+
+Catches any exceptions; if the query fails for any reason we return nothing. The reason for the failure is logged via warn() unless an additional argument with a true value is passed to surpress those error messages.
 
 =item detect_table
 
   $sqldb->detect_table ( $tablename ) : @columns_or_empty
+  $sqldb->detect_table ( $tablename, 1 ) : @columns_or_empty
 
 Attempts to query the given table without retrieving many (or any) rows. Uses a server-specific "trivial" or "guaranteed" query provided by sql_detect_any. 
-Catches any exceptions; if the query fails for any reason we return nothing.
+
+Catches any exceptions; if the query fails for any reason we return nothing. The reason for the failure is logged via warn() unless an additional argument with a true value is passed to surpress those error messages.
 
 =back
 
@@ -217,17 +221,21 @@ Catches any exceptions; if the query fails for any reason we return nothing.
 
 sub detect_any {
   my $self = shift;
+  my $quietly = shift;
+  my $result = 0;
   eval {
     local $SIG{__DIE__};
     $self->fetch_one_value($self->sql_detect_any);
-    return 1;
+    $result = 1;
   };
-  # warn "Unable to detect_any: $@";
-  return;
+  $result or warn "Unable to detect_any: $@" unless $quietly;
+  return $result;
 }
 
 sub detect_table {
-  my ($self, $tablename) = @_;
+  my $self = shift;
+  my $tablename = shift;
+  my $quietly = shift;
   my @sql;
   my $columns;
   eval {
@@ -238,7 +246,7 @@ sub detect_table {
   if ( ! $@ ) {
     return @$columns;
   } else {
-    # warn "Unable to detect_table $tablename: $@";
+    warn "Unable to detect_table $tablename: $@" unless $quietly;
     return;
   }
 }
@@ -1024,7 +1032,7 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item values
 
-Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted.
+Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 =back
 
@@ -1076,18 +1084,42 @@ sub sql_insert {
   my $values = $clauses{'values'};
   delete $clauses{'values'};
   my @v_params;
-  if ( ! $values ) {
+  if ( ! defined $values or ! length $values ) {
     croak("Values are missing or empty");
   } elsif ( ! ref( $values ) and length( $values ) ) {
     # should be one or more comma-separated quoted values or expressions
   } elsif ( UNIVERSAL::isa( $values, 'HASH' ) ) {
-    my @columns = split /,\s?/, $columns;
-    @v_params = map $values->{$_}, @columns;
-    $values = join ', ', ('?') x scalar @columns;
+    my @value_args = map $values->{$_}, split /,\s?/, $columns;
+
+    ( scalar @value_args ) or croak("Values are missing or empty");    
+    my @v_literals;
+    foreach my $v ( @value_args ) {
+      if ( ! ref($v) ) {
+	push @v_literals, '?';
+	push @v_params, $v;
+      } elsif ( ref($v) eq 'SCALAR' ) {
+	push @v_literals, $$v;
+      } else {
+	Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      }
+    }
+    $values = join ', ', @v_literals;
   } elsif ( ref($values) eq 'ARRAY' ) {
-    @v_params = @$values;
-    ( scalar @v_params ) or croak("Values are missing or empty");    
-    $values = join ', ', ('?') x scalar @$values;
+    my @value_args = @$values;
+
+    ( scalar @value_args ) or croak("Values are missing or empty");    
+    my @v_literals;
+    foreach my $v ( @value_args ) {
+      if ( ! ref($v) ) {
+	push @v_literals, '?';
+	push @v_params, $v;
+      } elsif ( ref($v) eq 'SCALAR' ) {
+	push @v_literals, $$v;
+      } else {
+	Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      }
+    }
+    $values = join ', ', @v_literals;
   } else {
     confess("Unsupported values spec '$values'");
   }
@@ -1136,7 +1168,7 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item values
 
-Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted.
+Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 =item criteria
 
@@ -1196,21 +1228,43 @@ sub sql_update {
   my $values = $clauses{'values'};
   delete $clauses{'values'};
   my @v_params;
+  my @values;
   if ( ! $values ) {
     croak("Values are missing or empty");
   } elsif ( ! ref( $values ) and length( $values ) ) {
     confess("Unsupported!");
   } elsif ( UNIVERSAL::isa( $values, 'HASH' ) ) {
-    @v_params = map $values->{$_}, @columns;
-    $values = join ', ', ('?') x scalar @columns;
+    my @value_args = map $values->{$_}, @columns;
+    
+    ( scalar @value_args ) or croak("Values are missing or empty");    
+    foreach my $v ( @value_args ) {
+      if ( ! ref($v) ) {
+	push @values, '?';
+	push @v_params, $v;
+      } elsif ( ref($v) eq 'SCALAR' ) {
+	push @values, $$v;
+      } else {
+	Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      }
+    }
   } elsif ( ref($values) eq 'ARRAY' ) {
-    @v_params = @$values;
-    $values = join ', ', ('?') x scalar @$values;
+    my @value_args = @$values;
+   
+    ( scalar @value_args ) or croak("Values are missing or empty");    
+    foreach my $v ( @value_args ) {
+      if ( ! ref($v) ) {
+	push @values, '?';
+	push @v_params, $v;
+      } elsif ( ref($v) eq 'SCALAR' ) {
+	push @values, $$v;
+      } else {
+	Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      }
+    }
   } else {
     confess("Unsupported values spec '$values'");
   }
-  
-  $sql .= " set " . join ', ', map "$_ = ?", @columns;
+  $sql .= " set " . join ', ', map "$columns[$_] = $values[$_]", 0 .. $#columns;
   push @params, @v_params;
   
   my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );

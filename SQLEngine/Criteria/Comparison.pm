@@ -78,7 +78,13 @@ sub sql_where {
   ( defined $compv ) or Carp::confess("Comparison value is missing or empty");
   my $cmp = $self->sql_comparator;
   ( length $cmp ) or Carp::confess("sql_comparator is missing or empty");
-  join(' ', $expr, $cmp, '?' ), $compv;
+  if ( ! ref($compv) ) {
+    join(' ', $expr, $cmp, '?' ), $compv;
+  } elsif ( ref($compv) eq 'SCALAR' ) {
+    join(' ', $expr, $cmp, $$compv );
+  } else {
+    Carp::confess("Can't use '$compv' as a comparison value");
+  }
 }
 
 ########################################################################

@@ -36,11 +36,12 @@ Portability: Dynamic subclassing (via DBIx::AnyDBD) to allow platform-specific s
 
 This module requires these other modules and libraries:
 
-  DBI			1.0
-  DBIx::AnyDBD		2.0
-  Class::MakeMethods	1.000_015
+  DBI				1.0
+  DBIx::AnyDBD			2.0
+  Class::MakeMethods		1.003
+  Class::MakeMethods::Template	1.003
 
-You must also have at least one working DBD module installed. (If you are using  DBD::CSV or DBD::AnyData, make sure you have upgraded to SQL::Statement 1.0 or later.)
+You must also have at least one working DBD module installed. (If you run into trouble, check that your DBI and DBD modules are up-to-date; in particular, if you are using DBD::CSV or DBD::AnyData, make sure you have upgraded to SQL::Statement 1.0 or later.)
 
 =head1 INSTALLATION
 
@@ -56,6 +57,8 @@ In order for the test to succeed, you must also have at least one working DBD mo
 
 =head1 STATUS AND SUPPORT
 
+This version is a preliminary release of DBIx::SQLEngine intended for public review and discussion.
+
 Although it based on earlier code that was extensively tested over several years of production use, this code has recently been majorly refactored, and has not yet been sufficiently tested in its new form.
 
 The proposed CPAN module list entry is as follows:
@@ -63,7 +66,7 @@ The proposed CPAN module list entry is as follows:
   Name            DSLI  Description
   --------------  ----  ---------------------------------------------
   DBIx::
-  :: SQLEngine    bdpo  Extends DBI with high-level operations
+  ::SQLEngine     bdpo  Extends DBI with high-level operations
 
 Further information and support for this module is available at http://www.evoscript.org.
 

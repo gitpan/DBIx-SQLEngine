@@ -11,13 +11,15 @@ TO DO
     This version to be posted for review and discussion on DBI list, Perl
     Monks, and Perl Modules list.
 
-    The test script is very minimal and really ought to exercise the entire
-    public interface.
+    The test script is fairly minimal and really ought to exercise the
+    entire public interface.
 
-  Immediate
+  Columns
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
+
+  Interface
 
     Extend the base interface with the following interfaces:
 
@@ -25,14 +27,19 @@ TO DO
 
     *   do_insert_with_sequence
 
-    Basic transaction support.
+  Transactions
 
-  General
+    There's no transaction support at this point; at least a basic version
+    should be added.
+
+  Criteria
 
     The Criteria subclasses are woefully incomplete. See the unfinished_code
     file for more.
 
-    Additional subclasses will be required to support the following:
+  Subclasses
+
+    Additional subclass logic will be required to support the following:
 
     *   All: type of long field
 
