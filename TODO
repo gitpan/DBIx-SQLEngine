@@ -25,6 +25,14 @@ TO DO
 
   Internals
 
+    How do we compensate for different versions of a database system? For
+    example, newer versions of MySQL support a number of features that the
+    old ones don't. Perhaps we should attempt to detect this, and rebless
+    into an appropriate subclass.
+
+    The handling of primary keys in Schema::Table and Schema::Column is not
+    yet correct.
+
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 

@@ -6,15 +6,24 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.021
+
+2004-04-   Released as DBIx-SQLEngine-0.021.
+
+2004-04-05 
+
+
 =head2 Version 0.020
 
 2004-04-05 Released as DBIx-SQLEngine-0.020.
 
 2004-04-05 Added initial Row classes. 
 
-2004-04-04 Added named_connection interface. 
+2004-04-04 Added named_connection interface.
 
 2004-04-04 Migrated clone function to new Utility::CloneWithParams package. Generalized string substitution. Added more tests and documentation.
+
+2004-04-04 Renamed Mixin::* packages to DriverTrait::*.
 
 2004-04-04 Added "where" as a synonym for "criteria" in sql_* methods and changed documentation to use it instead. Added "distinct" support to sql_select. 
 

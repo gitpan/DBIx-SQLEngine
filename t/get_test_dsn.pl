@@ -32,7 +32,7 @@ if ( ! $dsn ) {
 
   If you are running individual test scripts, you can pass the DSN,  
   username, and password as command-line arguments to the test.
-    Example:  > perl -Mblib t/standard.t "DBI:mysql:test"
+    Example:  > perl -Mblib t/user_dsn.t "DBI:mysql:test"
 
   This script will now query DBI for available drivers and suggested DSNs: 
 .

@@ -4,31 +4,32 @@ DBIx::SQLEngine::DriverTrait::NoComplexJoins - For databases without complex joi
 
 =head1 SYNOPSIS
 
-  # Classes can import this behavior if they don't have joins using ON
+  # Classes can import this behavior if they don't have joins using "on"
   use DBIx::SQLEngine::DriverTrait::NoComplexJoins ':all';
   
-  # Implements a workaround for unavailable "inner join on ..." capability
+  # Implements a workaround for missing "inner join on ..." capability
   $rows = $sqldb->fetch_select_rows( tables => [
     'foo', inner_join=>[ 'foo.id = bar.id' ], 'bar'
   ] );
   
-  # Attempts to use the "outer join" produce an exception
+  # Attempts to use an "outer join" produce an exception
   $rows = $sqldb->fetch_select_rows( tables => [
-    'foo', inner_join=>[ 'foo.id = bar.id' ], 'bar'
+    'foo', outer_join=>[ 'foo.id = bar.id' ], 'bar'
   ] );
 
 =head1 DESCRIPTION
 
 This package supports SQL database servers which do natively provide a SQL
-select with inner and outer joins. Instead, inner joins are replaced with cross joins and a where clause. Outer joins, including left and right joins, are not supported and will cause an exception.
+select with inner and outer joins. 
+
+This package causes inner joins to be replaced with cross joins and a where clause. Outer joins, including left and right joins, are not supported and will cause an exception.
 
 Note: this feature has been added recently, and the interface is subject to change.
 
-=head2 Caution
-
-Because of the way DBIx::AnyDBD munges the inheritance tree, DBIx::SQLEngine
-subclasses can not reliably inherit from this package. To work around this,
-we export all of the methods into their namespace using Exporter and @EXPORT.
+Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
+DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
+around this, we export all of the methods into their namespace using Exporter
+and @EXPORT.
 
 =cut
 
@@ -49,10 +50,56 @@ use Carp;
 
 ########################################################################
 
+=head1 REFERENCE
+
+=cut
+
+########################################################################
+
+=head2 Database Capability Information
+
+=over 4
+
+=item dbms_join_on_unsupported
+
+  $sqldb->dbms_join_on_unsupported() : 1
+
+Capability Limitation: This driver does not support the "join ... on ..." syntax.
+
+=item dbms_outer_join_unsupported
+
+  $sqldb->dbms_outer_join_unsupported() : 1
+
+Capability Limitation: This driver does not support any type of outer joins.
+
+=back
+
+=cut
+
 sub dbms_join_on_unsupported { 1 }
 sub dbms_outer_join_unsupported { 1 }
 
 ########################################################################
+
+=head2 Select to Retrieve Data
+
+=over 4
+
+=item sql_join()
+
+  $sqldb->sql_join( $table1, $table2, ... ) : $sql, @params
+  $sqldb->sql_join( $table1, \%criteria, $table2 ) : $sql, @params
+  $sqldb->sql_join( $table1, $join_type=>\%criteria, $table2 ) : $sql, @params
+
+Processes one or more table names to create the "from" clause of a select statement. Table names may appear in succession for normal "cross joins", or you may specify a join criteria between them.
+
+Inner joins are replaced with normal "comma" cross joins and a where clause. Use of a left, right or full outer join causes an exception to be thrown.
+
+Note that using join criteria will cause the return from this method to be a bit different than that of the superclass; instead of just being a "from" expression with table names, the returned SQL statement will also include a "where" expression. Conveniently, the sql_where method allows post-processing of a statement that already includes a where clause, so this value can still be combined with additional criteria supplied as a separate "where" argument to one of the select methods.
+
+=back
+
+=cut
 
 sub sql_join {
   my ($self, @exprs) = @_;
@@ -62,33 +109,47 @@ sub sql_join {
   my @where_params;
   while ( scalar @exprs ) {
     my $expr = shift @exprs;
+
+    my ( $table, $join, $criteria );
     if ( ! ref $expr and $expr =~ /^[\w\s]+join$/i and ref($exprs[0]) ) {
-      my $join = $expr;
-      my $criteria = shift @exprs;
-      my $table = shift @exprs or croak("No table name provided to join to");
+      $join = $expr;
+      $criteria = shift @exprs;
+      $table = shift @exprs;
 
-      $join =~ tr[_][ ];
-      ( $join !~ /outer|right|left/i ) 
-	  or confess("This database does not support outer joins");
-
-      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
-      if ( $expr_sql =~ s/ where (.*)$// ) {
-	push @where_sql, $1;
-	push @where_params, @expr_params;
-      }
-      $sql .= ", $expr_sql";
-      push @params, @expr_params;
-
-      my ($crit_sql, @crit_params) = 
-			DBIx::SQLEngine::Criteria->auto_where( $criteria );
-      push @where_sql, $crit_sql if ( $crit_sql );
-      push @where_params, @crit_params;
+    } elsif ( ref($expr) eq 'HASH' ) {
+      $join = 'inner join';
+      $criteria = $expr;
+      $table = shift @exprs;
 
     } else {
-      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $expr );
-      $sql .= ", $expr_sql";
-      push @params, @expr_params;
+      $join = ',';
+      $criteria = undef;
+      $table = $expr;
     }
+
+    ( $table ) or croak("No table name provided to join to");
+    ( $join ) or croak("No join type provided for link to $table");
+
+    ( $join !~ /outer|right|left/i ) 
+	or confess("This database does not support outer joins");
+    
+    my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
+    if ( $expr_sql =~ s/ where (.*)$// ) {
+      push @where_sql, $1;
+      push @where_params, @expr_params;
+    }
+    $sql .= ", $expr_sql";
+    push @params, @expr_params;
+    
+    if ( $criteria ) {
+      my ($crit_sql, @crit_params) = 
+			DBIx::SQLEngine::Criteria->auto_where( $criteria );
+      if ( $crit_sql ) {
+	push @where_sql, $crit_sql if ( $crit_sql );
+	push @where_params, @crit_params;
+      }
+    }
+
   }
   $sql =~ s/^, // or carp("Suspect table join: '$sql'");
   if ( scalar @where_sql ) {
@@ -97,6 +158,22 @@ sub sql_join {
     push @params, @where_params;
   }
   ( $sql, @params );
+}
+
+# ( $sql, @params ) = $sqldb->sql_join_expr( $table_name_or_arrayref );
+sub sql_join_expr {
+  my ( $self, $table ) = @_;
+  if ( ! ref $table ) {
+    $table 
+  } elsif ( ref($table) eq 'ARRAY' ) {
+    my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
+    # No need for parentheses because everything's going to be cross joined.
+    $sub_sql, @sub_params
+  } elsif ( UNIVERSAL::can($table, 'name') ) {
+    $table->name
+  } else {
+    Carp::confess("Unsupported expression in sql_join: '$table'");
+  }
 }
 
 ########################################################################

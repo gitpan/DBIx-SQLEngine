@@ -21,11 +21,10 @@ their results combined.
 
 Note: this feature has been added recently, and the interface is subject to change.
 
-=head2 Caution
-
-Because of the way DBIx::AnyDBD munges the inheritance tree, DBIx::SQLEngine
-subclasses can not reliably inherit from this package. To work around this,
-we export all of the methods into their namespace using Exporter and @EXPORT.
+Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
+DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
+around this, we export all of the methods into their namespace using Exporter
+and @EXPORT.
 
 In addition we go through some effort to re-dispatch methods because we can't
 rely on SUPER and we don't want to require NEXT. This isn't too complicated,
@@ -71,43 +70,69 @@ The following methods are provided:
 
 ########################################################################
 
-=head2 dbms_union_unsupported()
+=head2 Database Capability Information
 
-Set to 1.
+=over 4
 
-=head2 sql_union()
+=item dbms_union_unsupported()
 
-Calls Carp::confess().
+  $sqldb->dbms_union_unsupported() : 1
+
+Capability Limitation: This driver does not support native select unions.
+
+=back
 
 =cut
 
 sub dbms_union_unsupported { 1 }
 
-sub sql_union { confess("Union unsupported on this platform") }
-
 ########################################################################
 
-=head2 fetch_select()
+=head2 Select to Retrieve Data
 
-Simply calls the superclass method unless the union clause is provided. 
+=over 4
+
+=item fetch_select()
+
+  $sqldb->fetch_select( %sql_clauses ) : $row_hashes
+  $sqldb->fetch_select( %sql_clauses ) : ($row_hashes,$column_hashes)
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
+Runs each of the provided queries separately and concatenates their results.
+Munges the keys used to turn rows into hashes, so that all results use the 
+column names produced by the first of the queries.
+
+=item fetch_select_rows()
+
+  $sqldb->fetch_select_rows( %sql_clauses ) : $row_arrays
+  $sqldb->fetch_select_rows( %sql_clauses ) : ($row_arrays,$column_hashes)
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
 Runs each of the provided queries separately and concatenates their results.
 
-=head2 fetch_select_rows()
+=item visit_select()
 
-Simply calls the superclass method unless the union clause is provided. 
+  $sqldb->visit_select( $code_ref, %sql_clauses ) : @results
+  $sqldb->visit_select( %sql_clauses, $code_ref ) : @results
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
 Runs each of the provided queries separately and concatenates their results.
 
-=head2 visit_select()
+To Do: This method doesn't yet munge the column names retrived by the later queries to match the first.
 
-Simply calls the superclass method unless the union clause is provided. 
+=item visit_select_rows()
+
+  $sqldb->visit_select_rows( $code_ref, %sql_clauses ) : @results
+  $sqldb->visit_select_rows( %sql_clauses, $code_ref ) : @results
+
+Unless passed a "union" argument pair, simply calls the superclass method. 
 Runs each of the provided queries separately and concatenates their results.
 
-Note: This method doesn't yet munge the column names retrived by the later queries.
+=item sql_union()
 
-=head2 visit_select_rows()
+Calls Carp::confess(). 
 
-Simply calls the superclass method unless the union clause is provided. 
-Runs each of the provided queries separately and concatenates their results.
+=back
 
 =cut
 
@@ -192,6 +217,8 @@ sub visit_select_rows {
   }
   @results;
 }
+
+sub sql_union { confess("Union unsupported on this platform") }
 
 ########################################################################
 

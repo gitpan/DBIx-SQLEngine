@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Row::Base - Class for rows in a table
+DBIx::SQLEngine::Record::Set - Class for arrays of rows
 
 =head1 SYNOPSIS
 
@@ -9,18 +9,6 @@ DBIx::SQLEngine::Row::Base - Class for rows in a table
   $row_class = $sqldb->row_class( $table_name );
   
   $row_set = $row_class->fetch_select( criteria => { status => 2 } );
-  $row_class->do_update(values => { status => 3 }, criteria => { status => 2 });
-
-  $row = $row_class->get_record(); 
-  $row->{somefield} = 'New Value';
-  $row->insert_row();
-
-  $row = $row_class->fetch_row( $primary_key );
-
-  $row->{somefield} = 'New Value';
-  $row->update_row();
-
-  $row->delete_row();
 
 
 =head1 DESCRIPTION
@@ -31,12 +19,12 @@ This package is not yet complete.
 
 ########################################################################
 
-package DBIx::SQLEngine::Row::Base;
+package DBIx::SQLEngine::Record::Set;
 use strict;
 
 use Carp;
 
-use DBIx::SQLEngine::Schema::Table;
+use DBIx::SQLEngine::Record::Base;
 
 ########################################################################
 

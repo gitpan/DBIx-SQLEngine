@@ -24,12 +24,10 @@ table is allocated to store sequence values, and queries are used
 to atomically retrieve and increment the sequence value to ensure
 uniqueness.
 
-=head2 Caution
-
-Because of the way DBIx::AnyDBD munges the inheritance tree,
-DBIx::SQLEngine subclasses can not reliably inherit from this
-package. To work around this, we export all of the methods into
-their namespace using Exporter and @EXPORT. 
+Note: Because of the way DBIx::AnyDBD munges the inheritance tree,
+DBIx::SQLEngine subclasses can not reliably inherit from this package. To work
+around this, we export all of the methods into their namespace using Exporter
+and @EXPORT.
 
 =cut
 
@@ -62,6 +60,22 @@ The following methods are provided:
 
 ########################################################################
 
+=head2 Insert to Add Data 
+
+=over 4
+
+=item do_insert_with_sequence()
+
+  $sqldb->do_insert_with_sequence( $seq_name, %sql_clauses ) : $row_count
+
+Insert a single row into a table in the datasource, using a sequence to fill in the values of the column named in the first argument. Should return 1, unless there's an exception.
+
+Implemented with _seq_do_insert_preinc() and seq_increment().
+
+=back
+
+=cut
+
 # $rows = $self->do_insert_with_sequence( $sequence, %clauses );
 sub do_insert_with_sequence { 
   (shift)->_seq_do_insert_preinc( @_ )
@@ -69,7 +83,11 @@ sub do_insert_with_sequence {
 
 ########################################################################
 
-=head2 seq_fetch_current
+=head2 Sequence Table 
+
+=over 4
+
+=item seq_fetch_current()
 
   $sqldb->seq_fetch_current( $table, $field ) : $current_value
 
@@ -79,7 +97,7 @@ Implemented as an exception-handling wrapper around the query defined in
 sql_seq_fetch_current(), which attempts to create the sequence table if it
 doesn't exist and insert a row for this sequence if needed.
 
-=head2 sql_seq_fetch_current
+=item sql_seq_fetch_current()
 
   $sqldb->sql_seq_fetch_current( $table, $field ) : $sql, @params
 
@@ -133,7 +151,9 @@ sub sql_seq_fetch_current {
 
 ########################################################################
 
-=head2 seq_increment
+=pod
+
+=item seq_increment()
 
   $sqldb->seq_increment( $table, $field ) : $new_value
 
@@ -141,7 +161,7 @@ Increments the sequence, and returns the newly allocated value.
 
 This is the primary "public" interface of this package. 
 
-If someone else has completed the same increment before we have, our update will have no effect and we'll immeidiately try again and again until successful.
+If someone else has completed the same increment before we have, our update will have no effect and we'll immediately try again and again until successful.
 
 If the table does not yet exist, attempts to create it automatically. 
 
@@ -182,7 +202,9 @@ sub sql_seq_increment {
 
 ########################################################################
 
-=head2 seq_table_name
+=pod
+
+=item seq_table_name()
 
 Constant 'dbix_sqlengine_seq'.
 
@@ -192,11 +214,19 @@ use constant seq_table_name => 'dbix_sqlengine_seq';
 
 ########################################################################
 
-=head2 seq_create_table
+=pod
+
+=item seq_create_table()
 
   $sqldb->seq_create_table()
 
 Issues a SQL create table statement to create the sequence table.
+
+=item seq_drop_table()
+
+  $sqldb->seq_drop_table()
+
+Issues a SQL drop table statement to remove the sequence table.
 
 =cut
 
@@ -211,14 +241,6 @@ sub seq_create_table {
   # warn "Created sequence table '$seq_table'";
 }
 
-=head2 seq_drop_table
-
-  $sqldb->seq_drop_table()
-
-Issues a SQL drop table statement to remove the sequence table.
-
-=cut
-
 # $sqldb->seq_drop_table();
 sub seq_drop_table {
   my $self = shift;
@@ -229,11 +251,19 @@ sub seq_drop_table {
 
 ########################################################################
 
-=head2 seq_insert_record
+=pod
+
+=item seq_insert_record()
 
   $sqldb->seq_insert_record( $table, $field )
 
 Creates a record in the sequence table for a given field in a particular table. 
+
+=item seq_delete_record()
+
+  $sqldb->seq_delete_record( $table, $field )
+
+Removes the corresponding record in the sequence table.
 
 =cut
 
@@ -247,14 +277,6 @@ sub seq_insert_record {
   );
 }
 
-=head2 seq_delete_record
-
-  $sqldb->seq_delete_record( $table, $field )
-
-Removes the corresponding record in the sequence table.
-
-=cut
-
 # $sqldb->seq_delete_record( $table, $field );
 sub seq_delete_record {
   my $self = shift;
@@ -267,7 +289,9 @@ sub seq_delete_record {
 
 ########################################################################
 
-=head2 seq_bootstrap_init
+=pod
+
+=item seq_bootstrap_init()
 
   $sqldb->seq_bootstrap_init( $table, $field ) : $current_value
 

@@ -52,7 +52,7 @@ use DBIx::SQLEngine::Schema::ColumnSet;
 
 =item SQLEngine->table()
 
-  DBIx::SQLEngine->new( ... )->table( $tablename ) : $table
+  $sqldb->table( $tablename ) : $table
 
 Convenience function to create a table with the given table name and sqlengine.
 
@@ -210,6 +210,27 @@ sub detect_table {
 
 ########################################################################
 
+=head2 Row Class
+
+=over 4
+
+=item record_class()
+
+  $table->record_class() : $record_class
+
+Returns the Record::Class which corresponds to the table.
+
+=back
+
+=cut
+
+sub record_class {
+  require DBIx::SQLEngine::Record::Base;
+  DBIx::SQLEngine::Record::Base->new_subclass( table=>(shift), name=>(shift) )
+}
+
+########################################################################
+
 ########################################################################
 
 =head1 FETCHING DATA (SQL DQL)
@@ -223,8 +244,6 @@ sub detect_table {
   $table->fetch_select ( %select_clauses ) : $row_hash_array
 
 Calls the corresponding SQLEngine method with the table name and the provided arguments. Return rows from the table that match the provided criteria, and in the requested order, by executing a SQL select statement.
-
-Fetch the row with the specified ID. 
 
 =item visit_select()
 
@@ -243,7 +262,9 @@ Fetches a single row by primary key.
 
 =item select_rows()
 
-  $table->select_row ( @primary_key_values_or_hashrefs ) : $row_hash_array
+  $table->select_rows ( @primary_key_values_or_hashrefs ) : $row_hash_array
+
+Fetches a set of one or more by primary key.
 
 =back
 
@@ -254,12 +275,7 @@ sub fetch_select {
   (shift)->sqlengine_do('fetch_select', @_)
 }
 
-# $rows = $self->fetch_one_value( %select_clauses );
-sub fetch_one_value {
-  (shift)->sqlengine_do('fetch_one_value', @_ )
-}
-
-# $rows = $self->visit_select( %select_clauses, $sub );
+# @results= $self->visit_select( %select_clauses, $sub );
 sub visit_select {
   my $self = shift;
   my $sub = ( ref($_[0]) ? shift : pop );
@@ -287,9 +303,16 @@ sub select_rows {
 
 =over 4
 
+=item fetch_one_value()
+
+  $table->fetch_one_value( %sql_clauses ) : $scalar
+
+Calls fetch_select, then returns the first value from the first row of results.
+
 =item count_rows()
 
-  $table->count_rows ( CRITERIA ) : $number
+  $table->count_rows ( ) : $number
+  $table->count_rows ( $criteria ) : $number
 
 Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
 
@@ -302,6 +325,11 @@ Returns the largest value in the named column.
 =back
 
 =cut
+
+# $value = $self->fetch_one_value( %select_clauses );
+sub fetch_one_value {
+  (shift)->sqlengine_do('fetch_one_value', @_ )
+}
 
 # $rowcount = $self->count_rows
 # $rowcount = $self->count_rows( $criteria );
@@ -565,6 +593,12 @@ sub primary_criteria {
 =head2 Create and Drop Tables
 
 =over 4
+
+=item table_exists()
+
+  $table->table_exists() : $flag
+
+Detects whether the table has been created and has not been dropped.
 
 =item create_table()
 

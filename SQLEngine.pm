@@ -4,28 +4,67 @@ DBIx::SQLEngine - Extends DBI with high-level operations
 
 =head1 SYNOPSIS
 
-  my $sqldb = DBIx::SQLEngine->new( @DBIConnectionArgs );
+B<Wrapper around a DBI Connection:>
+
+  $sqldb = DBIx::SQLEngine->new( $dbi_dsn, $dbi_user, $dbi_passwd );
+
+  $sqldb = DBIx::SQLEngine->new( $my_dbh );
+
+B<High-Level Interface with Data-driven SQL:>
+
+  $hash_ary = $sqldb->fetch_select( 
+    table => 'students', where => { 'status'=>'minor' },
+  );
   
   $sqldb->do_insert(
     table => 'students', 
     values => { 'name'=>'Dave', 'age'=>'19', 'status'=>'minor' },
   );
   
-  $hash_ary = $sqldb->fetch_select( 
-    table => 'students',
-    where => { 'status'=>'minor' },
-  );
-  
   $sqldb->do_update( 
-    table => 'students', 
-    where => 'age > 20',
+    table => 'students', where => 'age > 20',
     values => { 'status'=>'adult' },
   );
   
   $sqldb->do_delete(
-    table => 'students', 
-    where => { 'name'=>'Dave' },
+    table => 'students', where => { 'name'=>'Dave' },
   );
+
+B<Portablity with Driver Classes for Idiom and Emulation:>
+
+  $hash_ary = $sqldb->fetch_select( 
+    table => 'students',
+    order => 'last_name, first_name',
+    limit => 20, offset => 100,         # uses database's limit syntax
+  );
+  
+  $hash_ary = $sqldb->fetch_select( 
+    table => [ 'students',     # "join on" if available, or use "where" 
+		INNER_JOIN => ['students.id = grades.student_id'],
+	  	'grades' ],
+    where => { 'academic_year'=>'2004' },
+  );
+  
+  $hash_ary = $sqldb->fetch_select( 
+    union => [                      # combines results of both queries
+      { table => 'students', columns => 'first_name, last_name' },
+      { table => 'staff',    columns => 'name_f, name_l' },
+    ] 
+  );
+
+  $sqldb->do_insert(
+    table => 'students', 
+    sequence => 'id',         # name of auto_increment/sequence column
+    values => { 'name'=>'Dave', 'age'=>'19', 'status'=>'minor' },
+  );
+
+B<Full DBI Access for Direct Low-Level Use:>
+
+  $array_ary = $sqldb->fetch_sql_rows($statement, @bind_params);
+
+  $dbi_dbh = $sqldb->get_dbh();               # get the wraped DBI dbh
+
+  $sth = $sqldb->prepare($statement);    # or just call any dbh method
 
 
 =head1 ABSTRACT
@@ -142,7 +181,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.020;
+$VERSION = 0.021;
 
 use strict;
 
@@ -244,8 +283,8 @@ The following methods maanage a collection of named connection parameters.
 
 =item define_named_connections()
 
-  DBIx::SQLEngine->define_named_connections( $cnxn_name, $cnxn_info )
-  DBIx::SQLEngine->define_named_connections( %cnxn_names_and_info )
+  DBIx::SQLEngine->define_named_connections( $name, $cnxn_info )
+  DBIx::SQLEngine->define_named_connections( %names_and_info )
 
 Defines one or more named connections using the names and definitions provided.
 The connection definition must be in one of the formats described in
@@ -253,32 +292,32 @@ L</"interpret_named_connection()">.
 
 =item define_named_connections_from_text()
 
-  DBIx::SQLEngine->define_named_connection_from_text($cnxn_name, $cnxn_info_text)
-  DBIx::SQLEngine->define_named_connection_from_text(%cnxn_names_and_info_text)
+  DBIx::SQLEngine->define_named_connection_from_texts($name, $cnxn_info_text)
+  DBIx::SQLEngine->define_named_connection_from_texts(%names_and_info_text)
 
 Defines one or more connections, using some special processing to facilitate storing dynamic connection definitions in an external source such as a text file or database table. connection definitions which begin with a [ character are presumed to contain an array definition and are evaluated immediately. Definitions which begin with a " or ; character are presumed to contain a code definition and evaluated as the contents of an anonymous subroutine. All evaluations are done via a Safe compartment, which is required when this function is first used, so the code is extremely limited and can not call most other functions. 
 
 =item named_connections()
 
-  DBIx::SQLEngine->named_connections() : %cnxn_names_and_info
-  DBIx::SQLEngine->named_connections( $cnxn_name ) : $cnxn_info
-  DBIx::SQLEngine->named_connections( \@cnxn_names ) : @cnxn_info
-  DBIx::SQLEngine->named_connections( $cnxn_name, $cnxn_info, ... )
-  DBIx::SQLEngine->named_connections( \%cnxn_names_and_info )
+  DBIx::SQLEngine->named_connections() : %names_and_info
+  DBIx::SQLEngine->named_connections( $name ) : $cnxn_info
+  DBIx::SQLEngine->named_connections( \@names ) : @cnxn_info
+  DBIx::SQLEngine->named_connections( $name, $cnxn_info, ... )
+  DBIx::SQLEngine->named_connections( \%names_and_info )
 
 Accessor and mutator for a class-wide hash mappping connection names to their definitions. Used internally by the other named_connection methods.
 
 =item named_connection()
 
-  DBIx::SQLEngine->named_connection( $cnxn_name ) : $cnxn_info
+  DBIx::SQLEngine->named_connection( $name ) : $cnxn_info
 
 Retrieves the connection definition matching the name provided. Croaks if no connection has been defined for that name.
 
 =item interpret_named_connection()
 
-  DBIx::SQLEngine->interpret_named_connection( $cnxn_name, @params ) : $dbh
-  DBIx::SQLEngine->interpret_named_connection( $cnxn_name, @params ) : $dsn
-  DBIx::SQLEngine->interpret_named_connection( $cnxn_name, @params ) : ( $dsn, $user, $pass, $opts )
+  DBIx::SQLEngine->interpret_named_connection($name, @params) : $dbh
+  DBIx::SQLEngine->interpret_named_connection($name, @params) : $dsn
+  DBIx::SQLEngine->interpret_named_connection($name, @params) : ( $dsn, $user, $pass, $opts )
 
 Combines the connection definition matching the name provided with the following arguments and returns the resulting hash of connection clauses. Croaks if no connection has been defined for that name.
 
@@ -475,7 +514,7 @@ Calls fetch_select, then returns only the first row of results.
 
   $sqldb->fetch_one_value( %sql_clauses ) : $scalar
 
-Calls fetch_select, then returns a single value from the first row of results.
+Calls fetch_select, then returns the first value from the first row of results.
 
 =item visit_select()
 
@@ -754,15 +793,15 @@ sub fetch_one_value {
   (%$row)[1];
 }
 
-# $rows = $self->visit_select( %clauses, $coderef );
-# $rows = $self->visit_select( $coderef, %clauses );
+# @results = $self->visit_select( %clauses, $coderef );
+# @results = $self->visit_select( $coderef, %clauses );
 sub visit_select {
   my $self = shift;
   $self->visit_sql( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) )
 }
 
-# $rows = $self->visit_select_rows( %clauses, $coderef );
-# $rows = $self->visit_select_rows( $coderef, %clauses );
+# @results = $self->visit_select_rows( %clauses, $coderef );
+# @results = $self->visit_select_rows( $coderef, %clauses );
 sub visit_select_rows {
   my $self = shift;
   $self->visit_sql_rows( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) )
@@ -917,6 +956,7 @@ Subclasses should, based on the datasource's server_type, protect a literal valu
 =item sql_join()
 
   $sqldb->sql_join( $table1, $table2, ... ) : $sql, @params
+  $sqldb->sql_join( $table1, \%criteria, $table2 ) : $sql, @params
   $sqldb->sql_join( $table1, $join_type=>\%criteria, $table2 ) : $sql, @params
 
 Processes one or more table names to create the "from" clause of a select statement. Table names may appear in succession for normal "cross joins", or you may specify a "complex join" by placing an inner or outer joining operation between them.
@@ -975,6 +1015,7 @@ sub sql_escape_text_for_like {
 ########################################################################
 
 # ( $sql, @params ) = $sqldb->sql_join( $table_name, $table_name, ... );
+# ( $sql, @params ) = $sqldb->sql_join( $table_name, \%crit, $table_name);
 # ( $sql, @params ) = $sqldb->sql_join( $table_name, join=>\%crit, $table_name);
 sub sql_join {
   my ($self, @exprs) = @_;
@@ -982,28 +1023,43 @@ sub sql_join {
   my @params;
   while ( scalar @exprs ) {
     my $expr = shift @exprs;
+
+    my ( $table, $join, $criteria );
     if ( ! ref $expr and $expr =~ /^[\w\s]+join$/i and ref($exprs[0]) ) {
-      my $join = $expr;
-      my $criteria = shift @exprs;
-      my $table = shift @exprs or croak("No table name provided to join to");
+      $join = $expr;
+      $criteria = shift @exprs;
+      $table = shift @exprs;
 
-      $join =~ tr[_][ ];
-      $sql .= " $join";
-
-      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
-      $sql .= " $expr_sql";
-      push @params, @expr_params;
-
-      my ($crit_sql, @crit_params) = 
-			DBIx::SQLEngine::Criteria->auto_where( $criteria );
-      $sql .= " on $crit_sql" if ( $crit_sql );
-      push @params, @crit_params;
+    } elsif ( ref($expr) eq 'HASH' ) {
+      $join = 'inner join';
+      $criteria = $expr;
+      $table = shift @exprs;
 
     } else {
-      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $expr );
-      $sql .= ", $expr_sql";
-      push @params, @expr_params;
+      $join = ',';
+      $criteria = undef;
+      $table = $expr;
     }
+
+    ( $table ) or croak("No table name provided to join to");
+    ( $join ) or croak("No join type provided for link to $table");
+
+    $join =~ tr[_][ ];
+    $sql .= ( ( length($join) == 1 ) ? '' : ' ' ) . $join;
+    
+    my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
+    $sql .= " $expr_sql";
+    push @params, @expr_params;
+    
+    if ( $criteria ) {
+      my ($crit_sql, @crit_params) = 
+			DBIx::SQLEngine::Criteria->auto_where( $criteria );
+      if ( $crit_sql ) {
+	$sql .= " on $crit_sql";
+	push @params, @crit_params;
+      }
+    }
+
   }
   $sql =~ s/^, // or carp("Suspect table join: '$sql'");
   ( $sql, @params );
@@ -1278,7 +1334,7 @@ sub sql_insert {
 
 =pod
 
-B<Portability:> Auto-incrementing sequences are handled differently by various DBMS platforms. For example, the MySQL and MSSQL subclasses use auto-incrementing fields, Oracle and Pg use server-specific sequence objects, and AnyData and CSV make their own ad-hoc table of incrementing values.  
+B<Portability:> Auto-incrementing sequences are handled differently by various DBMS platforms. For example, the MySQL and MSSQL subclasses use auto-incrementing fields, Oracle and Pg use server-specific sequence objects, and AnyData and CSV lack this capability, which can be emulated with an ad-hoc table of incrementing values.  
 
 To standardize their use, this package defines an interface with several typical methods which may or may not be supported by individual subclasses. You may need to consult the documentation for the SQLEngine subclass and DBMS platform you're using to confirm that the sequence functionality you need is available.
 
@@ -1985,26 +2041,27 @@ sub dbms_create_column_types {
 
 =over 4
 
-=item table()
-
-  $sqldb->table( $tablename ) : $table
-
-Returns a new DBIx::SQLEngine::Schema::Table object with this SQLEngine and the given table name. See L<DBIx::SQLEngine::Schema::Table> for more information on this object's interface.
-
 =item tables()
 
   $sqldb->tables() : $tableset
 
 Returns a new DBIx::SQLEngine::Schema::TableSet object containing table objects with the names discovered by detect_table_names(). See L<DBIx::SQLEngine::Schema::TableSet> for more information on this object's interface.
 
+=item table()
+
+  $sqldb->table( $tablename ) : $table
+
+Returns a new DBIx::SQLEngine::Schema::Table object with this SQLEngine and the given table name. See L<DBIx::SQLEngine::Schema::Table> for more information on this object's interface.
+
+=item record_class()
+
+  $sqldb->record_class( $tablename ) : $record_class
+
+Returns the Record::Class which corresponds to the given table name
+
 =back
 
 =cut
-
-sub table {
-  require DBIx::SQLEngine::Schema::Table;
-  DBIx::SQLEngine::Schema::Table->new( sqlengine => (shift), name => (shift) )
-}
 
 sub tables {
   my $self = shift;
@@ -2012,6 +2069,15 @@ sub tables {
   DBIx::SQLEngine::Schema::TableSet->new( 
     map { $self->table( $_ ) } $self->detect_table_names 
   )
+}
+
+sub table {
+  require DBIx::SQLEngine::Schema::Table;
+  DBIx::SQLEngine::Schema::Table->new( sqlengine => (shift), name => (shift) )
+}
+
+sub record_class {
+  (shift)->table( shift )->record_class()
 }
 
 ########################################################################
@@ -2296,7 +2362,7 @@ Placing the following text in the target file will define all of the queries use
   student_by_id: [ 'select * from students where id = ?', \$1 ]
 
   # Generated query using hash format
-  delete_student: { action=>'delete', table=>'students', where=>{ id=>\$1 } });
+  delete_student: { action=>'delete', table=>'students', where=>{ id=>\$1 } }
   
   # Perl expression to be turned into a query generating subroutine
   name_search: "select * from students where name like '%\L$_[0]\E%'"
@@ -2352,7 +2418,9 @@ sub do_query {
 
 =head1 ADVANCED CAPABILITIES
 
-Not all of these capabilities will be available on all database servers.
+Not all of the below capabilities will be available on all database servers. 
+
+For application reliability, call the relevant *_unsupported methods to confirm that the database you've connected to has the capabilities you require, and either exit with a warning or use some type of fallback strategy if they are not.
 
 =head2 Database Capability Information
 
@@ -2705,19 +2773,19 @@ sub sql_drop_index   {
 
 Note: this feature has been added recently, and the interface is subject to change.
 
-These methods are all subclass hooks. Fail with message "DBMS-Specific Function".
-
-Subclasses may 
-
 =over 4
 
 =item create_database()
 
   $sqldb->create_database( $db_name )
 
+Fails with message "DBMS-Specific Function".
+
 =item drop_database()
 
   $sqldb->drop_database( $db_name )
+
+Fails with message "DBMS-Specific Function".
 
 =back
 

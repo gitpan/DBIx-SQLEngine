@@ -1,4 +1,3 @@
-4542-102843816-28.pm
 CHANGES
 MANIFEST
 MANIFEST.SKIP
@@ -33,8 +32,8 @@ SQLEngine/Driver/SQLite.pm
 SQLEngine/DriverTrait/NoComplexJoins.pm
 SQLEngine/DriverTrait/NoSequences.pm
 SQLEngine/DriverTrait/NoUnions.pm
-SQLEngine/Row/Base.pm
-SQLEngine/Row/Set.pm
+SQLEngine/Record/Base.pm
+SQLEngine/Record/Set.pm
 SQLEngine/Schema/Column.pm
 SQLEngine/Schema/ColumnSet.pm
 SQLEngine/Schema/Table.pm
@@ -45,9 +44,10 @@ t/compile.t
 t/examplep.t
 t/get_test_dsn.pl
 t/internal_clone.t
-t/null_named.t
-t/null_sqlgen.t
-t/null_table.t
-t/standard.t
+t/named_queries.t
+t/sql_generate.t
+t/table_objects.t
+t/table_row_class.t
 t/test_data/about_test_data
 t/test_suite.pl
+t/user_dsn.t
