@@ -168,7 +168,7 @@ sub sql_limit {
   my ( $limit, $offset, $sql, @params ) = @_;
 
   # You can't apply "limit" to non-table fetches like "select LAST_INSERT_ID"
-  if ( $sql =~ /\bfrom\b/ and $limit or $offset) {
+  if ( $sql =~ /\bfrom\b/i and $limit or $offset) {
     $limit ||= 1_000_000; # MySQL select with offset requires a limit
     $sql .= " limit " . ( $offset ? "$offset," : '' ) . $limit;
   }

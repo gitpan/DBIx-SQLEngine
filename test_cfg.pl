@@ -2,18 +2,20 @@
 
 use ExtUtils::MakeMaker;
 
+my $separator = "\n" . ( '=' x 79 ) . "\n";
+
 ########################################################################
 
-print "\nReading test connection definitions from test.config file...\n"; 
+print "\nReading test connection definitions from test.cfg file...\n"; 
 
-if ( -f 'test.config' ) {
-  open( CNXNS, 'test.config' ) or die $!;
+if ( -f 'test.cfg' ) {
+  open( CNXNS, 'test.cfg' ) or die $!;
   @dsns = <CNXNS>;
   chomp @dsns;
   close( CNXNS ) or die $!;
   print "  Found " . scalar(@dsns) . " lines.\n\n";
 } else {
-  print "  No test.config file found.\n\n";
+  print "  No test.cfg file found.\n\n";
 }
 
 ########################################################################
@@ -73,13 +75,16 @@ if ( my $count = scalar @suggestions ) {
 
 my $needs_save;
 while (1) {
+
+  print $separator;
+
   if ( scalar @dsns ) {
-    print "\nThe current configuration in test.config is listed below:\n";
+    print "\nThe current configuration in test.cfg is listed below:\n";
     foreach ( 1 .. scalar @dsns ) {
       print "  $_: $dsns[ $_ - 1 ]\n";
     }
   } else {
-    print "\nYou do not currently have any configurations in test.config\n";
+    print "\nYou do not currently have any configurations in test.cfg\n";
   }
   
   my @available = grep { my $s = $_; ! grep { $_ eq $s } @dsns } @suggestions;
@@ -135,10 +140,12 @@ while (1) {
   }
 }
 
+print $separator;
+
 if ( $needs_save ) {
-  print "\nWriting " . scalar(@dsns) . " connections to test.config file...\n"; 
+  print "\nWriting " . scalar(@dsns) . " connections to test.cfg file...\n"; 
   
-  open( CNXNS, '>test.config' ) or die $!;
+  open( CNXNS, '>test.cfg' ) or die $!;
   print CNXNS map "$_\n", @dsns;
   close( CNXNS ) or die $!;
 }

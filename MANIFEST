@@ -1,7 +1,6 @@
 CHANGES
 make_extras/compile.pl
 make_extras/htmldoc.pl
-make_extras/test.config.pl
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
@@ -57,8 +56,10 @@ SQLEngine/Record/Cache.pm
 SQLEngine/Record/Class.pm
 SQLEngine/Record/Extras.pm
 SQLEngine/Record/Hooks.pm
+SQLEngine/Record/PKey.pm
 SQLEngine/Record/Table.pm
 SQLEngine/RecordSet/NextPrev.pm
+SQLEngine/RecordSet/PKeySet.pm
 SQLEngine/RecordSet/Set.pm
 SQLEngine/Schema/Column.pm
 SQLEngine/Schema/ColumnSet.pm
@@ -66,6 +67,7 @@ SQLEngine/Schema/Table.pm
 SQLEngine/Schema/TableSet.pm
 SQLEngine/Utility/CloneWithParams.pm
 test.pl
+test_cfg.pl
 test_core/compile.t
 test_core/examplep.t
 test_core/generate_sql.t

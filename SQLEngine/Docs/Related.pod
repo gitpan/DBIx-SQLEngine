@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Docs::RelatedModules - Survey of DBI Wrappers
+DBIx::SQLEngine::Docs::Related - Survey of DBI Wrappers
 
 
 =head1 SYNOPSIS

@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.92;
+$VERSION = 0.93;
 
 use DBIx::SQLEngine::Driver;
 @ISA = qw( DBIx::SQLEngine::Driver );
@@ -135,6 +135,16 @@ B<Object Mapping:> Classes for tables, columns, and records.
 DBIx::SQLEngine is the latest generation of a toolkit used by the authors for
 several years to develop business data applications. Its goal is to simplify dynamic query execution and to minimize cross-RDMS portability issues.
 
+=head2 Layered Class Framework
+
+DBIx::SQLEngine is an object-oriented framework containing several class hierarchies grouped into three layers. Applications can use the Driver layer directly, or they can use the Schema and Record layers built on top of it.
+
+The Driver layer is the primary and lowest-level layer upon which the other layers depend. Each Driver object contains a DBI database handle and is responsible for generating SQL queries, executing them, and returning the results. These classes are described below in L</"Driver Layer Classes">.
+
+The Schema layer centers around the Table object, which combines a Driver object with the name of a table to perform queries against that table. Table objects keep track of their structure as Column objects, and use that information to facilitate common types of queries. These classes are described below in L</"Schema Layer Classes">. 
+
+The Record layer builds on the Schema layer to create Perl classes which are bound to a given Table object. Your Record subclass can fetch rows from the table which will be blessed into that class, and have methods allowing them to be changed and updated back to the database. These classes are described below in L</"Record Layer Classes">.
+
 =head2 DBI Wrapper
 
 Each DBIx::SQLEngine::Driver object is implemented as a wrapper
@@ -154,9 +164,9 @@ Relevant methods are descrbed in the L<Driver Object Creation|DBIx::SQLEngine::D
 
 =head2 High-Level Interface
 
-A combined query interface provides a useful high-level idiom to perform
-the typical cycle of SQL generation, query execution, and results fetching,
-all through a single method call. 
+Drivers have a combined query interface provides a useful high-level idiom
+to perform the typical cycle of SQL generation, query execution, and results
+fetching, all through a single method call.
 
 The various fetch_*, visit_* and do_* methods that don't end in _sql, like
 fetch_select and do_insert, are wrappers that combine a SQL-generation and a
@@ -167,8 +177,8 @@ These methods are defined in the L<Fetching Data|DBIx::SQLEngine::Driver/"FETCHI
 
 =head2 Data-Driven SQL
 
-Several methods are responsible for converting their arguments into commands
-and placeholder parameters in SQL, the Structured Query Language.
+Several Driver methods are responsible for converting their arguments into
+commands and placeholder parameters in SQL, the Structured Query Language.
 
 The various methods whose names being with sql_, like sql_select and
 sql_insert, each accept a hash of arguments and combines then to return a SQL
@@ -179,22 +189,24 @@ supports passing arbitrary queries through using a C<sql> parameter.
 
 =head2 Named Definitions
 
-Connections and queries may be registered in named collections. The named
-connection feature allows the definition of names for sets of connection
-parameters, while the named query methods support names for various types of
-queries in either data-driven or plain-SQL formats.
+Driver connection arguments and query definitions may be registered in named
+collections. The named connection feature allows the definition of names for
+sets of connection parameters, while the named query methods support names
+for various types of queries in either data-driven or plain-SQL formats.
 
 The definitions may include nested data structures with a special type of
 placeholders to be replaced by additional values at run-time. References to
 subroutines can also be registed as definitions, to be called at run-time with
 any additional values to produce the connection or query arguments.
 
-This functionality is described in the L<Named Connections|DBIx::SQLEngine::Driver/"Named Connections"> and L<Named Query Catalog|DBIx::SQLEngine::Driver/"NAMED QUERY
-CATALOG"> sections of L<DBIx::SQLEngine::Driver>.
+This functionality is described in the 
+L<Named Connections|DBIx::SQLEngine::Driver/"Named Connections"> and 
+L<Named Query Catalog|DBIx::SQLEngine::Driver/"NAMED QUERY CATALOG"> 
+sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 Portability Subclasses
 
-Behind the scenes, different subclasses of SQLEngine are instantiated
+Behind the scenes, different Driver subclasses are instantiated
 depending on the type of server to which you connect, thanks to DBIx::AnyData.
 
 This release includes subclasses for connections to MySQL, PostgreSQL,
@@ -238,80 +250,7 @@ provided by the data-driven query interface, you can include arbitrary bits
 of SQL in the arguments passed to a method that fetch objects from the
 database.
 
-This functionality is described in L</"OBJECT MAPPING"> and the documentation
-for the various classes.
-
-=cut
-
-########################################################################
-
-########################################################################
-
-=head1 ARCHITECTURE
-
-DBIx::SQLEngine is an object-oriented framework containing several class hierarchies grouped into three layers. Applications can use the Driver layer directly, or they can use the Schema or Record layers built on top of it.
-
-=head2 Driver Layer
-
-The Driver layer is the primary and lowest-level layer upon which the other layers depend. Each Driver object contains a DBI database handle and is responsible for generating SQL queries, executing them, and returning the results. 
-
-=over 2
-
-=item *
-
-Driver objects are wrappers around DBI database handles. 
-
-=item *
-
-Criteria objects produce elements of SQL where clauses.
-
-=back
-
-See L<DBIx::SQLEngine::Driver> and L<DBIx::SQLEngine::Criteria>.
-
-=head2 Schema Layer
-
-The Schema layer centers around the Table object, which combines a Driver object with the name of a table to perform queries against that table. Table objects keep track of their structure as Column objects, and use that information to facilitate common types of queries.
-
-=over 2
-
-=item *
-
-Column objects are very simple structures that hold information about columns in a database table or query result.
-
-=item *
-
-ColumnSet objects contain an array of Column objects
-
-=item *
-
-Table objects represent database tables accessible via a particular DBIx::SQLEngine.
-
-=item *
-
-TableSet objects contain an array of Table objects
-
-=back
-
-See L<DBIx::SQLEngine::Table> and L<DBIx::SQLEngine::Column>, as well as  L<DBIx::SQLEngine::TableSet> and L<DBIx::SQLEngine::ColumnSet>.
-
-=head2 Record Layer
-
-The Record layer allows you to create Perl classes which are bound to a given Table object. Your Record subclass can fetch rows from the table which will be blessed into that class, and have methods allowing them to be changed and updated back to the database.
-
-=over 2
-
-=item *
-
-Record objects are hashes which represent rows in a Table.
-
-=item *
-
-Record Set objects contain an array of Record objects.
-
-=back
-
-See L<DBIx::SQLEngine::Record::Class> and L<DBIx::SQLEngine::Record::Set>.
+This functionality is described in L</"Schema Layer Classes"> and L</"Record Layer Classes">.
 
 =cut
 
@@ -321,7 +260,25 @@ See L<DBIx::SQLEngine::Record::Class> and L<DBIx::SQLEngine::Record::Set>.
 
 =head1 DRIVER LAYER
 
-This section briefly introduces some of the methods provided by the Driver layer.
+The Driver layer is the primary and lowest-level layer upon which the other layers depend. Each Driver object contains a DBI database handle and is responsible for generating SQL queries, executing them, and returning the results. 
+
+=head2 Driver Layer Classes
+
+=over 2
+
+=item *
+
+Driver objects are wrappers around DBI database handles. 
+(See L<DBIx::SQLEngine::Driver>.)
+
+=item *
+
+Criteria objects produce elements of SQL where clauses.
+(See L<DBIx::SQLEngine::Criteria>.)
+
+=back
+
+The rest of this section briefly introduces some of the methods provided by the Driver layer.
 
 =head2 Connecting 
 
@@ -602,7 +559,35 @@ The placeholder in this defined query is replaced at run-time.
 
 =head1 SCHEMA LAYER
 
-The following provides a brief overview of methods provided by the schema classes. 
+The Schema layer centers around the Table object, which combines a Driver object with the name of a table to perform queries against that table. Table objects keep track of their structure as Column objects, and use that information to facilitate common types of queries.
+
+=head2 Schema Layer Classes
+
+=over 2
+
+=item *
+
+Column objects are very simple structures that hold information about columns in a database table or query result.
+(See L<DBIx::SQLEngine::Column>.)
+
+=item *
+
+ColumnSet objects contain an array of Column objects
+(See L<DBIx::SQLEngine::ColumnSet>.)
+
+=item *
+
+Table objects represent database tables accessible via a particular DBIx::SQLEngine.
+(See L<DBIx::SQLEngine::Table>.)
+
+=item *
+
+TableSet objects contain an array of Table objects
+(See L<DBIx::SQLEngine::TableSet>.)
+
+=back
+
+The rest of this section briefly introduces some of the methods provided by the Schema layer.
 
 =head2 Querying Table Objects
 
@@ -699,7 +684,25 @@ For more information see the documentation for these packages: L<DBIx::SQLEngine
 
 =head1 RECORD LAYER
 
-The following provides a brief overview of methods provided by the record classes. 
+The Record layer allows you to create Perl classes which are bound to a given Table object. Your Record subclass can fetch rows from the table which will be blessed into that class, and have methods allowing them to be changed and updated back to the database.
+
+=head2 Record Layer Classes
+
+=over 2
+
+=item *
+
+Record objects are hashes which represent rows in a Table.
+(See L<DBIx::SQLEngine::Record::Class>.)
+
+=item *
+
+Record Set objects contain an array of Record objects.
+(See L<DBIx::SQLEngine::RecordSet::Set>.)
+
+=back
+
+The rest of this section briefly introduces some of the methods provided by the Record layer.
 
 =head2 Setting Up a Record Class
 

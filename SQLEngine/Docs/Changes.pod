@@ -6,6 +6,17 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.93
+
+2004-11-?? Released as DBIx-SQLEngine-0.93.
+
+2004-11-29 Rearranged some documentation in top-level module's POD.
+
+2004-11-29 Removed test config logic from Makefile to top of test.pl, and related updates of test.pl and test_cfg.pl.
+
+2004-11-29 Fixed case-insensitive matching of "from" in sql_limit of several drivers; thanks to Michael Kroll for pointing out the issue.
+
+
 =head2 Version 0.92
 
 2004-11-28 Released as DBIx-SQLEngine-0.92.
@@ -507,6 +518,6 @@ classes.
 
 =head1 SEE ALSO
 
-L<DBIx::SQLEngine::ReadMe>
+L<DBIx::SQLEngine::Docs::ReadMe>
 
 =cut

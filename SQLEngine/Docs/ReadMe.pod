@@ -75,11 +75,7 @@ See L<DBIx::SQLEngine::Docs::Related> for notes on related modules.
 
 =head1 STATUS
 
-=head2 Version
-
 This version is a routine release of DBIx::SQLEngine intended for public use.
-
-=head2 Release Status
 
 This module has been used in a variety of production systems and
 has been available on CPAN for over a year, with several other
@@ -95,51 +91,12 @@ Additional features have been outlined for future development, but
 the intent is support these by adding more options to the declaration
 interface, while maintaining backward compatibility.
 
-=head2 Tested Platforms
-
-This release has been tested succesfully on the following platforms:
-
-  5.6.1 on darwin
-
-Earlier releases have also tested OK on a wide variety of platforms.
-You may review the current test results from CPAN-Testers:
-
-=over 2
-
-=item *
-
-http://testers.cpan.org/show/DBIx-SQLEngine.html
-
-=back
-
-=head1 BUGS
-
-Some of the more advanced capabililities have only been added recently, and 
-have not yet been tested in real-world conditions.
-
-Some types of databases are not yet directly supported. While most of the
-default functionality should work with any DBI-accessible data source,
-support for complex queries and advanced features will typically require
-the addition of a Driver subclass which compensates for local idiom.
-
-See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
-
-
-=head1 DISTRIBUTION
-
-If you encounter any problems, please inform the author and I'll endeavor 
-to patch them promptly. 
-
-=head2 CPAN Registration
-
 This module's CPAN registration should read:
 
   Name            DSLIP  Description
   --------------  -----  ---------------------------------------------
-  DBIx::
+  DBIx::          Grp 7  Database Interfaces
   ::SQLEngine     Rdpop  Extends DBI with high-level operations
-
-This module should be categorized under group 7, Database Interfaces.
 
 
 =head1 REQUIREMENTS
@@ -164,7 +121,10 @@ You should be able to install this module using the CPAN shell interface:
 
   perl -MCPAN -e 'install DBIx::SQLEngine'
 
-Alternately, you may retrieve this package from CPAN (C<http://search.cpan.org/~evo/>) or from the author's site (C<http://www.evoscript.org/DBIx-SQLEngine>).
+Alternately, you may retrieve this package from CPAN or from the author's site.
+
+  http://search.cpan.org/~evo/
+  http://www.evoscript.org/DBIx-SQLEngine
 
 After downloading the distribution, follow the normal procedure to unpack and install it, using the commands shown below or their local equivalents on your system:
 
@@ -180,17 +140,38 @@ installation for some users, but be aware that these alternate
 distributions may lag a few versions behind the latest release on
 CPAN.
 
-=over 2
+  http://www.freebsd.org/cgi/ports.cgi?query=DBIx-SQLEngine
+  http://www.rpmfind.net/linux/rpm2html/search.php?query=perl-DBIx-SQLEngine
 
-=item *
+=head1 TESTING
 
-http://www.freebsd.org/cgi/ports.cgi?query=DBIx-SQLEngine
+In order to test against locally available database drivers, the test script
+will prompt you to optionally select one or more sets of connection
+parameters. If you leave this blank, only a driver-independent subset of
+the tests will be run.
 
-=item *
+Prior to release, this package has been tested succesfully on the following
+platforms and databases:
 
-http://www.rpmfind.net/linux/rpm2html/search.php?query=perl-DBIx-SQLEngine
+  5.6.1 on darwin - MySQL, SQLite, AnyData, CSV, XBase
 
-=back
+Earlier releases have also tested OK on a wide variety of platforms.
+
+You may review the current test results from CPAN-Testers:
+
+  http://testers.cpan.org/show/DBIx-SQLEngine.html
+
+=head1 BUGS
+
+Some of the more advanced capabililities have only been added recently, and 
+have not yet been tested in real-world conditions.
+
+Some types of databases are not yet directly supported. While most of the
+default functionality should work with any DBI-accessible data source,
+support for complex queries and advanced features will typically require
+the addition of a Driver subclass which compensates for local idiom.
+
+See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
 
 
 =head1 SUPPORT
@@ -207,25 +188,27 @@ Bug reports that contain a failing test case are greatly appreciated,
 and suggested patches will be promptly considered for inclusion in
 future releases.
 
-To report bugs via the CPAN web tracking system, go to 
-C<http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBIx-SQLEngine> or send mail 
+You can report bugs via the CPAN web tracking system, or send mail 
 to C<Dist=DBIx-SQLEngine#rt.cpan.org>, replacing C<#> with C<@>.
+
+  http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBIx-SQLEngine
 
 If you've found this module useful or have feedback about your
 experience with it, consider sharing your opinion with other Perl users
-by posting your comment to CPAN's ratings system
-(C<http://cpanratings.perl.org/rate/?distribution=DBIx-SQLEngine>).
+by posting your comment to CPAN's ratings system.
 
-For more general discussion, you may wish to post a message on PerlMonks
-(C<http://perlmonks.org/?node=Seekers%20of%20Perl%20Wisdom>) or on the
-comp.lang.perl.misc newsgroup
-(C<http://groups.google.com/groups?group=comp.lang.perl.misc>).
+  http://cpanratings.perl.org/rate/?distribution=DBIx-SQLEngine
 
-Some previous discussions of this distribution are archived online on PerlMonks
-(C<http://perlmonks.org/?node_id=3989&BIT=SQLEngine&go=1>) and the
-comp.lang.perl.misc newsgroup
-(C<http://groups.google.com/groups?q=dbix+sqlengine+-ports&scoring=d>).
+For more general discussion, you may wish to post a message on PerlMonks or
+on the comp.lang.perl.misc newsgroup.
 
+  http://perlmonks.org/?node=Seekers%20of%20Perl%20Wisdom
+  http://groups.google.com/groups?group=comp.lang.perl.misc
+
+Some previous discussions of this distribution are archived online.
+
+  http://perlmonks.org/?node_id=3989&BIT=SQLEngine&go=1
+  http://groups.google.com/groups?q=dbix+sqlengine+-ports&scoring=d
 
 =head1 AUTHOR
 
@@ -251,17 +234,15 @@ Many thanks to the kind people who have contributed code and other feedback:
   Michael Kroll, Innsbruck University
   Peter (Stig) Edwards
 
-
 =head1 SOURCE MATERIAL
 
 Inspiration, tricks, and bits of useful code were mined from these CPAN modules:
 
   Alzabo by Dave Rolsky 
   DBIx::AnyDBD by Matt Sergeant 
-  DBIx::Compat by G. Richter
+  DBIx::Compat by Gerald Richter
   DBIx::Datasource by Ivan Kohler 
   DBIx::Renderer by Marcel Grunauer 
-
 
 =head1 LICENSE
 

@@ -45,7 +45,7 @@ sub sql_limit {
   my ( $limit, $offset, $sql, @params ) = @_;
 
   # You can't apply "limit" to non-table fetches like "select LAST_INSERT_ID"
-  if ( $sql =~ /\bfrom\b/ and defined $limit or defined $offset) {
+  if ( $sql =~ /\bfrom\b/i and defined $limit or defined $offset) {
     $sql .= " limit $limit" if $limit;
     $sql .= " offset $offset" if $offset;
   }

@@ -82,6 +82,6 @@ Consider enabling pure-Perl interpretation of criteria to allow post-fetch proce
 
 =head1 SEE ALSO 
 
-L<DBIx::SQLEngine::ReadMe>
+L<DBIx::SQLEngine::Docs::ReadMe>
 
 =cut
