@@ -35,7 +35,7 @@ sub sql_limit {
   my ( $limit, $offset, $sql, @params ) = @_;
 
   # remove tablealiases and group-functions from outer query properties
-  my $properties = ($sql =~ /^\s*SELECT\s(.*?)\sFROM\s/i);
+  my ($properties) = ($sql =~ /^\s*SELECT\s(.*?)\sFROM\s/i);
   $properties =~ s/[^\s]+\s*as\s*//ig;
   $properties =~ s/\w+\.//g;
   

@@ -1,6 +1,7 @@
 =head1 NAME
 
-DBIx::SQLEngine::Schema::ColumnSet - Array of DBIx::SQLEngine::Schema::Column objects
+DBIx::SQLEngine::Schema::ColumnSet - Array of Schema::Column objects
+
 
 =head1 SYNOPSIS
 
@@ -8,10 +9,12 @@ DBIx::SQLEngine::Schema::ColumnSet - Array of DBIx::SQLEngine::Schema::Column ob
   
   print $colset->count;
   
-  foreach my $column ( $colset->contents ) {
+  foreach my $column ( $colset->columns ) {
     print $column->name;
   }
-  my $name_col = $column
+  
+  $column = $colset->column_named( $name );
+
 
 =head1 DESCRIPTION
 
@@ -27,13 +30,31 @@ use Carp;
 
 =head1 REFERENCE
 
-=head2 Constructor
+=over 4
+
+=item new()
+
+  DBIx::SQLEngine::Schema::ColumnSet->new( @columns ) : $colset
 
 Basic array constructor.
 
-=over 4
+=item columns()
 
-=item new ( @columns ) : $columnset
+  $colset->columns () : @columns
+
+Returns a list of column objects. 
+
+=item column_names()
+
+  $colset->column_names () : @column_names
+
+Returns the result of calling name() on each column.
+
+=item column_named()
+
+  $colset->column_named ( $name ) : $column
+
+Finds the column with that name, or dies trying.
 
 =back
 
@@ -48,28 +69,6 @@ sub new {
   bless \@cols, $package;
 }
 
-########################################################################
-
-=head2 Column Access
-
-=over 4
-
-=item columns () : @columns
-
-Returns a list of column objects. 
-
-=item column_names () : @column_names
-
-Returns the result of calling name() on each column.
-
-=item column_named ( $name ) : $column
-
-Finds the column with that name, or dies trying.
-
-=back
-
-=cut
-
 sub columns {
   my $colset = shift;
   @$colset
@@ -79,6 +78,12 @@ sub columns {
 sub column_names {
   my $colset = shift;
   return map { $_->name } @$colset;
+}
+
+# $text_summary = $colset->column_info;
+sub column_info {
+  my $colset = shift;
+  join(', ', map { $_->name() . " (". $_->type() .")" } @$colset)
 }
 
 # $column = $colset->column_named( $column_name );
@@ -91,11 +96,9 @@ sub column_named {
   }
   croak(
     "No column named $column_name in $colset->{name} table\n" . 
-    "  (Perhaps you meant one of these: " . 
-	join(', ', map { $_->name() . " (". $_->type() .")" } @$colset) . ")"
+    "  (Perhaps you meant one of these: " . $colset->column_info . "?)"
   );
 }
-
 
 ########################################################################
 

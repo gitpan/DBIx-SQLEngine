@@ -1,15 +1,21 @@
 =head1 NAME
 
-DBIx::SQLEngine::Schema::TableSet - Group of tables 
+DBIx::SQLEngine::Schema::TableSet - Array of Schema::Table objects 
 
 =head1 SYNOPSIS
 
   use DBIx::SQLEngine::Schema::TableSet;
-  my $ts = DBIx::SQLEngine::Schema::TableSet->new();
-  $ts->connect_datasource( $dsn, $user, $pass );
-  $ts->packages( 'MyClassName' => 'mytablename' );
-  $ts->require_packages;
-  $ts->declare_tables;
+  my $tables = DBIx::SQLEngine::Schema::TableSet->new( $table1, $table2 );
+  
+  print $tables->count;
+  
+  foreach my $table ( $tables->tables ) {
+    print $table->name;
+  }
+  
+  $table = $tables->table_named( $name );
+
+  $ts->create_tables;
 
 =head1
 
@@ -29,11 +35,36 @@ use DBIx::SQLEngine::Schema::Table;
 
 sub new {
   my $package = shift;
-  my @cols = map {
+  my @tables = map {
     ( ref($_) eq 'HASH' ) ? DBIx::SQLEngine::Schema::Table->new_from_hash(%$_)
 			  : $_
   } @_;
-  bless \@cols, $package;
+  bless \@tables, $package;
+}
+
+sub tables {
+  my $tables = shift;
+  @$tables
+}
+
+# @colnames = $tables->table_names;
+sub table_names {
+  my $tables = shift;
+  return map { $_->name } @$tables;
+}
+
+# $table = $tables->table_named( $table_name );
+# $table = $tables->table_named( $table_name );
+sub table_named {
+  my $tables = shift;
+  my $table_name = shift;
+  foreach ( @$tables ) {
+    return $_ if ( $_->name eq $table_name );
+  }
+  croak(
+    "No table named $table_name in this set\n" . 
+    "  (Perhaps you meant one of these: ".join(', ',$tables->table_names)."?)"
+  );
 }
 
 ########################################################################

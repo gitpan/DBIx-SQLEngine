@@ -13,7 +13,7 @@ BEGIN {
 ########################################################################
 
 use Test;
-BEGIN { plan tests => ( $dsn ? 28 : 1 ) }
+BEGIN { plan tests => ( $dsn ? 31 : 1 ) }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -252,6 +252,15 @@ NULL_VALUE_LOGIC: {
   
   $rows = $sqldb->fetch_select( table=>$table, criteria=>{ name=>undef() } );
   ok( (ref $rows and scalar @$rows == 1 and $rows->[0]->{'color'} eq 'mauve'), 1, "Couldn't select null value rows" );
+
+}
+
+
+TABLESET: {
+
+  ok( ref( $sqldb->tables ) );
+  ok( scalar( $sqldb->tables->table_names ) > 1 );
+  ok( scalar( $sqldb->tables->table_names ) == scalar ($sqldb->detect_table_names) );
 
 }
 

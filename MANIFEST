@@ -15,10 +15,8 @@ SQLEngine/Criteria/Lesser.pm
 SQLEngine/Criteria/Like.pm
 SQLEngine/Criteria/LiteralSQL.pm
 SQLEngine/Criteria/Not.pm
-SQLEngine/Criteria/NumericLesser.pm
 SQLEngine/Criteria/Or.pm
 SQLEngine/Criteria/StringComparison.pm
-SQLEngine/Criteria/StringEquality.pm
 SQLEngine/Docs/Changes.pod
 SQLEngine/Docs/ReadMe.pod
 SQLEngine/Docs/Related.pod
@@ -41,7 +39,9 @@ TODO
 t/compile.t
 t/core_clone.t
 t/example.t
-t/null.t
+t/null_named.t
+t/null_sqlgen.t
+t/null_table.t
 t/standard.t
 test_data/about_test_data
 test_data/test.sqlite

@@ -62,10 +62,10 @@ use Class::MakeMethods::Template::Hash (
 
 sub new_from_hash {
   my $class = shift;
-  my %hash = @_;
-  my $self = DBIx::SQLEngine::Schema::Column->new( type => $hash->{type}, );
-  foreach my $k ( grep { $_ ne 'type' and $self->can($_) } keys %$hash ) {
-    $self->$k($hash->{$k});
+  my %hash = (scalar @_ == 1) ? %{ $_[0] } : @_;
+  my $self = DBIx::SQLEngine::Schema::Column->new( type => $hash{type}, );
+  foreach my $k ( grep { $_ ne 'type' and $self->can($_) } keys %hash ) {
+    $self->$k($hash{$k});
   }
 }
 

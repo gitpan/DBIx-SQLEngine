@@ -15,7 +15,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Equality - Basic Equaliy Criteria
+DBIx::SQLEngine::Criteria::Equality - Basic Equality Criteria
 
 =head1 SYNOPSIS
 

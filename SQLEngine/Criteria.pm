@@ -44,6 +44,20 @@ sub auto_where {
 
 ########################################################################
 
+package DBIx::SQLEngine::Criteria::StringEquality;
+require DBIx::SQLEngine::Criteria::Equality;
+       @DBIx::SQLEngine::Criteria::StringEquality::ISA = 
+       'DBIx::SQLEngine::Criteria::Equality';
+
+########################################################################
+
+package DBIx::SQLEngine::Criteria::NumericLesser;
+require DBIx::SQLEngine::Criteria::Lesser;
+       @DBIx::SQLEngine::Criteria::NumericLesser::ISA = 
+       'DBIx::SQLEngine::Criteria::Lesser';
+
+########################################################################
+
 1;
 
 __END__
@@ -149,7 +163,7 @@ Requires its one subclause to be false.
 
 =item Equality
 
-Requires an exact match with its comparison value.
+Requires an exact match with its comparison value. 
 
 =item Greater
 
@@ -181,6 +195,21 @@ Easy way to create a group of StringComparison criteria.
 =item LiteralSQL
 
 Encapsulates a snippet of literal SQL, optionally with placeholder parameters.
+
+=back
+
+
+=head2 Backwards Compatibility
+
+=over 4
+
+=item StringEquality
+
+Empty subclass to support an old name for Equality Criteria.
+
+=item NumericLesser
+
+Empty subclass to support an old name for Lesser Criteria.
 
 =back
 

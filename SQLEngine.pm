@@ -141,7 +141,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.016;
+$VERSION = 0.017;
 
 use strict;
 
@@ -254,6 +254,13 @@ The following methods may be used to retrieve data using SQL select statements. 
 
 Retrieve rows from the datasource as an array of hashrefs. If called in a list context, also returns an array of hashrefs containing information about the columns included in the result set.
 
+=item fetch_select_rows()
+
+  $sqldb->fetch_select_rows( %sql_clauses ) : $row_arrays
+  $sqldb->fetch_select_rows( %sql_clauses ) : ($row_arrays,$column_hashes)
+
+Retrieve rows from the datasource as an array of arrayrefs. If called in a list context, also returns an array of hashrefs containing information about the columns included in the result set.
+
 =item fetch_one_row()
 
   $sqldb->fetch_one_row( %sql_clauses ) : $row_hash
@@ -272,6 +279,13 @@ Calls fetch_select, then returns a single value from the first row of results.
   $sqldb->visit_select( %sql_clauses, $code_ref ) : @results
 
 Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. For your convenience, will accept a coderef as either the first or the last argument. Returns the results returned by each of those function calls. Processing with visit_select rather than fetch_select can be more efficient if you are looping over a large number of rows and do not need to keep them all in memory.
+
+=item visit_select_rows()
+
+  $sqldb->visit_select_rows( $code_ref, %sql_clauses ) : @results
+  $sqldb->visit_select_rows( %sql_clauses, $code_ref ) : @results
+
+Like visit_select, but for each row the code ref is called with the current row retrieved as a list of values, rather than a hash ref.
 
 =item sql_select()
 
@@ -466,6 +480,12 @@ sub fetch_select {
   $self->fetch_sql( $self->sql_select( @_ ) );
 }
 
+# $rows = $self->fetch_select_rows( %clauses );
+sub fetch_select_rows {
+  my $self = shift;
+  $self->fetch_sql_rows( $self->sql_select( @_ ) );
+}
+
 # $row = $self->fetch_one_row( %clauses );
 sub fetch_one_row {
   my $self = shift;
@@ -484,7 +504,14 @@ sub fetch_one_value {
 # $rows = $self->visit_select( $coderef, %clauses );
 sub visit_select {
   my $self = shift;
-  $self->visit_sql( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) );
+  $self->visit_sql( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) )
+}
+
+# $rows = $self->visit_select_rows( %clauses, $coderef );
+# $rows = $self->visit_select_rows( $coderef, %clauses );
+sub visit_select_rows {
+  my $self = shift;
+  $self->visit_sql_rows( ( ref($_[0]) ? shift : pop ), $self->sql_select( @_ ) )
 }
 
 sub sql_select {
@@ -1376,6 +1403,43 @@ sub sql_detect_table {
 
 ########################################################################
 
+=head2 Schema Objects
+
+=over 4
+
+=item table()
+
+  $sqldb->table( $tablename ) : $table
+
+Returns a new DBIx::SQLEngine::Schema::Table object with this SQLEngine and the given table name. See L<DBIx::SQLEngine::Schema::Table> for more information on this object's interface.
+
+=item tables()
+
+  $sqldb->tables() : $tableset
+
+Returns a new DBIx::SQLEngine::Schema::TableSet object containing table objects with the names discovered by detect_table_names(). See L<DBIx::SQLEngine::Schema::TableSet> for more information on this object's interface.
+
+=back
+
+=cut
+
+
+
+sub table {
+  require DBIx::SQLEngine::Schema::Table;
+  DBIx::SQLEngine::Schema::Table->new( sqlengine => (shift), name => (shift) )
+}
+
+sub tables {
+  my $self = shift;
+  require DBIx::SQLEngine::Schema::TableSet;
+  DBIx::SQLEngine::Schema::TableSet->new( 
+    map { $self->table( $_ ) } $self->detect_table_names 
+  )
+}
+
+########################################################################
+
 =head2 Create and Drop Tables
 
 =over 4
@@ -1576,6 +1640,12 @@ sub dbms_create_column_types {
 
 ########################################################################
 
+########################################################################
+
+=head1 ADVANCED CAPABILITIES
+
+Not all of these capabilities will be available on all database servers.
+
 =head2 Database Capability Information
 
 Note: this feature has been added recently, and the interface is subject to change.
@@ -1584,43 +1654,47 @@ The following methods all default to returning undef, but may be overridden by s
 
 =over 4
 
-=item dbms_detect_tables_unsupported
+=item dbms_detect_tables_unsupported()
 
-Can the database driver return a list of tables that currently exist? True for some simple drivers like CSV.
+Can the database driver return a list of tables that currently exist? (True for some simple drivers like CSV.)
 
-=item dbms_joins_unsupported
+=item dbms_joins_unsupported()
 
-Does the database driver support select statements with joins across multiple tables? True for some simple drivers like CSV.
+Does the database driver support select statements with joins across multiple tables? (True for some simple drivers like CSV.)
 
-=item dbms_drop_column_unsupported
+=item dbms_drop_column_unsupported()
 
-Does the database driver have a problem removing a column from an existing table? True for Postgres.
+Does the database driver have a problem removing a column from an existing table? (True for Postgres.)
 
-=item dbms_column_types_unsupported
+=item dbms_column_types_unsupported()
 
-Does the database driver store column type information, or are all columns the same type? True for some simple drivers like CSV.
+Does the database driver store column type information, or are all columns the same type? (True for some simple drivers like CSV.)
 
-=item dbms_null_becomes_emptystring
+=item dbms_null_becomes_emptystring()
 
-Does the database driver automatically convert null values in insert and update statements to empty strings? True for some simple drivers like CSV.
+Does the database driver automatically convert null values in insert and update statements to empty strings? (True for some simple drivers like CSV.)
 
-=item dbms_emptystring_becomes_null
+=item dbms_emptystring_becomes_null()
 
-Does the database driver automatically convert empty strings in insert and update statements to null values? True for Oracle.
+Does the database driver automatically convert empty strings in insert and update statements to null values? (True for Oracle.)
 
-=item dbms_placeholders_unsupported
+=item dbms_placeholders_unsupported()
 
-Does the database driver support having ? placehoders or not? True for Linux users of DBD::Sybase connecting to MS SQL Servers on Windows.
+Does the database driver support having ? placehoders or not? (This is a problem for Linux users of DBD::Sybase connecting to MS SQL Servers on Windows.)
 
-=item dbms_multi_sth_unsupported
+=item dbms_transactions_unsupported()
 
-Does the database driver support having multiple statement handles active at once or not? True for several types of drivers.
+Does the database driver support real transactions with rollback and commit or not? 
 
-=item dbms_indexes_unsupported
+=item dbms_multi_sth_unsupported()
+
+Does the database driver support having multiple statement handles active at once or not? (This is a problem for several types of drivers.)
+
+=item dbms_indexes_unsupported()
 
 Does the database driver support server-side indexes or not?
 
-=item dbms_storedprocs_unsupported
+=item dbms_storedprocs_unsupported()
 
 Does the database driver support server-side stored procedures or not?
 
@@ -1628,9 +1702,8 @@ Does the database driver support server-side stored procedures or not?
 
 =cut
 
-
-sub dbms_detect_tables_unsupported { undef }
 sub dbms_joins_unsupported { undef }
+sub dbms_detect_tables_unsupported { undef }
 sub dbms_drop_column_unsupported { undef }
 
 sub dbms_column_types_unsupported { undef }
@@ -1638,13 +1711,122 @@ sub dbms_null_becomes_emptystring { undef }
 sub dbms_emptystring_becomes_null { undef }
 
 sub dbms_placeholders_unsupported { undef }
+sub dbms_transactions_unsupported { undef }
 sub dbms_multi_sth_unsupported { undef }
 sub dbms_indexes_unsupported { undef }
 sub dbms_storedprocs_unsupported { undef }
 
 ########################################################################
 
-=head2 Creating and Dropping Indexes
+=head2 Transactions
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+DBIx::SQLEngine assumes auto-commit is on by default, so unless otherwise specified, each query is executed as a separate transaction. To execute multiple queries within a single transaction, use the as_one_transaction method.
+
+=over 4
+
+=item are_transactions_supported()
+
+  $boolean = $sqldb->are_transactions_supported( );
+
+Checks to see if the database has transaction support.
+
+=item as_one_transaction()
+
+  @results = $sqldb->as_one_transaction( $sub_ref, @args );
+
+Will fail if we don't have transaction support.
+
+For example:
+
+  my $sqldb = DBIx::SQLEngine->new( ... );
+  $sqldb->as_one_transaction( sub { 
+    $sqldb->do_insert( ... );
+    $sqldb->do_update( ... );
+    $sqldb->do_delete( ... );
+  } );
+
+Or using a reference to a predefined subroutine:
+
+  sub do_stuff {
+    my $sqldb = shift;
+    $sqldb->do_insert( ... );
+    $sqldb->do_update( ... );
+    $sqldb->do_delete( ... );
+  }
+  my $sqldb = DBIx::SQLEngine->new( ... );
+  $sqldb->as_one_transaction( \&do_stuff, $sqldb );
+
+=item as_one_transaction_if_supported()
+
+  @results = $sqldb->as_one_transaction_if_supported($sub_ref, @args)
+
+If transaction support is available, this is equivalent to as_one_transaction. If transactions are not supported, simply performs the code in $sub_ref with no transaction protection.
+
+=back
+
+=cut
+
+sub are_transactions_supported {
+  my $self = shift;
+  my $dbh = $self->dbh;
+  eval {
+    local $SIG{__DIE__};
+    $dbh->begin_work;
+    $dbh->rollback;
+  };
+  return ( $@ ) ? 0 : 1;
+}
+
+sub as_one_transaction {
+  my $self = shift;
+  my $code = shift;
+
+  my $dbh = $self->dbh;
+  my @results;
+  $dbh->begin_work;
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
+  eval {
+    local $SIG{__DIE__};
+    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    $dbh->commit;  
+  };
+  if ($@) {
+    warn "DBIx::SQLEngine Transaction Aborted: $@";
+    $dbh->rollback;
+  }
+  $wantarray ? @results : $results[0]
+}
+
+sub as_one_transaction_if_supported {
+  my $self = shift;
+  my $code = shift;
+  
+  my $dbh = $self->dbh;
+  my @results;
+  my $in_transaction;
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
+  eval {
+    local $SIG{__DIE__};
+    $dbh->begin_work;
+    $in_transaction = 1;
+  };
+  eval {
+    local $SIG{__DIE__};
+    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    $dbh->commit if ( $in_transaction );
+  };
+  if ($@) {
+    warn "DBIx::SQLEngine Transaction Aborted: $@";
+    $dbh->rollback if ( $in_transaction );
+  }
+  $wantarray ? @results : $results[0]
+}
+
+########################################################################
+
+=head2 Create and Drop Indexes
 
 Note: this feature has been added recently, and the interface is subject to change.
 
@@ -1792,7 +1974,7 @@ sub sql_drop_index   {
 
 ########################################################################
 
-=head2 Creating and Dropping Databases
+=head2 Create and Drop Databases
 
 Note: this feature has been added recently, and the interface is subject to change.
 
@@ -1918,6 +2100,8 @@ A reference to a hash of a clauses supported by one of the SQL generation method
 A reference to a subroutine or code block which will process the user-supplied arguments and return either a SQL statement, a reference to an array of a SQL statement and associated parameters, or a list of key-value pairs to be used as clauses by the SQL generation methods.
 
 =back
+
+See the Examples section below for illustrations of these various options.
 
 =item define_named_queries()
 
@@ -2341,9 +2525,169 @@ sub visit_sql_rows {
 
 ########################################################################
 
-=head1 ERRORS AND EXCEPTION HANDLING
+=head1 INTERNAL CONNECTION METHODS (DBI DBH)
 
-=head2 Error Handling
+The following methods manage the DBI database handle through which we communicate with the datasource.
+
+=head2 Accessing the DBH
+
+=over 4
+
+=item get_dbh()
+
+  $sqldb->get_dbh () : $dbh
+
+Get the current DBH
+
+=item dbh_func()
+
+  $sqldb->dbh_func ( $func_name, @args ) : @results
+
+Calls the DBI func() method on the database handle returned by get_dbh, passing the provided function name and arguments. See the documentation for your DBD driver to learn which functions it supports.
+
+=back
+
+=cut
+
+sub get_dbh {
+  # maybe add code here to check connection status.
+  # or maybe add check once every 10 get_dbh's...
+  my $self = shift;
+  ( ref $self ) or ( confess("Not a class method") );
+  return $self->{dbh};
+}
+
+sub dbh_func {
+  my $self = shift;
+  my $dbh = $self->get_dbh;
+  my $func = shift;
+  $dbh->func( $func, @_ );
+}
+
+########################################################################
+
+=head2 Initialization and Reconnection
+
+=over 4
+
+=item _init()
+
+  $sqldb->_init () 
+
+Empty subclass hook. Called by DBIx::AnyDBD after connection is made and class hierarchy has been juggled.
+
+=item reconnect()
+
+  $sqldb->reconnect () 
+
+Attempt to re-establish connection with original parameters
+
+=item check_or_reconnect()
+
+  $sqldb->check_or_reconnect () : $dbh
+
+Confirms the current DBH is available with detect_any() or reconnect().
+
+=back
+
+=cut
+
+sub _init {  }
+
+sub reconnect {
+  my $self = shift;
+  my $reconnector = $self->{'reconnector'} 
+	or croak("Can't reconnect; reconnector is missing");
+  if ( $self->{'dbh'} ) {
+    $self->{'dbh'}->disconnect;
+  }
+  $self->{'dbh'} = &$reconnector()
+	or croak("Can't reconnect; reconnector returned nothing");
+  $self->rebless;
+  $self->_init if $self->can('_init');
+  return $self;
+}
+
+sub check_or_reconnect {
+  my $self = shift;
+  $self->detect_any or $self->reconnect;
+  $self->get_dbh or confess("Failed to get_dbh after check_or_reconnect")
+}
+
+########################################################################
+
+=head2 Checking For Connection
+
+To determine if the connection is working.
+
+=over 4
+
+=item detect_any()
+
+  $sqldb->detect_any () : $boolean
+  $sqldb->detect_any ( 1 ) : $boolean
+
+Attempts to confirm that values can be retreived from the database,
+allowing us to determine if the connection is working, using a
+server-specific "trivial" or "guaranteed" query provided by
+sql_detect_any.
+
+Catches any exceptions; if the query fails for any reason we return
+a false value. The reason for the failure is logged via warn()
+unless an additional argument with a true value is passed to surpress
+those error messages.
+
+=back
+
+=cut
+
+sub detect_any {
+  my $self = shift;
+  my $quietly = shift;
+  my $result = 0;
+  eval {
+    local $SIG{__DIE__};
+    $self->fetch_one_value($self->sql_detect_any);
+    $result = 1;
+  };
+  $result or warn "Unable to detect_any: $@" unless $quietly;
+  return $result;
+}
+
+=pod 
+
+B<SQL Generation>: The above detect_ method uses the following sql_ method to generate SQL statements.
+
+=over 4
+
+=item sql_detect_any()
+
+  $sqldb->sql_detect_any : %sql_select_clauses
+
+Subclass hook. Retrieve something from the database that is guaranteed to exist. 
+Defaults to SQL literal "select 1", which may not work on all platforms. Your database driver might prefer something else, like Oracle's "select 1 from dual".
+
+=back
+
+=cut
+
+sub sql_detect_any {
+  return ( sql => 'select 1' )
+}
+
+########################################################################
+
+########################################################################
+
+=head1 INTERNAL STATEMENT METHODS (DBI STH)
+
+The following methods manipulate DBI statement handles as part of processing queries and their results.
+
+=cut
+
+########################################################################
+
+=head2 Statement Error Handling 
 
 =over 4
 
@@ -2435,276 +2779,6 @@ sub catch_query_exception {
 sub recoverable_query_exceptions {
   return ()
 }
-
-########################################################################
-
-=head2 Transaction Methods
-
-Note: this feature has been added recently, and the interface is subject to change.
-
-DBIx::SQLEngine assumes auto-commit is on by default, so unless otherwise specified, each query is executed as a separate transaction. To execute multiple queries within a single transaction, use the as_one_transaction method.
-
-=over 4
-
-=item are_transactions_supported()
-
-  $boolean = $sqldb->are_transactions_supported( );
-
-Checks to see if the database has transaction support.
-
-=item as_one_transaction()
-
-  @results = $sqldb->as_one_transaction( $sub_ref, @args );
-
-Will fail if we don't have transaction support.
-
-For example:
-
-  my $sqldb = DBIx::SQLEngine->new( ... );
-  $sqldb->as_one_transaction( sub { 
-    $sqldb->do_insert( ... );
-    $sqldb->do_update( ... );
-    $sqldb->do_delete( ... );
-  } );
-
-Or using a reference to a predefined subroutine:
-
-  sub do_stuff {
-    my $sqldb = shift;
-    $sqldb->do_insert( ... );
-    $sqldb->do_update( ... );
-    $sqldb->do_delete( ... );
-  }
-  my $sqldb = DBIx::SQLEngine->new( ... );
-  $sqldb->as_one_transaction( \&do_stuff, $sqldb );
-
-=item as_one_transaction_if_supported()
-
-  @results = $sqldb->as_one_transaction_if_supported($sub_ref, @args)
-
-If transaction support is available, this is equivalent to as_one_transaction. If transactions are not supported, simply performs the code in $sub_ref with no transaction protection.
-
-=back
-
-=cut
-
-sub are_transactions_supported {
-  my $self = shift;
-  my $dbh = $self->dbh;
-  eval {
-    local $SIG{__DIE__};
-    $dbh->begin_work;
-    $dbh->rollback;
-  };
-  return ( $@ ) ? 0 : 1;
-}
-
-sub as_one_transaction {
-  my $self = shift;
-  my $code = shift;
-
-  my $dbh = $self->dbh;
-  my @results;
-  $dbh->begin_work;
-  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
-  eval {
-    local $SIG{__DIE__};
-    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
-    $dbh->commit;  
-  };
-  if ($@) {
-    warn "DBIx::SQLEngine Transaction Aborted: $@";
-    $dbh->rollback;
-  }
-  $wantarray ? @results : $results[0]
-}
-
-sub as_one_transaction_if_supported {
-  my $self = shift;
-  my $code = shift;
-  
-  my $dbh = $self->dbh;
-  my @results;
-  my $in_transaction;
-  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
-  eval {
-    local $SIG{__DIE__};
-    $dbh->begin_work;
-    $in_transaction = 1;
-  };
-  eval {
-    local $SIG{__DIE__};
-    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
-    $dbh->commit if ( $in_transaction );
-  };
-  if ($@) {
-    warn "DBIx::SQLEngine Transaction Aborted: $@";
-    $dbh->rollback if ( $in_transaction );
-  }
-  $wantarray ? @results : $results[0]
-}
-
-########################################################################
-
-########################################################################
-
-=head1 INTERNAL CONNECTION METHODS (DBI DBH)
-
-The following methods manage the DBI database handle through which we communicate with the datasource.
-
-=head2 Accessing the DBH
-
-=over 4
-
-=item get_dbh()
-
-  $sqldb->get_dbh () : $dbh
-
-Get the current DBH
-
-=item dbh_func()
-
-  $sqldb->dbh_func ( $func_name, @args ) : @results
-
-Calls the DBI func() method on the database handle returned by get_dbh, passing the provided function name and arguments. See the documentation for your DBD driver to learn which functions it supports.
-
-=back
-
-=cut
-
-sub get_dbh {
-  # maybe add code here to check connection status.
-  # or maybe add check once every 10 get_dbh's...
-  my $self = shift;
-  ( ref $self ) or ( Carp::confess("Not a class method") );
-  return $self->{dbh};
-}
-
-sub dbh_func {
-  my $self = shift;
-  my $dbh = $self->get_dbh;
-  my $func = shift;
-  $dbh->func( $func, @_ );
-}
-
-########################################################################
-
-=head2 Checking For Connection
-
-To determine if the connection is working.
-
-=over 4
-
-=item detect_any()
-
-  $sqldb->detect_any () : $boolean
-  $sqldb->detect_any ( 1 ) : $boolean
-
-Attempts to confirm that values can be retreived from the database,
-allowing us to determine if the connection is working, using a
-server-specific "trivial" or "guaranteed" query provided by
-sql_detect_any.
-
-Catches any exceptions; if the query fails for any reason we return
-a false value. The reason for the failure is logged via warn()
-unless an additional argument with a true value is passed to surpress
-those error messages.
-
-=back
-
-=cut
-
-sub detect_any {
-  my $self = shift;
-  my $quietly = shift;
-  my $result = 0;
-  eval {
-    local $SIG{__DIE__};
-    $self->fetch_one_value($self->sql_detect_any);
-    $result = 1;
-  };
-  $result or warn "Unable to detect_any: $@" unless $quietly;
-  return $result;
-}
-
-=pod 
-
-B<SQL Generation>: The above detect_ method uses the following sql_ method to generate SQL statements.
-
-=over 4
-
-=item sql_detect_any()
-
-  $sqldb->sql_detect_any : %sql_select_clauses
-
-Subclass hook. Retrieve something from the database that is guaranteed to exist. 
-Defaults to SQL literal "select 1", which may not work on all platforms. Your database driver might prefer something else, like Oracle's "select 1 from dual".
-
-=back
-
-=cut
-
-sub sql_detect_any {
-  return ( sql => 'select 1' )
-}
-
-########################################################################
-
-=head2 Connection Lifecycle
-
-=over 4
-
-=item _init()
-
-  $sqldb->_init () 
-
-Called by DBIx::AnyDBD after connection is made and class hierarchy has been juggled.
-
-=item reconnect()
-
-  $sqldb->reconnect () 
-
-Attempt to re-establish connection with original parameters
-
-=item check_or_reconnect()
-
-  $sqldb->check_or_reconnect () : $dbh
-
-Incomplete. Subclass hook. Get the current DBH or reconnect.
-
-=back
-
-=cut
-
-sub _init {  }
-
-sub reconnect {
-  my $self = shift;
-  my $reconnector = $self->{'reconnector'} 
-	or croak("Can't reconnect; reconnector is missing");
-  if ( $self->{'dbh'} ) {
-    $self->{'dbh'}->disconnect;
-  }
-  $self->{'dbh'} = &$reconnector()
-	or croak("Can't reconnect; reconnector returned nothing");
-  $self->rebless;
-  $self->_init if $self->can('_init');
-  return $self;
-}
-
-sub check_or_reconnect {
-
-}
-
-########################################################################
-
-########################################################################
-
-=head1 INTERNAL STATEMENT METHODS (DBI STH)
-
-The following methods manipulate DBI statement handles as part of processing queries and their results.
-
-=cut
 
 ########################################################################
 
@@ -2802,7 +2876,7 @@ sub done_with_query {
 
 ########################################################################
 
-=head2 Retrieving Rows from an Executed Statement
+=head2 Retrieving Rows from a Statement
 
 =over 4
 
@@ -2904,7 +2978,7 @@ sub visitall_array {
 
 ########################################################################
 
-=head2 Retrieving Columns from an Executed Statement
+=head2 Retrieving Columns from a Statement
 
 =over 4
 

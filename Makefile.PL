@@ -17,6 +17,12 @@ WriteMakefile(
 
 sub MY::postamble { q{
 
+cleanmanifest:
+	rm MANIFEST ; touch MANIFEST; make manifest
+
+again:
+	make clean; perl Makefile.PL; make
+
 docs : README CHANGES TODO
 
 README: SQLEngine/Docs/ReadMe.pod
@@ -27,8 +33,5 @@ CHANGES: SQLEngine/Docs/Changes.pod
 
 TODO: SQLEngine/Docs/ToDo.pod
 	pod2text SQLEngine/Docs/ToDo.pod > TODO
-
-cleanmanifest:
-	rm MANIFEST ; touch MANIFEST; make manifest
 
 }; }

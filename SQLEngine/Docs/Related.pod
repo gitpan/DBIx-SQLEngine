@@ -10,14 +10,14 @@ DBIx::SQLEngine::Docs::RelatedModules - Survey of Class Builders
 
 =head1 DESCRIPTION
 
-Several other CPAN modules provide a similar wrapper around DBI
-for purposes of simplification, abstraction, or portability. 
+Several other CPAN modules provide a similar wrapper around DBI for purposes
+of simplification, abstraction, or portability.
 
 =head2 Caution
 
-I've commented on a few of these below, but please remember that
-these notes were written some time ago and may be somewhat out of
-date, and many modules have been omitted.
+I've commented on a few of these below, but please remember that these notes
+were written some time ago and may be somewhat out of date, and many modules
+have been omitted.
 
 
 =head1 RELATED MODULES 
@@ -29,30 +29,34 @@ examples of this group. See also , L<DBIx::AbstractLite>, L<DBIx::Wrap>,
 L<DBIx::Wraper>, and L<DBIx::YAWM>. Single-platform solutions like
 L<MySQL::Easy> are also available.
 
-Some provide at least partial cross-DBMS support via specialized
-subclasses for the DBDs they support. See L<DBIx::SearchBuilder>,
-L<DBIx::Easy>, and L<DBIx::DWIW> for examples of this group. An
-incomplete but interesting newcomer is available in L<DBIx::Portable>.
+Some provide at least partial cross-DBMS support via specialized subclasses
+for the DBDs they support. See L<DBIx::SearchBuilder>, L<DBIx::Easy>, and
+L<DBIx::DWIW> for examples of this group.
 
-The DBIx::Recordset framework provides similar functionality,
-including a substantial library of cross-DBMS compatibilty information.
-It also includes a tied-hash interface that allows automatic updates
-on retrieved rows. See L<DBIx::RecordSet>, L<DBIx::Database>, and
-L<DBIx::Compat>
+The DBIx::Recordset framework provides similar functionality, including a
+substantial library of cross-DBMS compatibilty information.  It also includes
+a tied-hash interface that allows automatic updates on retrieved rows. See
+L<DBIx::RecordSet>, L<DBIx::Database>, and L<DBIx::Compat>.
 
-The Alzabo framework provides similar functionality, including
-DBMS-specific SQL generation, as part of an RDBMS-OO mapper; see
-L<Alzabo::Driver> and L<Alzabo::SQLMaker>.
+The Rosetta framework provides a higher-level interface with a great deal of
+portability, including supports non-DBI and non-SQL datasources; see
+L<Rosetta> for details.
 
-There are signs of ongoing development in the L<Class::DBI> framework
-to support cross-DBMS portability, so check CPAN for the latest in
-this area.
+The Alzabo framework provides similar functionality, including DBMS-specific
+SQL generation, as part of an RDBMS-OO mapper; see L<Alzabo::Driver> and
+L<Alzabo::SQLMaker>.
+
+There are signs of ongoing development in the L<Class::DBI> framework to
+support cross-DBMS portability, so check CPAN for the latest in this area.
 
 The L<SQL::AnyDBD> is new addition which uses L<DBIx::AnyDBD>.
 
-Some packages focus on storing libraries of pre-defined named queries. See L<SQL::Catalog>, L<SQL::Library>, L<DBIx::PhraseBook>, L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
+Some packages focus on storing libraries of pre-defined named queries. See
+L<SQL::Catalog>, L<SQL::Library>, L<DBIx::PhraseBook>,
+L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
 
-Some packages focus on managing database schema information. See L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>
+Some packages focus on managing database schema information. See
+L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>
 
 
 =head1 SEE ALSO

@@ -1,25 +1,32 @@
 =head1 NAME
 
-DBIx::SQLEngine::Schema::Table - A table in a datasource
+DBIx::SQLEngine::Schema::Table - A table in a data source
 
 =head1 SYNOPSIS
 
-  my $sqldb = DBIx::SQLEngine->new( ... );
+  $sqldb = DBIx::SQLEngine->new( ... );
   
-  my $table = DBIx::SQLEngine::Schema::Table->new( name => 'foo', datasource => $ds );
+  $table = $sqldb->table( $table_name );
   
-  my $row = $table->fetch_id(1);
-  my $row_ary = $table->fetch_select( criteria => { status => 2 } );
+  $row_ary = $table->fetch_select( criteria => { status => 2 } );
+  $table->do_update( values => { status => 3 }, criteria => { status => 2 } );
+
+  $table->insert_row( { id => $primary_key, somefield => 'Some Value' } );
+  $row = $table->fetch_row( $primary_key );
+  $row->{somefield} = 'New Value';
+  $table->update_row( $row );
+  $table->detele_row( $row );
+
 
 =head1 DESCRIPTION
 
-The DBIx::SQLEngine::Schema::Table class represents database tables accessible via DBIx::SQLEngine.
+The DBIx::SQLEngine::Schema::Table class represents database tables accessible via a particular DBIx::SQLEngine.
 
-A B<table> acts as an interface to a particular set of data, uniquely identfied by the B<datasource> that it connects to and the b<name> of the table.
-
-It facilitates generation of SQL queries that operate on the named table.
+By storing a reference to a SQLEngine and the name of a table to operate on, a Schema::Table object can facilitate generation of SQL queries that operate on the named table.
 
 Each table can retrieve and cache a ColumnSet containing information about the name and type of the columns in the table. Column information is loaded from the storage as needed, but if you are creating a new table you must provide the definition.
+
+The *_row() methods use this information about the table columns to facilitate common operations on table rows using simple hash-refs.
 
 =cut
 
@@ -28,99 +35,247 @@ use strict;
 
 use Carp;
 use Class::MakeMethods;
-use DBIx::SQLEngine;
+
+use DBIx::SQLEngine; 
+use DBIx::SQLEngine::Schema::Column;
+use DBIx::SQLEngine::Schema::ColumnSet;
 
 ########################################################################
 
 =head1 REFERENCE
 
-=cut
-
-########################################################################
-
-=head2 Constructor
-
+=head2 Table Object Creation
 
 =over 4
 
-=item new
+=item SQLEngine->table()
 
-You are expected to provde the name and datasource arguments. (Standard::Hash:new)
+  DBIx::SQLEngine->new( ... )->table( $tablename ) : $table
 
-=back
+Convenience function to create a table with the given table name and sqlengine.
 
-=cut
+=item new()
 
-use Class::MakeMethods ( 'Standard::Hash:new' => 'new' );
+  DBIx::SQLEngine::Schema::Table->new( sqlengine=>$sqldb, name=>$name ) : $table
 
-########################################################################
-
-=head2 Name
-
-Required. Identifies this table in the DataSource. 
-
-=over 4
-
-=item name
-
-  $table->name($string)
-  $table->name() : $string
-
-Set and get the table name. (Template::Hash:string)
-
-=back
-
-=cut
-
-use Class::MakeMethods ( 'Template::Hash:string' => 'name' );
-
-########################################################################
-
-=head2 DataSource
-
-Required. The DataSource provides the DBI connection and SQL execution capabilities required to talk to the remote data storage.
-
-=over 4
-
-=item datasource
-
-Refers to our current DBIx::SQLEngine. (Standard::Hash:object)
+Standard hash constructor. You are expected to provde the name and sqlengine arguments.
 
 =back
 
 =cut
 
 use Class::MakeMethods (
-  'Standard::Hash:object' => { name=>'datasource', class=>'DBIx::SQLEngine::Default' },
-  'Standard::Universal:delegate'=>[ 
-    [ qw( do_update do_insert do_delete ) ] 
-	=> { target=>'datasource'} 
-  ],
+  'Standard::Hash:new' => 'new',
 );
 
 ########################################################################
 
-=head2 Selecting Rows
+=head2 Name Accessor
 
 =over 4
 
-=item fetch_select
+=item name()
+
+  $table->name() : $string
+  $table->name($string)
+
+Get and set the table name. Required value. Identifies this table in the data
+source.
+
+=item get_name()
+
+  $table->get_name() : $string or exception
+
+Returns the table name, or throws an exception if it is not set.
+
+=back
+
+=cut
+
+use Class::MakeMethods (
+  'Standard::Hash:scalar' => 'name',
+);
+
+sub get_name {
+  ($_[0])->name() or croak("No name set for table in '$_[0]->{sqlengine}'")
+}
+
+########################################################################
+
+=head2 SQLEngine Accessor
+
+=over 4
+
+=item sqlengine()
+
+  $table->sqlengine() : $sqldb
+  $table->sqlengine($sqldb)
+
+Get and set our current DBIx::SQLEngine. Required value. The SQLEngine
+provides the DBI connection and SQL execution capabilities required to talk
+to the remote data storage.
+
+=item get_sqlengine()
+
+  $table->get_sqlengine() : $sqldb or exception
+
+Returns the SQLEngine, or throws an exception if it is not set.
+
+=item sqlengine_do()
+
+  $table->sqlengine_do( $method, %sql_clauses ) : $results or exception
+
+Calls the provided method name on the associated SQLEngine, passing along the table name and the other provided arguments. Intended for methods with hash-based argument parsing like C<fetch_select( table =E<gt> $table_name )>.
+
+=item sqlengine_table_method()
+
+  $table->sqlengine_table_method( $method, @args ) : $results or exception
+
+Calls the provided method name on the associated SQLEngine, passing along the table name and the other provided arguments. Intended for methods with list-based argument parsing like C<detect_table( $table_name )>.
+
+=back
+
+=cut
+
+########################################################################
+
+use Class::MakeMethods (
+  'Standard::Hash:object' => { name=>'sqlengine',
+				 class=>'DBIx::SQLEngine::Driver::Default' },
+);
+
+sub get_sqlengine {
+  ($_[0])->sqlengine() or croak("No sqlengine set for table '$_[0]->{name}'")
+}
+
+sub sqlengine_do {
+  my ($self, $method, @args) = @_;
+  my $name = $self->name() 
+	or croak("No name set for table in '$self->{sqlengine}'");
+  my $sqlengine = $self->sqlengine() 
+	or croak("No sqlengine set for table '$_[0]->{name}'");
+  $sqlengine->$method(table => $name, @args)
+}
+
+sub sqlengine_table_method {
+  my ($self, $method, @args) = @_;
+  my $name = $self->name() 
+	or croak("No name set for table in '$self->{sqlengine}'");
+  my $sqlengine = $self->sqlengine() 
+	or croak("No sqlengine set for table '$_[0]->{name}'");
+  $sqlengine->$method($name, @args)
+}
+
+########################################################################
+
+=head2 ColumnSet
+
+=over 4
+
+=item columnset()
+
+  $table->columnset () : $columnset
+
+Returns the current columnset, if any.
+
+=item get_columnset()
+
+  $table->get_columnset () : $columnset
+
+Returns the current columnset, or runs a trivial query to detect the columns in the sqlengine. If the table doesn't exist, the columnset will be empty.
+
+=item columns()
+
+  $table->columns () : @columns
+
+Return the column objects from the current columnset.
+
+=item column_names()
+
+  $table->column_names () : @column_names
+
+Return the names of the columns, in order.
+
+=item column_named()
+
+  $table->column_named ( $name ) : $column
+
+Return the column info object for the specifically named column.
+
+=back
+
+=cut
+
+use Class::MakeMethods (
+  'Standard::Hash:object' => { name=>'columnset', 
+				class=>'DBIx::SQLEngine::Schema::ColumnSet' },
+  'Standard::Universal:delegate' => [
+    [ qw( columns column_names column_named column_primary ) ] => 
+				{ target=>'get_columnset' },
+  ],
+);
+
+sub get_columnset {
+  my $self = shift;
+  
+  $self->columnset or $self->columnset(
+    DBIx::SQLEngine::Schema::ColumnSet->new( $self->detect_table() or
+	confess("Couldn't fetch column information for table $self->{name}") 
+    ) 
+  );
+}
+
+########################################################################
+
+# To-do: finish adding support for tables with multiple-column primary keys.
+
+use Class::MakeMethods (
+  # 'Standard::Inheritable:scalar' => { name=>'column_primary_name',  },
+  'Standard::Inheritable:scalar' => { name=>'column_primary_is_sequence',  },
+);
+
+sub column_primary_name {
+  my $columns = (shift)->get_columnset;
+  $columns->[0]->name;
+}
+
+# (__PACKAGE__)->column_primary_name( 'id' );
+# (__PACKAGE__)->column_primary_is_sequence( 1 );
+
+sub primary_criteria {
+  my $self = shift;
+  my $primary_col = $self->column_primary_name;
+  my @ids = map { ( ref($_) eq 'HASH' ) ? $_->{$primary_col} : $_ } @_;
+  return { $primary_col => ( scalar(@ids) > 1 ) ? \@ids : $ids[0] }
+}
+
+########################################################################
+
+########################################################################
+
+=head2 Select to Retrieve Rows
+
+=over 4
+
+=item fetch_select()
 
   $table->fetch_select ( %select_clauses ) : $row_hash_array
 
-Return rows from the table that match the provided criteria, and in the requested order, by executing a SQL select statement.
-
-=item fetch_id
-
-  $table->fetch_id ( $PRIMARY_KEY ) : $row
+Calls the corresponding SQLEngine method with the table name and the provided arguments. Return rows from the table that match the provided criteria, and in the requested order, by executing a SQL select statement.
 
 Fetch the row with the specified ID. 
 
-=item visit_select
+=item visit_select()
 
   $table->visit_select ( $sub_ref, %select_clauses ) : @results
+  $table->visit_select ( %select_clauses, $sub_ref ) : @results
 
 Calls the provided subroutine on each matching row as it is retrieved. Returns the accumulated results of each subroutine call (in list context).
+
+=item select_row()
+
+  $table->select_row ( $primary_key_value ) : $row
+  $table->select_row ( \%hash_with_primary_key_value ) : $row
 
 =back
 
@@ -128,54 +283,59 @@ Calls the provided subroutine on each matching row as it is retrieved. Returns t
 
 # $rows = $self->fetch_select( %select_clauses );
 sub fetch_select {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->fetch_select( table => $self->name, @_ )
+  (shift)->sqlengine_do('fetch_select', @_)
 }
 
-# $rows = $self->visit_select( $sub, %select_clauses );
+# $rows = $self->fetch_one_value( %select_clauses );
+sub fetch_one_value {
+  (shift)->sqlengine_do('fetch_one_value', @_ )
+}
+
+# $rows = $self->visit_select( %select_clauses, $sub );
 sub visit_select {
   my $self = shift;
-  my $sub = shift;
-  
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->visit_select( $sub, table => $self->name, @_ )
-}
-
-# $rows = $self-> fetch_one_value( %select_clauses );
-sub fetch_one_value {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->fetch_select( table => $self->name, @_ )
-}
-
-# $row = $self->fetch_id($id);
-  # Retrieve a specific row by id
-sub fetch_id {
-  my ($self, $id) = @_;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->fetch_one_row( 
-    table => $self->name, 
-    columns => '*', 
-    criteria => { $self->column_primary_name => $id }
-  );
+  my $sub = ( ref($_[0]) ? shift : pop );
+  $self->sqlengine_do('visit_select', @_, $sub )
 }
 
 ########################################################################
 
-=head2 Inserting Rows
+# $row = $self->select_row( $id_value );
+# $row = $self->select_row( \@compound_id );
+# $row = $self->select_row( \%hash_with_pk );
+  # Retrieve a specific row by id
+sub select_row {
+  my $self = shift;
+  $self->sqlengine_do('fetch_one_row', criteria=>$self->primary_criteria(@_) )
+}
+
+# $rows = $self->select_rows( @ids_or_hashes );
+sub select_rows {
+  my $self = shift;
+  $self->sqlengine_do('fetch_select', criteria=>$self->primary_criteria(@_) )
+}
+
+########################################################################
+
+=head2 Insert to Add Rows
 
 =over 4
 
-=item insert_row
+=item do_insert()
+
+  $table->do_insert ( %insert_clauses ) : $row_count
+
+Calls the corresponding SQLEngine method with the table name and the provided arguments. 
+
+=item insert_row()
 
   $table->insert_row ( $row_hash ) : ()
 
-Adds the provided row by executing a SQL insert statement.
+Adds the provided row by executing a SQL insert statement. Uses column_names() and column_primary_is_sequence() to produce the proper clauses.
 
-=item insert_rows
+=item insert_rows()
 
-  $table->insert_rows ( $row_hash_ary ) : ()
+  $table->insert_rows ( @row_hashes ) : ()
 
 Insert each of the rows from the provided array into the table.
 
@@ -183,44 +343,50 @@ Insert each of the rows from the provided array into the table.
 
 =cut
 
-# $self->insert_row( $row );
+sub do_insert {
+  (shift)->sqlengine_do('do_insert', @_)
+}
+
+# $self->insert_row( \%row );
 sub insert_row {
   my ($self, $row) = @_;
   
   my $primary = $self->column_primary_name;
-  my @colnames = grep { $_ eq $primary or defined $row->{$_} } $self->column_names;
+  my @colnames = grep { $_ eq $primary or defined $row->{$_} } 
+							$self->column_names;
   
-  $self->do_insert( 
-    table => $self->name,
+  $self->sqlengine_do('do_insert',
     ( $self->column_primary_is_sequence ? ( sequence => $primary ) : () ),
     columns => \@colnames,
     values => $row,
   );
 }
 
-# $self->insert_rows( $rows_arrayref );
+# $self->insert_rows( @hashes );
 sub insert_rows {
-  my ($self, $rows) = @_;
-  foreach ( @$rows ) { $self->insert_row( $_ ); }
+  my $self = shift;
+  my $rc;
+  foreach my $row ( @_ ) { $rc += $self->insert_row( $row ) }
+  $rc
 }
 
 ########################################################################
 
-=head2 Updating Rows
+=head2 Update to Change Rows
 
 =over 4
 
-=item update_row
+=item do_update()
+
+  $table->do_update ( %update_clauses ) : $row_count
+
+Calls the corresponding SQLEngine method with the table name and the provided arguments. 
+
+=item update_row()
 
   $table->update_row ( $row_hash ) : ()
 
-Update this existing row based on its primary key.
-
-=item update_where
-
-  $table->update_where ( CRITERIA, $changes_hash ) : ()
-
-Make changes as indicated in changes hash to all rows that meet criteria
+Update this existing row based on its primary key. Uses column_names() and column_primary_is_sequence() to produce the proper clauses.
 
 =back
 
@@ -228,66 +394,51 @@ Make changes as indicated in changes hash to all rows that meet criteria
 
 # $self->do_update( %clauses);
 sub do_update {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->do_update( table => $self->name, @_ )
+  (shift)->sqlengine_do('do_update', @_ )
 }
 
 # $self->update_row( $row );
 sub update_row {
   my($self, $row) = @_;
   
-  $self->do_update( 
+  $self->sqlengine_do('do_update', 
     columns => [ $self->column_names ],
-    criteria => $self->primary_criteria( $row )
+    criteria => $self->primary_criteria( $row ),
     values => $row,
   );
 }
 
-# $self->update_where( $criteria, $change_hash );
-sub update_where {
-  my($self, $criteria, $changes) = @_;
-  
-  $self->do_update( 
-    criteria => $criteria,
-    values => $changes,
-  );
-}
-
-sub primary_criteria {
-  my($self, $row) = @_;
-  my $primary_col = $self->column_primary_name;
-  my $primary_value = ( ref $row ) ? $row->{$primary_col} : $row;
-  { $primary_col => $primary_value },
+# $self->update_rows( @hashes );
+sub update_rows {
+  my $self = shift;
+  my $rc;
+  foreach my $row ( @_ ) { $rc += $self->update_row( $row ) }
+  $rc
 }
 
 ########################################################################
 
-=head2 Deleting Rows
+=head2 Delete to Remove Rows
 
 =over 4
 
-=item delete_all
+=item do_delete()
 
-  $table->delete_all () : ()
+  $table->do_delete ( %delete_clauses ) : $row_count
 
-Delete all of the rows from table.
+Calls the corresponding SQLEngine method with the table name and the provided arguments. 
 
-=item delete_where
+=item delete_row()
 
-  $table->delete_where ( $criteria ) : ()
-
-=item delete_row
-
-  $table->delete_row ( $row_hash ) : ()
+  $table->delete_row ( $row_hash_or_id ) : ()
 
 Deletes the provided row from the table.
 
-=item delete_id
+=item delete_rows()
 
-  $table->delete_id ( $PRIMARY_KEY ) : ()
+  $table->delete_rows ( @row_hashes_or_ids ) : ()
 
-Deletes the row with the provided ID.
+Deletes the provided row from the table.
 
 =back
 
@@ -295,57 +446,34 @@ Deletes the row with the provided ID.
 
 # $self->do_delete( %clauses);
 sub do_delete {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->do_delete( table => $self->name, @_ )
-}
-
-# $self->delete_all;
-sub delete_all { 
-  my $self = shift;  
-  $self->do_delete();
-}
-
-# $self->delete_where( $criteria );
-sub delete_where { 
-  my $self = shift;
-  
-  $self->do_delete( 
-    criteria => shift 
-  );
+  (shift)->sqlengine_do('do_delete', @_ )
 }
 
 # $self->delete_row( $row );
 sub delete_row { 
-  my($self, $row) = @_;
-  
-  $self->do_delete( 
-    criteria => $self->primary_criteria( $row )
-  );
+  my $self = shift;
+  $self->sqlengine_do( 'do_delete', criteria => $self->primary_criteria(@_ ) )
 }
 
-# $self->delete_id( $id );
-sub delete_id {
-  my($self, $id) = @_;
-  
-  $self->do_delete( 
-    criteria => $self->primary_criteria( $id )
-  );
+# $self->delete_rows( @hashes );
+sub delete_rows {
+  my $self = shift;
+  $self->sqlengine_do( 'do_delete', criteria => $self->primary_criteria(@_) )
 }
 
 ########################################################################
 
-=head2 Agregate functions
+=head2 Selecting Agregate Values
 
 =over 4
 
-=item count_rows
+=item count_rows()
 
   $table->count_rows ( CRITERIA ) : $number
 
 Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
 
-=item fetch_max
+=item fetch_max()
 
   $table->count_rows ( $colname, CRITERIA ) : $number
 
@@ -358,167 +486,75 @@ Returns the largest value in the named column.
 # $rowcount = $self->count_rows
 # $rowcount = $self->count_rows( $criteria );
 sub count_rows {
-  my $self = shift;
-  my $criteria = shift;
-  
-  $self->fetch_one_value( 
-    columns => 'count(*)', 
-    criteria => $criteria,
-  );
+  (shift)->fetch_one_value( columns => 'count(*)', criteria => (shift) )
 }
 
 sub try_count_rows {
-  my $table = shift;
-  my $count; 
-  eval { 
-    $count = $table->count_rows 
-  };
-  return ( wantarray ? ( $count, $@ ) : $count );
+  my $count = eval { (shift)->count_rows  };
+  wantarray ? ( $count, $@ ) : $count
 }
 
 # $max_value = $self->fetch_max( $colname, $criteria );
 sub fetch_max {
-  my $self = shift;
-  my $colname = shift;
-  my $criteria = shift;
-  
-  $self->fetch_one_value( 
-    columns => "max($colname)", 
-    criteria => $criteria,
-  );
+  (shift)->fetch_one_value( columns => "max(".(shift).")", criteria => (shift) )
 }
 
 ########################################################################
 
-=head2 Storage And Source Management
+=head2 Detect Availability
 
 =over 4
 
-=item detect_datasource
+=item detect_sqlengine()
 
-  $table->detect_datasource : $flag
+  $table->detect_sqlengine : $flag
 
 Detects whether the SQL database is avaialable by attempting to connect.
 
+=item detect_table()
 
-=item table_exists
-
-  $table->table_exists : $flag
+  $table->detect_table : @columns
 
 Checks to see if the table exists in the SQL database by attempting to retrieve its columns.
 
-
 =back
 
 =cut
 
-# $flag = $table->detect_datasource;
-sub detect_datasource {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->detect_any;
+# $flag = $table->detect_sqlengine;
+sub detect_sqlengine {
+  (shift)->get_sqlengine()->detect_any;
 }
 
-# $flag = $table->table_exists;
-sub table_exists {
-  my $self = shift;
-  my $datasource = $self->datasource() or croak("No datasource set for $self");
-  $datasource->detect_table( $self->name ) ? 1 : 0;
+# @columns = $table->detect_table;
+sub detect_table {
+  (shift)->sqlengine_table_method('detect_table');
 }
 
 ########################################################################
 
-=head2 ColumnSet
+=head2 Create, Detect, and Drop
 
 =over 4
 
-=item columnset
+=item create_table()
 
-  $table->columnset () : $columnset
+  $table->create_table () 
+  $table->create_table ( $column_ary ) 
 
-Returns the current columnset, if any.
+=item drop_table()
 
-=item get_columnset
+  $table->drop_table () 
 
-  $table->get_columnset () : $columnset
+=item ensure_table_exists()
 
-Returns the current columnset, or runs a trivial query to detect the columns in the DataSource. If the table doesn't exist, the columnset will be empty.
-
-=item columns
-
-  $table->columns () : @columns
-
-Return the column objects from the current columnset.
-
-=item column_names
-
-  $table->column_names () : @column_names
-
-Return the names of the columns, in order.
-
-=item column_named
-
-  $table->column_named ( $name ) : $column
-
-Return the column info object for the specicifcally named column.
-
-=back
-
-=cut
-
-use Class::MakeMethods (
-  'Standard::Hash:object' => { name=>'columnset', class=>'DBIx::SQLEngine::Schema::ColumnSet' },
-  'Standard::Universal:delegate' => [
-    [ qw( columns column_names column_named column_primary ) ] => { target=>'get_columnset' },
-  ],
-);
-
-use Class::MakeMethods (
-  'Standard::Inheritable:scalar' => { name=>'column_primary_name',  },
-  'Standard::Inheritable:scalar' => { name=>'column_primary_is_sequence',  },
-);
-
-(__PACKAGE__)->column_primary_name( 'id' );
-(__PACKAGE__)->column_primary_is_sequence( 1 );
-
-# Qyestion: should we croak if we've got a multiple-column primary key?
-
-sub get_columnset {
-  my $self = shift;
-  
-  if ( my $columns = $self->columnset ) { return $columns }
-  
-  my @columns = $self->datasource->detect_table( $self->name );
-  unless ( scalar @columns ) { 
-    confess("Couldn't fetch column information for table $self->{name}");
-  }
-  $self->columnset( DBIx::SQLEngine::Schema::ColumnSet->new( @columns ) );
-}
-
-########################################################################
-
-=head2 DDL
-
-=over 4
-
-=item table_create
-
-  $table->table_create () 
-  $table->table_create ( $column_ary ) 
-
-=item table_drop
-
-  $table->table_drop () 
-
-=item table_ensure_exists
-
-  $table->table_ensure_exists ( $column_ary )
+  $table->ensure_table_exists ( $column_ary )
 
 Create the table's remote storage if it does not already exist.
 
-=item table_recreate
+=item recreate_table()
 
-  $table->table_recreate ()
+  $table->recreate_table ()
 
 Remove and then recreate the table's remote storage.
 
@@ -526,44 +562,48 @@ Remove and then recreate the table's remote storage.
 
 =cut
 
-# $self->table_create();
-sub table_create {
+# $flag = $table->table_exists;
+sub table_exists { &detect_table ? 1 : 0 }
+
+# $self->create_table();
+sub create_table {
   my $self = shift;
-  my $columnset = shift || $self->columnset;
-  $self->datasource->do_create_table( $self->name, $columnset->as_hashes ) ;
+  my $columnset = shift || $self->columnset ||
+	  confess("No column information for table $self->{name}");
+  $self->sqlengine_table_method('create_table', $columnset->as_hashes ) ;
 }
 
-# $sql_stmt = $table->table_drop();
-sub table_drop {
-  my $self = shift;
-  $self->datasource->do_drop_table( $self->name ) ;
+# $sql_stmt = $table->drop_table();
+sub drop_table {
+  (shift)->sqlengine_table_method('drop_table') ;
 }
 
-# $table->table_ensure_exists( $column_ary )
+# $table->ensure_table_exists( $column_ary )
   # Create the remote data source for a table if it does not already exist
-sub table_ensure_exists {
+sub ensure_table_exists {
   my $self = shift;
-  $self->table_create(@_) unless $self->table_exists;
+  $self->create_table(@_) unless $self->table_exists;
 }
 
-# $table->table_recreate
-# $table->table_recreate( $column_ary )
+# $table->recreate_table
+# $table->recreate_table( $column_ary )
   # Delete the source, then create it again
-sub table_recreate { 
+sub recreate_table { 
   my $self = shift;
-  my $column_ary = shift || $self->columns;
-  $self->table_drop if ( $self->table_exists );
-  $self->table_create( $column_ary );
+  my $column_ary = shift;
+  if ( $self->table_exists ) {
+    $column_ary ||= $self->get_columnset;
+    $self->drop_table;
+  }
+  $self->create_table( $column_ary );
 }
 
-# $package->table_recreate_with_rows;
-# $package->table_recreate_with_rows( $column_ary );
-sub table_recreate_with_rows {
+# $package->recreate_table_with_rows;
+# $package->recreate_table_with_rows( $column_ary );
+sub recreate_table_with_rows {
   my $self = shift;
-  my $column_ary = shift || $self->columns;
   my $rows = $self->fetch_select();
-  $self->table_drop;
-  $self->table_create( $column_ary );
+  $self->recreate_table( @_ );
   $self->insert_rows( $rows );
 }
 
