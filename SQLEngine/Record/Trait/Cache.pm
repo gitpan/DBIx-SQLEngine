@@ -46,8 +46,6 @@ B<Basics:> Layered over superclass.
 
 =head1 DESCRIPTION
 
-This package is not yet complete.
-
 This package provides a caching layer for DBIx::SQLEngine::Record objects.
 
 Don't use this module directly; instead, pass its name as a trait when you create a new record class. This package provides a multiply-composable collection of functionality for Record classes. It is combined with the base class and other traits by DBIx::SQLEngine::Record::Class. 
@@ -62,9 +60,7 @@ use strict;
 use Carp;
 use vars qw( @MIXIN );
 
-# use Cache::Cache;
 use Storable 'freeze';
-use String::Escape 'qprintable';
 
 ########################################################################
 
@@ -238,14 +234,14 @@ sub cache_log_operation {
   my $level = $self->CacheLogging() or return;
   my $namespace = $cache->get_namespace;
   if ( $level < 2 ) {
-    warn "Cache $namespace: $oper " . qprintable($key) . "\n";
+    warn "Cache $namespace: $oper " . DBIx::SQLEngine::printable($key) . "\n";
   } else {
     my $history = ( $CachingHistory{ $key } ||= [] );
     warn "Cache $namespace: $oper (" . join(' ', @$history ) . ") "  .
-				      qprintable($key)."\n";
+				      DBIx::SQLEngine::printable($key)."\n";
     push @$history, $oper;
   }
-}
+} 
 
 ########################################################################
 

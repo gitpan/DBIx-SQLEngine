@@ -234,7 +234,7 @@ for the various classes.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.024;
+$VERSION = 0.025;
 
 use strict;
 

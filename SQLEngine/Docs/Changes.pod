@@ -6,6 +6,13 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.025
+
+2004-04-14 Released as DBIx-SQLEngine-0.025.
+
+2004-04-14 Fixed undocumented (and un-necessary) dependency on String::Escape in Record::Trait::Cache which was causing a test failure. Thanks to the folks running automated cpan smokers, which caught this a few hours after I posted it.
+
+
 =head2 Version 0.024
 
 2004-04-14 Released as DBIx-SQLEngine-0.024.
