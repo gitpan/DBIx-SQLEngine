@@ -1,6 +1,6 @@
 =head1 NAME
 
-Class::MakeMethods::Docs::RelatedModules - Survey of Class Builders
+DBIx::SQLEngine::Docs::RelatedModules - Survey of Class Builders
 
 
 =head1 SYNOPSIS

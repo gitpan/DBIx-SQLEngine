@@ -1,21 +1,22 @@
 =head1 NAME
 
-DBIx::SQLEngine::Docs::ReadMe - Introduction to DBIx::SQLEngine.
+DBIx::SQLEngine::Docs::ReadMe - Welcome to DBIx::SQLEngine
+
+=head1 ABSTRACT
+
+The DBIx::SQLEngine class provides an extended interface for the
+DBI database framework. Each SQLEngine object is a wrapper around
+a DBI database handle, adding methods that support ad-hoc SQL
+generation and query execution in a single call. Dynamic subclassing
+based on database server type enables cross-platform portability.
+
 
 =head1 DESCRIPTION
 
-The DBIx::SQLEngine class provides an extended interface for DBI
-database handles, adding methods that support ad-hoc SQL generation
-and query execution in a single call.
-
-=head1 MOTIVATION
-
-This is the most recent version of a collection of libraries that
-I've used over the last several years to develop business data
-applications and object-relational mapping toolkits.
-
-Its goal is to simplify dynamic query execution with the following
-capabilities:
+DBIx::SQLEngine is the latest generation of a toolkit used by the
+authors for several years to develop business data applications
+and object-relational mapping toolkits. Its goal is to simplify
+dynamic query execution with the following capabilities:
 
 =over 4
 
@@ -23,28 +24,91 @@ capabilities:
 
 Data-driven SQL: Ad-hoc generation of SQL statements from Perl data
 structures in a variety of formats; simple hash and array references
-are flexibly converted to standard SQL syntax.
+are flexibly converted to form clauses in standard SQL query syntax.
 
 =item *
 
 High-Level Interface: Standard query operations are handled by a single
-method call each. Error handling is standardized.
+method call each. Error handling is standardized, and routine
+annoyances like timed-out connections are retried automatically.
 
 =item *
 
-Full API Access: Pass-through arbitrary SQL and allow access to
-entire DBI API for cases when high-level interfaces are insufficient
-or inconvenient.
+Full DBI Access: Accepts arbitrary SQL queries with placeholder
+parameters to be passed through, and delegates all other method
+calls to a wrapped database handle, allowing access to the entire
+DBI API for cases when high-level interfaces are insufficient
 
 =item *
 
-Portability: Dynamic subclassing (via DBIx::AnyDBD) to allow
-platform-specific support for driver idiosyncrasies and DBMS
-workarounds; this release includes subclasses for connections to
-MySQL, Pg, Oracle, and MSSQL servers, as well as for the standalone
-SQLite, AnyData, and CSV packages.
+Portability Subclasses: Uses dynamic subclassing (via DBIx::AnyDBD)
+to allow platform-specific support for driver idiosyncrasies and
+DBMS workarounds. This release includes subclasses for connections
+to MySQL, PostgreSQL, Oracle, and Microsoft SQL servers, as well
+as for the standalone SQLite, AnyData, and CSV packages.
 
 =back
+
+=head2 Data-driven SQL
+
+Several methods are responsible for converting their arguments into
+commands and placeholder parameters in SQL, the Structured Query
+Language.
+
+The various methods whose names being with sql_, like sql_select
+and sql_insert, each accept a hash of arguments and combines then
+to return a SQL statement and corresponding parameters. Data for
+each clause of the statement is accepted in multiple formats to
+facilitate query abstraction, often including various strings,
+array refs, and hash refs. Each method also supports passing
+arbitrary queries through using a C<sql> parameter.
+
+=head2 High-Level Interface
+
+The combined query interface provides a useful high-level idiom to
+perform the typical cycle of SQL generation, query execution, and
+results fetching, all through a single method call.
+
+The various fetch_*, visit_* and do_* methods that don't end in
+_sql, like fetch_select and do_insert, are wrappers that combine
+a SQL-generation and a SQL-execution method to provide a simple
+ways to perform a query in one call.
+
+=head2 Full DBI Access
+
+Each DBIx::SQLEngine object is implemented as a wrapper around a
+database handle provided by DBI, the Perl Database Interface.
+
+Arbitrary queries can be executed, bypassing the SQL generation
+capabilities. The methods whose names end in _sql, like fetch_sql
+and do_sql, each accept a SQL statement and parameters, pass it to
+the DBI data source, and return information about the results of
+the query.
+
+=head2 Portability Subclasses
+
+Behind the scenes, different subclasses of SQLEngine are instantiated
+depending on the type of server to which you connect, thanks to
+DBIx::AnyData. As a result, some range of SQL dialect ideosyncracies
+can be compensated for. 
+
+For example, the sql_limit method controls the syntax for select
+statements with limit and offset clauses, and both MySQL and Oracle
+override this method to use their local syntax.
+
+The only method that's actually provided by the DBIx::SQLEngine
+class itself is the new() constructor. All of the other methods
+are defined in DBIx::SQLEngine::Driver::Default, or in one of its
+automatically-loaded subclasses.
+
+The public interface of DBIx::SQLEngine is shared by all of its
+subclasses. The superclass methods aim to produce and perform
+generic queries in an database-independent fashion, using standard
+SQL syntax.  Subclasses may override these methods to compensate
+for idiosyncrasies of their database server or mechanism.  To
+facilitate cross-platform subclassing, many of these methods are
+implemented by calling combinations of other methods, which may
+individually be overridden by subclasses.
 
 
 =head1 DISTRIBUTION AND INSTALLATION

@@ -27,51 +27,113 @@ DBIx::SQLEngine - Extends DBI with high-level operations
     criteria => { 'name'=>'Dave' },
   );
 
+=head1 ABSTRACT
+
+The DBIx::SQLEngine class provides an extended interface for the
+DBI database framework. Each SQLEngine object is a wrapper around
+a DBI database handle, adding methods that support ad-hoc SQL
+generation and query execution in a single call. Dynamic subclassing
+based on database server type enables cross-platform portability.
+
+
 =head1 DESCRIPTION
 
-The DBIx::SQLEngine class provides an extended interface for the DBI database framework. Each SQLEngine object is a wrapper around a DBI database handle, adding methods that support ad-hoc SQL generation and query execution in a single call.
+DBIx::SQLEngine is the latest generation of a toolkit used by the
+authors for several years to develop business data applications
+and object-relational mapping toolkits. Its goal is to simplify
+dynamic query execution with the following capabilities:
+
+=over 4
+
+=item *
+
+Data-driven SQL: Ad-hoc generation of SQL statements from Perl data
+structures in a variety of formats; simple hash and array references
+are flexibly converted to form clauses in standard SQL query syntax.
+
+=item *
+
+High-Level Interface: Standard query operations are handled by a single
+method call each. Error handling is standardized, and routine
+annoyances like timed-out connections are retried automatically.
+
+=item *
+
+Full DBI Access: Accepts arbitrary SQL queries with placeholder
+parameters to be passed through, and delegates all other method
+calls to a wrapped database handle, allowing access to the entire
+DBI API for cases when high-level interfaces are insufficient
+
+=item *
+
+Portability Subclasses: Uses dynamic subclassing (via DBIx::AnyDBD)
+to allow platform-specific support for driver idiosyncrasies and
+DBMS workarounds. This release includes subclasses for connections
+to MySQL, PostgreSQL, Oracle, and Microsoft SQL servers, as well
+as for the standalone SQLite, AnyData, and CSV packages.
+
+=back
+
+=head2 Data-driven SQL
+
+Several methods are responsible for converting their arguments into
+commands and placeholder parameters in SQL, the Structured Query
+Language.
+
+The various methods whose names being with sql_, like sql_select
+and sql_insert, each accept a hash of arguments and combines then
+to return a SQL statement and corresponding parameters. Data for
+each clause of the statement is accepted in multiple formats to
+facilitate query abstraction, often including various strings,
+array refs, and hash refs. Each method also supports passing
+arbitrary queries through using a C<sql> parameter.
+
+=head2 High-Level Interface
+
+The combined query interface provides a useful high-level idiom to
+perform the typical cycle of SQL generation, query execution, and
+results fetching, all through a single method call.
+
+The various fetch_*, visit_* and do_* methods that don't end in
+_sql, like fetch_select and do_insert, are wrappers that combine
+a SQL-generation and a SQL-execution method to provide a simple
+ways to perform a query in one call.
+
+=head2 Full DBI Access
+
+Each DBIx::SQLEngine object is implemented as a wrapper around a
+database handle provided by DBI, the Perl Database Interface.
+
+Arbitrary queries can be executed, bypassing the SQL generation
+capabilities. The methods whose names end in _sql, like fetch_sql
+and do_sql, each accept a SQL statement and parameters, pass it to
+the DBI data source, and return information about the results of
+the query.
 
 =head2 Portability Subclasses
 
 Behind the scenes, different subclasses of SQLEngine are instantiated
 depending on the type of server to which you connect, thanks to
-DBIx::AnyData. As a result, SQL dialect ideosyncracies can be
-compensated for; this release includes subclasses for connections
-to MySQL, Pg, Oracle, and MSSQL servers, as well as for the standalone
-SQLite, AnyData, and CSV packages.
+DBIx::AnyData. As a result, some range of SQL dialect ideosyncracies
+can be compensated for. 
+
+For example, the sql_limit method controls the syntax for select
+statements with limit and offset clauses, and both MySQL and Oracle
+override this method to use their local syntax.
 
 The only method that's actually provided by the DBIx::SQLEngine
 class itself is the new() constructor. All of the other methods
-described below are defined in DBIx::SQLEngine::Driver::Default,
-or overridden in one of its subclasses.
+are defined in DBIx::SQLEngine::Driver::Default, or in one of its
+automatically-loaded subclasses.
 
-The public interface described below is shared by all SQLEngine
-subclasses. In general, these methods aim to produce generic,
-database-independent queries, using standard SQL syntax. Subclasses
-may override these methods to compensate for SQL syntax idiosyncrasies.
-To facilitate cross-platform subclassing, many of these methods
-are implemented by calling combinations of other methods, which
-may individually be overridden by subclasses.
-
-=head2 SQL Functionality
-
-This module deals with two different aspects of SQL, the Structured Query Language: generating statements that will perform a required function, and executing statements by passing them through the DBI handle.
-
-=over 4
-
-=item SQL Generation
-
-The various methods whose names being with sql_, like sql_select, each accept a hash of arguments and combines then to return a SQL statement and corresponding parameters. Data for each clause of the statement is accepted in a variety of formats to facilitate query abstraction. Each method also supports passing arbitrary queries through using a C<sql> parameter.
-
-=item SQL Execution
-
-The methods whose names end in _sql, like fetch_sql, each accept a SQL statement and parameters, pass it to the DBI data source, and return information about the results of the query. 
-
-=item Combined Query Interface
-
-The other fetch_*, visit_* and do_* methods, like do_insert, are wrappers that combine a SQL-generation and a SQL-execution method to provide a simple ways to perform a query in one call. 
-
-=back
+The public interface of DBIx::SQLEngine is shared by all of its
+subclasses. The superclass methods aim to produce and perform
+generic queries in an database-independent fashion, using standard
+SQL syntax.  Subclasses may override these methods to compensate
+for idiosyncrasies of their database server or mechanism.  To
+facilitate cross-platform subclassing, many of these methods are
+implemented by calling combinations of other methods, which may
+individually be overridden by subclasses.
 
 =cut
 
@@ -79,7 +141,7 @@ The other fetch_*, visit_* and do_* methods, like do_insert, are wrappers that c
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.011;
+$VERSION = 0.012;
 
 use strict;
 
@@ -93,7 +155,7 @@ use DBIx::SQLEngine::Criteria;
 
 ########################################################################
 
-=head1 INSTANTIATION
+=head1 ENGINE INSTANTIATION
 
 =head2 SQLEngine Object Creation
 
@@ -101,7 +163,7 @@ Create one SQLEngine for each DBI datasource you will use.
 
 =over 4
 
-=item new
+=item new()
 
   DBIx::SQLEngine->new( $dsn ) : $sqldb
   DBIx::SQLEngine->new( $dsn, $user, $pass ) : $sqldb
@@ -152,32 +214,33 @@ The following methods may be used to retrieve data using SQL select statements. 
 
 =over 4
 
-=item fetch_select
+=item fetch_select()
 
   $sqldb->fetch_select( %sql_clauses ) : $row_hashes
   $sqldb->fetch_select( %sql_clauses ) : ($row_hashes,$column_hashes)
 
 Retrieve rows from the datasource as an array of hashrefs. If called in a list context, also returns an array of hashrefs containing information about the columns included in the result set.
 
-=item fetch_one_row
+=item fetch_one_row()
 
   $sqldb->fetch_one_row( %sql_clauses ) : $row_hash
 
 Calls fetch_select, then returns only the first row of results.
 
-=item fetch_one_value
+=item fetch_one_value()
 
   $sqldb->fetch_one_value( %sql_clauses ) : $scalar
 
 Calls fetch_select, then returns a single value from the first row of results.
 
-=item visit_select
+=item visit_select()
 
   $sqldb->visit_select( $code_ref, %sql_clauses ) : @results
+  $sqldb->visit_select( %sql_clauses, $code_ref ) : @results
 
-Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. Returns the results returned by each of those function calls. This can allow for more efficient processing if you are processing a large number of rows and do not need to keep them all in memory.
+Retrieve rows from the datasource as a series of hashrefs, and call the user provided function for each one. For your convenience, will accept a coderef as either the first or the last argument. Returns the results returned by each of those function calls. Processing with visit_select rather than fetch_select can be more efficient if you are looping over a large number of rows and do not need to keep them all in memory.
 
-=item sql_select
+=item sql_select()
 
   $sqldb->sql_select ( %sql_clauses ) : $sql_stmt, @params
 
@@ -189,7 +252,7 @@ B<SQL Select Clauses>: The above select methods accept a hash describing the cla
 
 =over 4
 
-=item sql
+=item 'sql' => ...
 
 Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
@@ -224,18 +287,6 @@ Optional. Maximum number of rows to be retrieved from the server. Relies on DBMS
 =item offset
 
 Optional. Number of rows at the start of the result which should be skipped over. Relies on DBMS-specific behavior provided by sql_limit(). 
-
-=back
-
-I<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
-
-=over 4
-
-=item sql_limit
-
-  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
-
-Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
 
 =back
 
@@ -481,6 +532,22 @@ sub sql_select {
   return( $sql, @params );
 }
 
+########################################################################
+
+=pod
+
+I<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
+
+=over 4
+
+=item sql_limit()
+
+  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
+
+Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
+
+=back
+
 sub sql_limit {
   my $self = shift;
   my ( $limit, $offset, $sql, @params ) = @_;
@@ -489,6 +556,28 @@ sub sql_limit {
   $sql .= " offset $offset" if $offset;
   
   return ($sql, @params);
+}
+
+########################################################################
+
+=pod
+
+=over 4
+
+=item sql_escape_text_for_like()
+
+  $sqldb->sql_escape_text_for_like ( $text ) : $escaped_expr
+
+Fails with message "DBMS-Specific Function".
+
+Subclasses should, based on the datasource's server_type, protect a literal value for use in a like expression.
+
+=back
+
+=cut
+
+sub sql_escape_text_for_like {
+  confess("DBMS-Specific Function")
 }
 
 ########################################################################
@@ -503,13 +592,13 @@ Information is entered into a DBI database through the Data Manipulation Languag
 
 =over 4
 
-=item do_insert  
+=item do_insert()
 
   $sqldb->do_insert( %sql_clauses ) : $row_count
 
 Insert a single row into a table in the datasource. Should return 1, unless there's an exception.
 
-=item sql_insert
+=item sql_insert()
 
   $sqldb->sql_insert ( %sql_clauses ) : $sql_stmt, @params
 
@@ -685,7 +774,7 @@ To standardize their use, this package defines an interface with several typical
 
 =over 4
 
-=item do_insert_with_sequence
+=item do_insert_with_sequence()
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
@@ -695,7 +784,7 @@ Fails with message "DBMS-Specific Function".
 
 Subclasses will probably want to call either the _seq_do_insert_preinc() method or the _seq_do_insert_postfetch() method, and define the appropriate other seq_* methods to support them. These two methods are not part of the public interface but instead provide a template for the two most common types of insert-with-sequence behavior. The _seq_do_insert_preinc() method first obtaines a new number from the sequence using seq_increment(), and then performs a normal do_insert(). The _seq_do_insert_postfetch() method performs a normal do_insert() and then fetches the resulting value that was automatically incremented using seq_fetch_current().
 
-=item seq_fetch_current
+=item seq_fetch_current()
 
   $sqldb->seq_fetch_current( $table, $field ) : $current_value
 
@@ -703,7 +792,7 @@ Fetches the current sequence value.
 
 Fails with message "DBMS-Specific Function". 
 
-=item seq_increment
+=item seq_increment()
 
   $sqldb->seq_increment( $table, $field ) : $new_value
 
@@ -762,13 +851,13 @@ sub seq_increment {
 
 =over 4
 
-=item do_update  
+=item do_update()
 
   $sqldb->do_update( %sql_clauses ) : $row_count
 
 Modify one or more rows in a table in the datasource.
 
-=item sql_update
+=item sql_update()
 
   $sqldb->sql_update ( %sql_clauses ) : $sql_stmt, @params
 
@@ -939,13 +1028,13 @@ sub sql_update {
 
 =over 4
 
-=item do_delete
+=item do_delete()
 
   $sqldb->do_delete( %sql_clauses ) : $row_count
 
 Delete one or more rows in a table in the datasource.
 
-=item sql_delete
+=item sql_delete()
 
   $sqldb->sql_delete ( %sql_clauses ) : $sql_stmt, @params
 
@@ -1044,7 +1133,7 @@ sub sql_delete {
 
 ########################################################################
 
-=head1 DEFINING DATA STRUCTURES (SQL DDL)
+=head1 DEFINING STRUCTURES (SQL DDL)
 
 The schema of a DBI database is controlled through the Data Definition Language features of SQL.
 
@@ -1052,7 +1141,7 @@ The schema of a DBI database is controlled through the Data Definition Language 
 
 =over 4
 
-=item do_create_table  
+=item do_create_table()
 
   $sqldb->do_create_table( $tablename, $column_hash_ary ) 
 
@@ -1060,7 +1149,7 @@ Create a table.
 
 The columns to be created in this table are defined as an array of hash references, as described in the Column Information section below.
 
-=item detect_table
+=item detect_table()
 
   $sqldb->detect_table ( $tablename ) : @columns_or_empty
   $sqldb->detect_table ( $tablename, 1 ) : @columns_or_empty
@@ -1071,7 +1160,7 @@ If succssful, the columns contained in this table are returned as an array of ha
 
 Catches any exceptions; if the query fails for any reason we return an empty list. The reason for the failure is logged via warn() unless an additional argument with a true value is passed to surpress those error messages.
 
-=item do_drop_table  
+=item do_drop_table()
 
   $sqldb->do_drop_table( $tablename ) 
 
@@ -1153,13 +1242,13 @@ B<SQL Generation>: The above do_ methods use the following sql_ methods to gener
 
 =over 4
 
-=item sql_create_table
+=item sql_create_table()
 
   $sqldb->sql_create_table ($tablename, $columns) : $sql_stmt
 
 Generate a SQL create-table statement based on the column information. Text columns are checked with sql_create_column_text_length() to provide server-appropriate types.
 
-=item sql_detect_table
+=item sql_detect_table()
 
   $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
 
@@ -1167,7 +1256,7 @@ Subclass hook. Retrieve something from the given table that is guaranteed to exi
 
 Defaults to "select * from table where 1 = 0", which may not work on all platforms. Your subclass might prefer one of these: "select * from table limit 1", (I'm unsure of the others)...
 
-=item sql_drop_table
+=item sql_drop_table()
 
   $sqldb->sql_drop_table ($tablename) : $sql_stmt
 
@@ -1216,13 +1305,13 @@ B<Column Type Info Methods>: The following methods are used by sql_create_table 
 
 =over 4
 
-=item sql_create_column_type
+=item sql_create_column_type()
 
   $sqldb->sql_create_column_type ( $table, $column, $columns ) : $col_type_str
 
 Returns an appropriate 
 
-=item dbms_create_column_types
+=item dbms_create_column_types()
 
   $sqldb->dbms_create_column_types () : %column_type_codes
 
@@ -1230,13 +1319,13 @@ Subclass hook. Defaults to empty. Should return a hash mapping column type codes
 
 Subclasses should provide at least two entries, for the symbolic types referenced elsewhere in this interface, "sequential" and "binary".
 
-=item sql_create_column_text_length
+=item sql_create_column_text_length()
 
   $sqldb->sql_create_column_text_length ( $length ) : $col_type_str
 
 Returns "varchar(length)" for values under 256, otherwise calls dbms_create_column_text_long_type.
 
-=item dbms_create_column_text_long_type
+=item dbms_create_column_text_long_type()
 
   $sqldb->dbms_create_column_text_long_type () : $col_type_str
 
@@ -1300,7 +1389,7 @@ sub dbms_create_column_types {
 
 ########################################################################
 
-=head1 QUERY EVALUTION
+=head1 GENERIC QUERY EVALUTION
 
 These methods allow arbitrary SQL statements to be executed.
 
@@ -1309,48 +1398,40 @@ performed, so if you call these low-level functions it is up to
 you to ensure that the query is correct and will function as expected
 when passed to whichever data source the SQLEngine is using.
 
-=head2 Statement Execution
+=head2 SQL Query Methods
 
   $db->do_sql('insert into table values (?, ?)', 'A', 1);
+  my $rows = $db->fetch_sql('select * from table where status = ?', 2);
 
-Execute a given SQL statement.  Internally, this method is used by the other do_ methods described above.
+Execute and fetch some kind of result from a given SQL statement.  Internally, these methods are used by the other do_, fetch_ and visit_ methods described above.
 
 =over 4
 
-=item do_sql
+=item do_sql()
 
   $sqldb->do_sql ($sql, @params) : $rowcount 
 
 Execute a SQL query by sending it to the DBI connection, and returns the number of rows modified, or -1 if unknown.
 
-=back
-
-=head2 Query Retrieval
-
-  my $rows = $db->fetch_sql('select * from table where status = ?', 2);
-
-Execute and fetch results of a given SQL statement.  Internally, these methods are used by the other fetch_ and visit_ methods described above.
-
-=over 4
-
-=item fetch_sql 
+=item fetch_sql()
 
   $sqldb->fetch_sql ($sql, @params) : $row_hash_ary
   $sqldb->fetch_sql ($sql, @params) : ( $row_hash_ary, $columnset )
 
 Execute a SQL query by sending it to the DBI connection, and returns any rows that were produced, as an array of hashrefs, with the values in each entry keyed by column name. If called in a list context, also returns a reference to an array of information about the columns returned by the query.
 
-=item fetch_sql_rows
+=item fetch_sql_rows()
 
   $sqldb->fetch_sql_rows ($sql, @params) : $row_ary_ary
 
 Execute a SQL query by sending it to the DBI connection, and returns any rows that were produced, as an array of arrays, with the values in each entry keyed by column order. If called in a list context, also returns a reference to an array of information about the columns returned by the query.
 
-=item visit_sql 
+=item visit_sql()
 
   $sqldb->visit_sql ($coderef, $sql, @params) : @results
+  $sqldb->visit_sql ($sql, @params, $coderef) : @results
 
-Similar to fetch_sql, but calls your coderef on each row, rather than returning them. Returns the results of each of those calls. 
+Similar to fetch_sql, but calls your coderef on each row, rather than returning them. Returns the results of each of those calls. For your convenience, will accept a coderef as either the first or the last argument.
 
 =back
 
@@ -1359,29 +1440,21 @@ Similar to fetch_sql, but calls your coderef on each row, rather than returning 
 # $rowcount = $self->do_sql($sql);
 # $rowcount = $self->do_sql($sql, @params);
 sub do_sql {
-  my $self = shift;
-  my ($sql, @params) = @_;
-  $self->try_query( $sql, \@params, 'get_execute_rowcount' );  
+  (shift)->try_query( (shift), [ @_ ], 'get_execute_rowcount' )  
 }
 
 # $array_of_hashes = $self->fetch_sql($sql);
 # $array_of_hashes = $self->fetch_sql($sql, @params);
 # ($array_of_hashes, $columns) = $self->fetch_sql($sql);
 sub fetch_sql {
-  my $self = shift;
-  my ($sql, @params) = @_;
-  my ($rows, $columns) = $self->try_query( $sql, \@params, 'fetchall_hashref_columns' );
-  return wantarray ? ($rows, $columns) : $rows;
+  (shift)->try_query( (shift), [ @_ ], 'fetchall_hashref_columns' )  
 }
 
 # $array_of_arrays = $self->fetch_sql_rows($sql);
 # $array_of_arrays = $self->fetch_sql_rows($sql, @params);
 # ($array_of_arrays, $columns) = $self->fetch_sql_rows($sql);
 sub fetch_sql_rows {
-  my $self = shift;
-  my ($sql, @params) = @_;
-  my ($rows, $columns) = $self->try_query( $sql, \@params, 'fetchall_arrayref');
-  return wantarray ? ($rows, $columns) : $rows;
+  (shift)->try_query( (shift), [ @_ ], 'fetchall_arrayref' )  
 }
 
 # @results = $self->visit_sql($coderef, $sql);
@@ -1391,29 +1464,125 @@ sub fetch_sql_rows {
 sub visit_sql {
   my $self = shift;
   my $coderef = ( ref($_[0]) ? shift : pop );
-  my ($sql, @params) = @_;
-  $self->try_query( $sql, \@params, 'visitall_hashref', $coderef );
+  $self->try_query( (shift), [ @_ ], 'visitall_hashref', $coderef )
 }
 
 ########################################################################
 
-=head1 TRANSACTIONS
+########################################################################
+
+=head1 ERRORS AND EXCEPTION HANDLING
+
+=head2 Error Handling
+
+=over 4
+
+=item try_query()
+
+  $sqldb->try_query ( $sql, \@params, $result_method, @result_args ) : @results
+
+Error handling wrapper around the internal execute_query method.
+
+The $result_method should be the name of a method supported by that
+SQLEngine instance, typically one of those shown in the "Retrieving
+Rows from an Executed Statement" section below. The @result_args,
+if any, are passed to the named method along with the active
+statement handle.
+
+=item catch_query_exception()
+
+  $sqldb->catch_query_exception ( $exception, $sql, \@params, 
+			$result_method, @result_args ) : $resolution
+
+Exceptions are passed to catch_query_exception; if it returns "REDO"
+the query will be retried up to five times. The superclass checks
+the error message against the recoverable_query_exceptions; subclasses
+may wish to override this to provide specialized handling.
+
+=item recoverable_query_exceptions()
+
+  $sqldb->recoverable_query_exceptions() : @common_error_messages
+
+Subclass hook. Defaults to empty. Subclasses may provide a list of
+error messages which represent common communication failures or
+other incidental errors.
+
+=back
+
+=cut
+
+# $results = $self->try_query($sql, \@params, $result_method, @result_args);
+# @results = $self->try_query($sql, \@params, $result_method, @result_args);
+sub try_query {
+  my $self = shift;
+  
+  my $attempts = 0;
+  my @results;
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
+  ATTEMPT: {
+    $attempts ++;
+    eval {
+      local $SIG{__DIE__};
+
+      @results = $wantarray ? $self->execute_query(@_)
+		     : scalar $self->execute_query(@_);
+    };
+    if ( my $error = $@ ) {
+      my $catch = $self->catch_query_exception($error, @_);
+      if ( ! $catch ) {
+	die "DBIx::SQLEngine Query failed: $_[0]\n$error";
+      } elsif ( $catch eq 'OK' ) {
+	return;
+      } elsif ( $catch eq 'REDO' ) {
+	if ( $attempts < 5 ) {
+	  warn "DBIx::SQLEngine Retrying query after failure: $_[0]\n$error";
+	  redo ATTEMPT;
+	} else {
+	  confess("DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$error\n");
+	}
+      } else {
+	confess("DBIx::SQLEngine Query failed: $_[0]\n$error\n" . 
+		"Unknown return from exception handler '$catch'");
+      }
+    }
+    $wantarray ? @results : $results[0]
+  }
+}
+
+sub catch_query_exception {
+  my $self = shift;
+  my $error = shift;
+  
+  foreach my $pattern ( $self->recoverable_query_exceptions() ) {  
+    if ( $error =~ /$pattern/i ) {
+      $self->reconnect() and return 'REDO';
+    }
+  }
+  
+  return;
+}
+
+sub recoverable_query_exceptions {
+  return ()
+}
+
+########################################################################
+
+=head2 Transaction Methods
 
 Note: this feature has been added recently, and the interface is subject to change.
 
 DBIx::SQLEngine assumes auto-commit is on by default, so unless otherwise specified, each query is executed as a separate transaction. To execute multiple queries within a single transaction, use the as_one_transaction method.
 
-=head2 Transaction Methods
-
 =over 4
 
-=item are_transactions_supported  
+=item are_transactions_supported()
 
   $boolean = $sqldb->are_transactions_supported( );
 
 Checks to see if the database has transaction support.
 
-=item as_one_transaction  
+=item as_one_transaction()
 
   @results = $sqldb->as_one_transaction( $sub_ref, @args );
 
@@ -1439,7 +1608,7 @@ Or using a reference to a predefined subroutine:
   my $sqldb = DBIx::SQLEngine->new( ... );
   $sqldb->as_one_transaction( \&do_stuff, $sqldb );
 
-=item as_one_transaction_if_supported  
+=item as_one_transaction_if_supported()
 
   @results = $sqldb->as_one_transaction_if_supported($sub_ref, @args)
 
@@ -1466,15 +1635,16 @@ sub as_one_transaction {
   my $dbh = $self->dbh;
   my @results;
   $dbh->begin_work;
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
-    @results = wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
     $dbh->commit;  
   };
   if ($@) {
     warn "DBIx::SQLEngine Transaction Aborted: $@";
     $dbh->rollback;
   }
-  wantarray ? @results : $results[0]
+  $wantarray ? @results : $results[0]
 }
 
 sub as_one_transaction_if_supported {
@@ -1488,15 +1658,16 @@ sub as_one_transaction_if_supported {
     $dbh->begin_work;
     $in_transaction = 1;
   };
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
-    @results = wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
+    @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
     $dbh->commit if ( $in_transaction );
   };
   if ($@) {
     warn "DBIx::SQLEngine Transaction Aborted: $@";
     $dbh->rollback if ( $in_transaction );
   }
-  wantarray ? @results : $results[0]
+  $wantarray ? @results : $results[0]
 }
 
 ########################################################################
@@ -1511,13 +1682,13 @@ The following methods manage the DBI database handle through which we communicat
 
 =over 4
 
-=item get_dbh
+=item get_dbh()
 
   $sqldb->get_dbh () : $dbh
 
 Get the current DBH
 
-=item dbh_func
+=item dbh_func()
 
   $sqldb->dbh_func ( $func_name, @args ) : @results
 
@@ -1550,7 +1721,7 @@ To determine if the connection is working.
 
 =over 4
 
-=item detect_any
+=item detect_any()
 
   $sqldb->detect_any () : $boolean
   $sqldb->detect_any ( 1 ) : $boolean
@@ -1588,7 +1759,7 @@ B<SQL Generation>: The above detect_ method uses the following sql_ method to ge
 
 =over 4
 
-=item sql_detect_any
+=item sql_detect_any()
 
   $sqldb->sql_detect_any : %sql_select_clauses
 
@@ -1609,19 +1780,19 @@ sub sql_detect_any {
 
 =over 4
 
-=item _init
+=item _init()
 
   $sqldb->_init () 
 
 Called by DBIx::AnyDBD after connection is made and class hierarchy has been juggled.
 
-=item reconnect
+=item reconnect()
 
   $sqldb->reconnect () 
 
 Attempt to re-establish connection with original parameters
 
-=item check_or_reconnect
+=item check_or_reconnect()
 
   $sqldb->check_or_reconnect () : $dbh
 
@@ -1661,101 +1832,6 @@ The following methods manipulate DBI statement handles as part of processing que
 
 =cut
 
-=head2 Error Handling
-
-=over 4
-
-=item try_query
-
-  $sqldb->try_query ( $sql, \@params, $result_method, @result_args ) : @results
-
-Error handling wrapper around the internal execute_query method.
-
-The $result_method should be the name of a method supported by that
-SQLEngine instance, typically one of those shown in the "Retrieving
-Rows from an Executed Statement" section below. The @result_args,
-if any, are passed to the named method along with the active
-statement handle.
-
-=item catch_query_exception
-
-  $sqldb->catch_query_exception ( $exception, $sql, \@params, 
-			$result_method, @result_args ) : $resolution
-
-Exceptions are passed to catch_query_exception; if it returns "REDO"
-the query will be retried up to five times. The superclass checks
-the error message against the recoverable_query_exceptions; subclasses
-may wish to override this to provide specialized handling.
-
-=item recoverable_query_exceptions
-
-  $sqldb->recoverable_query_exceptions() : @common_error_messages
-
-Subclass hook. Defaults to empty. Subclasses may provide a list of
-error messages which represent common communication failures or
-other incidental errors.
-
-=back
-
-=cut
-
-# $results = $self->try_query($sql, \@params, $result_method, @result_args);
-# @results = $self->try_query($sql, \@params, $result_method, @result_args);
-sub try_query {
-  my $self = shift;
-  
-  my $attempts = 0;
-  my @results;
-  ATTEMPT: {
-    $attempts ++;
-    eval {
-      local $SIG{__DIE__};
-      @results = $self->execute_query(@_);
-    };
-    if ( my $error = $@ ) {
-      my $catch = $self->catch_query_exception($error, @_);
-      if ( ! $catch ) {
-	die "DBIx::SQLEngine Query failed: $_[0]\n$error";
-      } elsif ( $catch eq 'OK' ) {
-	return;
-      } elsif ( $catch eq 'REDO' ) {
-	if ( $attempts < 5 ) {
-	  warn "DBIx::SQLEngine Retrying query after failure: $_[0]\n$error";
-	  redo ATTEMPT;
-	} else {
-	  confess("DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$error\n");
-	}
-      } else {
-	confess("DBIx::SQLEngine Query failed: $_[0]\n$error\n" . 
-		"Unknown return from exception handler '$catch'");
-      }
-    }
-  }
-  
-  my $want = wantarray;
-  ( ! defined $want ) ? () : 
-		$want ? @results :
-     ( @results < 2 ) ? $results[0] : 
-	  croak "This method returns a list, but was called in scalar context"
-}
-
-sub catch_query_exception {
-  my $self = shift;
-  my $error = shift;
-  
-  foreach my $pattern ( $self->recoverable_query_exceptions() ) {  
-    if ( $error =~ /$pattern/i ) {
-      $self->reconnect() and return 'REDO';
-    }
-  }
-  
-  return;
-}
-
-sub recoverable_query_exceptions {
-  return ()
-}
-
 ########################################################################
 
 =head2 Statement Handle Lifecycle 
@@ -1764,7 +1840,7 @@ These are internal methods for query operations
 
 =over 4
 
-=item execute_query
+=item execute_query()
 
   $sqldb->execute_query($sql, \@params, $result_method, @result_args) : @results
 
@@ -1772,13 +1848,13 @@ This overall lifecycle method calls prepare_execute(), runs the $result_method, 
 
 The $result_method should be the name of a method supported by that SQLEngine instance, typically one of those shown in the "Retrieving Rows from an Executed Statement" section below. The @result_args, if any, are passed to the named method along with the active statement handle.
 
-=item prepare_execute
+=item prepare_execute()
 
   $sqldb->prepare_execute ($sql, @params) : $sth
 
 Prepare, bind, and execute a SQL statement to create a DBI statement handle.
 
-=item done_with_query
+=item done_with_query()
 
   $sqldb->done_with_query ($sth) : ()
 
@@ -1801,24 +1877,25 @@ sub execute_query {
 
   my $timer = $self->log_start( @query ) if $self->DBILogging;
     
-  my $sth = $self->prepare_execute( @query );
-  my @results;
+  my ( $sth, @results );
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
     local $SIG{__DIE__};
-    @results = $self->$method( $sth, @args );
+    $sth = $self->prepare_execute( @query );
+    @results = $wantarray ? ( $self->$method( $sth, @args ) )
+		   : scalar ( $self->$method( $sth, @args ) );
   };
   if ( $@ ) {
-    if ( $sth ) { 
-      $self->done_with_query($sth);
-      die $@;
-    }
+    $self->done_with_query($sth) if $sth;
+    $self->log_stop( $timer, "ERROR: $@" ) if $self->DBILogging;
+    die $@;
+  } else {
+    $self->done_with_query($sth);
+    
+    $self->log_stop( $timer, \@results ) if $self->DBILogging;
+    
+    return ( $wantarray ? @results : $results[0] )
   }
-  $self->done_with_query($sth);
-  
-  $self->log_stop( $timer, \@results ) if $self->DBILogging;
-  
-  wantarray ? @results : ( @results < 2 ) ? $results[0] : 
-    croak "This method returns a list, but was called in scalar context";
 }
 
 # $sth = $self->prepare_execute($sql);
@@ -1851,43 +1928,43 @@ sub done_with_query {
 
 =over 4
 
-=item do_nothing
+=item do_nothing()
 
   $sqldb->do_nothing ($sth) : ()
 
 Does nothing. 
 
-=item get_execute_rowcount
+=item get_execute_rowcount()
 
   $sqldb->get_execute_rowcount ($sth) : $row_count
 
 Returns the row count reported by the last statement executed.
 
-=item fetchall_arrayref
+=item fetchall_arrayref()
 
   $sqldb->fetchall_arrayref ($sth) : $array_of_arrays
 
 Calls the STH's fetchall_arrayref method to retrieve all of the result rows into an array of arrayrefs.
 
-=item fetchall_hashref
+=item fetchall_hashref()
 
   $sqldb->fetchall_hashref ($sth) : $array_of_hashes
 
 Calls the STH's fetchall_arrayref method with an empty hashref to retrieve all of the result rows into an array of hashrefs.
 
-=item fetchall_hashref_columns
+=item fetchall_hashref_columns()
 
   $sqldb->fetchall_hashref ($sth) : $array_of_hashes, $column_info
 
 Calls the STH's fetchall_arrayref method with an empty hashref, and also retrieves information about the columns used in the query result set.
 
-=item visitall_hashref
+=item visitall_hashref()
 
   $sqldb->visitall_hashref ($sth, $coderef) : ()
 
 Calls coderef on each row with values as hashref; does not return them.
 
-=item visitall_array
+=item visitall_array()
 
   $sqldb->visitall_array ($sth, $coderef) : ()
 
@@ -1918,9 +1995,8 @@ sub fetchall_hashref {
 
 sub fetchall_hashref_columns {
   my ($self, $sth) = @_;
-  my $columns = wantarray ? $self->retrieve_columns( $sth ) : 0;
-  my $rows = $sth->fetchall_arrayref( {} );
-  return ( $rows, $columns );
+  wantarray ? ( $sth->fetchall_arrayref( {} ), $self->retrieve_columns( $sth ) )
+	    :   $sth->fetchall_arrayref( {} );
 }
 
 # $self->visitall_hashref( $sth, $coderef );
@@ -1954,13 +2030,13 @@ sub visitall_array {
 
 =over 4
 
-=item retrieve_columns
+=item retrieve_columns()
 
   $sqldb->retrieve_columns ($sth) : $columnset
 
 Obtains information about the columns used in the result set.
 
-=item column_type_codes
+=item column_type_codes()
 
   $sqldb->column_type_codes - Standard::Global:hash
 
@@ -2036,54 +2112,32 @@ __PACKAGE__->column_type_codes(
 
 ########################################################################
 
-=head2 Server-Specific SQL
-
-=over 4
-
-=item sql_escape_text_for_like
-
-  $sqldb->sql_escape_text_for_like ( $text ) : $escaped_expr
-
-Fails with message "DBMS-Specific Function".
-
-Subclasses should, based on the datasource's server_type, protect a literal value for use in a like expression.
-
-=back
-
-=cut
-
-sub sql_escape_text_for_like {
-  confess("DBMS-Specific Function")
-}
-
-########################################################################
-
 ########################################################################
 
 =head1 LOGGING
 
 =over 4
 
-=item DBILogging 
+=item DBILogging()
 
   $sqldb->DBILogging : $value
   $sqldb->DBILogging( $value )
 
 Set this to a true value to turn on logging of DBI interactions. Can be called on the class to set a shared default for all instances, or on any instance to set the value for it alone.
 
-=item log_connect
+=item log_connect()
 
   $sqldb->log_connect ( $dsn )
 
 Writes out connection logging message.
 
-=item log_start
+=item log_start()
 
   $sqldb->log_start( $sql ) : $timer
 
 Called at start of query execution.
 
-=item log_stop
+=item log_stop()
 
   $sqldb->log_stop( $timer ) : ()
 
@@ -2147,14 +2201,14 @@ sub printable ($) {
 
 =over 4
 
-=item SQLLogging
+=item SQLLogging()
 
   $sqldb->SQLLogging () : $value 
   $sqldb->SQLLogging( $value )
 
 Set this to a true value to turn on logging of internally-generated SQL statements (all queries except for those with complete SQL statements explicitly passed in by the caller). Can be called on the class to set a shared default for all instances, or on any instance to set the value for it alone.
 
-=item log_sql
+=item log_sql()
 
   $sqldb->log_sql( $sql ) : ()
 

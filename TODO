@@ -24,13 +24,10 @@ TO DO
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 
-  Database Feature-Specific Interfaces
+  Helper Classes
 
-    Proposed: Extend the base interface with the following interfaces:
-
-    *   fetch_select_with_limit
-
-    *   do_insert_with_sequence
+    Consider blessing the column info hashes into new Column and ColumnSet
+    classes.
 
   Proposed Array Select interface
 
@@ -80,8 +77,6 @@ TO DO
   Future Database-specific Functionality
 
     Additional subclass logic will be required to support the following:
-
-    *   All: type of long field
 
     *   Oracle: single, trailing long.
 

@@ -110,11 +110,11 @@ After the normal prepare_execute cycle, this also sets the sth's LongReadLen to 
 
 =head2 dbms_longreadlen_bufsize
 
-Set to 10_000_000.
+Set to 1_000_000.
 
 =cut
 
-sub dbms_longreadlen_bufsize { 10_000_000 }
+sub dbms_longreadlen_bufsize { 1_000_000 }
 
 sub prepare_execute {
   my $self = shift;

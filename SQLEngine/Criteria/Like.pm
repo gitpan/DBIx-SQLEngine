@@ -1,4 +1,4 @@
-package DBIx::SQLEngine::Criteria::StringLike;
+package DBIx::SQLEngine::Criteria::Like;
 
 use DBIx::SQLEngine::Criteria::Comparison;
 @ISA = 'DBIx::SQLEngine::Criteria::Comparison';
@@ -15,16 +15,16 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::StringLike - SQL92 Like Criteria
+DBIx::SQLEngine::Criteria::Like - SQL92 Like Criteria
 
 =head1 SYNOPSIS
 
-  my $crit = DBIx::SQLEngine::Criteria::StringLike->new( $expr, $value );
+  my $crit = DBIx::SQLEngine::Criteria::Like->new( $expr, $value );
 
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Criteria::StringLike objects check that an expression
+DBIx::SQLEngine::Criteria::Like objects check that an expression
 matches a given SQL wildcard pattern. ANSI SQL 92 provides for "%"
 wildcards, and some vendors support additional patterns.
 

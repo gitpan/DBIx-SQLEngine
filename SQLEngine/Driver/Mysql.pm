@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::MySQL - Extends SQLEngine for DBMS Idiosyncrasies
+DBIx::SQLEngine::Driver::Mysql - Extends SQLEngine for DBMS Idiosyncrasies
 
 =head1 SYNOPSIS
 

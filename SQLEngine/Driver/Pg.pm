@@ -61,7 +61,7 @@ Implemented using _seq_do_insert_preinc and seq_increment.
 
 Increments the sequence, and returns the newly allocated value. 
 
-=back
+=cut
 
 # $rows = $self->do_insert_with_sequence( $sequence, %clauses );
 sub do_insert_with_sequence {

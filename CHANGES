@@ -2,7 +2,7 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
-  Release 0.011
+  Version 0.011
 
     2004-03-10 Moved driver-specific subclasses to a new Driver:: namespace
     and added documentation to each of them. The external public interface
@@ -14,18 +14,18 @@ HISTORY
     Oracle subclass, and created a new Criteria::StringComparison class as
     an alternate way of addressing an issue raised by another patch.
 
-  Release 0.010
+  Version 0.010
 
     2003-09-07 Released as DBIx-SQLEngine-0.010.
 
-  Release 0.009
+  Version 0.009
 
     2003-02-02 Released as DBIx-SQLEngine-0.009.
 
     2003-02-02 Merged the "Default" class used by AnyDBD into base class via
     stash aliasing, simplifying documentation.
 
-  Release 0.008
+  Version 0.008
 
     2002-11-02 Released as DBIx-SQLEngine-0.008.
 
@@ -46,7 +46,7 @@ HISTORY
 
     2002-11-02 Added initial basic transaction support.
 
-  Release 0.007
+  Version 0.007
 
     2002-05-24 Minor error-handling improvements.
 
@@ -58,7 +58,7 @@ HISTORY
     2002-04-10 Added "fetch without execute" to the catch_query_exception
     handler for MySQL and Pg.
 
-  Release 0.006
+  Version 0.006
 
     2002-03-23 Released as DBIx-SQLEngine-0.006.
 
@@ -70,7 +70,7 @@ HISTORY
     2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected
     Perl-version dependency (return from inside eval) in Default detect_any.
 
-  Release 0.005
+  Version 0.005
 
     2002-03-01 Released as DBIx-SQLEngine-0.005.
 
@@ -92,7 +92,7 @@ HISTORY
     2002-01-31 Created new Criteria::LiteralSQL package. Remove redundant
     parentheses around single-item list in Criteria::Compound.
 
-  Release 0.004
+  Version 0.004
 
     2002-01-30 Released as DBIx-SQLEngine-0.004.
 
@@ -104,7 +104,7 @@ HISTORY
     2002-01-27 Filled out documentation, especially of the public interface
     in SQLEngine.pm. Added skeletal Pg subclass.
 
-  Release 0.003
+  Version 0.003
 
     2002-01-25 Released as DBIx-SQLEngine-0.003
 
@@ -122,7 +122,7 @@ HISTORY
     2002-01-14 Fixed bug in test script; user and password were not used!
     (Bug report from Terrence Brannon.)
 
-  Release 0.002
+  Version 0.002
 
     2002-01-14 Released as DBIx-SQLEngine-0.002
 
@@ -135,7 +135,7 @@ HISTORY
     2001-11-30 Began adjusting namespace for CPAN distribution. Fixed use of
     AnyDBD to not require non-standard patch.
 
-  Release 0.001
+  Version 0.001
 
     2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved
     SQL-generation code from Table to SQLEngine.

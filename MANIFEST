@@ -36,5 +36,4 @@ TODO
 t/compile.t
 t/example.t
 t/standard.t
-test_data/dbix_sqlengine_seq
 test_data/test.sqlite

@@ -5,19 +5,26 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 =head1 HISTORY
 
+=head2 Version 0.012
+
+2004-03-11 Released as DBIx-SQLEngine-0.012.
+
+2004-03-11 Fixed several minor POD errors. Adjusted checking of wantarray to preserve its value across eval{} boudaries.
 
 =head2 Version 0.011
+
+2004-03-10 Released as DBIx-SQLEngine-0.011.
 
 2004-03-10 Moved driver-specific subclasses to a new Driver::
 namespace and added documentation to each of them. The external
 public interface is identical, but this may break naughty code that
 checked ref() or isa(); however the fix is straightforward and this
 keeps our namespaces clearer. If your code was negatively impacted
-by this, let me know!
+by this, let me know for future reference!
 
 2004-02-24 Integrated some patches from Michael Kroll, including
 new Oracle subclass, and created a new Criteria::StringComparison
-class as an alternate way of addressing an issue raised by another patch.
+class as an alternate way of addressing an issue raised in email. 
 
 
 =head2 Version 0.010
