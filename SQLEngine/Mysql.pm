@@ -68,7 +68,7 @@ sub do_insert_with_sequence {
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
     croak "DBIx::SQLEngine::MySQL insert with sequence requires values to be hash-ref"
   }
-    
+  
   my $rv = $self->do_insert( %args );
   
   $args{values}->{$seq_name} = $self->fetch_one_value( 
@@ -104,7 +104,8 @@ sub catch_query_exception {
   my $error = shift;
   if ( $error =~ /Lost connection to MySQL server/i 
     or $error =~ /MySQL server has gone away/i
-    or $error =~ /no statement executing/i ) {
+    or $error =~ /no statement executing/i
+    or $error =~ /fetch without execute/i ) {
       $self->reconnect() and return 'REDO';
   } else {
     $self->SUPER::catch_query_exception( $error, @_ );

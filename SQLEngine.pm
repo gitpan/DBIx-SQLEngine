@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.006;
+$VERSION = 0.007;
 
 use strict;
 use Carp;
@@ -166,11 +166,11 @@ Here's a criteria clause that uses a function to find the youngest people; note 
 
 =item *
 
-Here's a join of two tables:
+Here's a join of two tables; note that we're using a backslash again to make it clear that we're looking for tuples where the students.id column matches that of grades.student_id, rather than trying to match the literal string 'grades.student_id':
 
   $hashes = $sqldb->fetch_select( 
     tables => 'students, grades', 
-    criteria => 'students.id = grades.student_id',
+    criteria => { 'students.id' = \'grades.student_id' } 
     order => 'students.name'
   );
 

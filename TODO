@@ -6,13 +6,19 @@ TO DO
     several years of production use, this code has recently been majorly
     refactored, and has not yet been sufficiently tested in its new form.
 
-  Distribution
+  Internals
 
-    This version to be posted for review and discussion on DBI list, Perl
-    Monks, and Perl Modules list.
+    Review, perhaps switch to use of new DBI subclassing functionality in
+    place of DBIx::AnyDBD.
+
+  Distribution
 
     The test script is fairly minimal and really ought to exercise the
     entire public interface.
+
+    For comapbility with the CPAN installer and automated testing tools, it
+    may be more appropriate to query for a test DSN in the Makefile.PL,
+    rather than in the test.pl.
 
   Columns
 
@@ -34,8 +40,7 @@ TO DO
 
   Criteria
 
-    The Criteria subclasses are woefully incomplete. See the unfinished_code
-    file for more.
+    The Criteria subclasses are woefully incomplete.
 
   Subclasses
 

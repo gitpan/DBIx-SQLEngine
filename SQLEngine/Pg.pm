@@ -92,6 +92,7 @@ sub catch_query_exception {
     or $error =~ /there is no connection to the backend/i 
     or $error =~ /reconnect to the database system and repeat your query/i
     or $error =~ /no statement executing/i
+    or $error =~ /fetch without execute/i
     or $error =~ /field number \d+ is out of range 0\.\.\-1/i ) {
       $self->reconnect() and return 'REDO';
   } else {

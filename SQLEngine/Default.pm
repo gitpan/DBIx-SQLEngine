@@ -467,28 +467,31 @@ sub try_query {
       local $SIG{__DIE__};
       @results = $self->execute_query(@_);
     };
-    if ( $@ ) {
-      my $catch = $self->catch_query_exception($@, @_);
+    if ( my $error = $@ ) {
+      my $catch = $self->catch_query_exception($error, @_);
       if ( ! $catch ) {
-	die "DBIx::SQLEngine Query failed: $_[0]\n$@";
+	die "DBIx::SQLEngine Query failed: $_[0]\n$error";
       } elsif ( $catch eq 'OK' ) {
 	return;
       } elsif ( $catch eq 'REDO' ) {
 	if ( $attempts < 5 ) {
-	  warn "DBIx::SQLEngine Retrying query after failure: $_[0]\n$@";
+	  warn "DBIx::SQLEngine Retrying query after failure: $_[0]\n$error";
 	  redo ATTEMPT;
 	} else {
-	  confess "DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$@\n";
+	  confess "DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$error\n";
 	}
       } else {
-	confess "DBIx::SQLEngine Query failed: $_[0]\n$@\n" . 
+	confess "DBIx::SQLEngine Query failed: $_[0]\n$error\n" . 
 		"Unknown return from exception handler '$catch'";
       }
     }
   }
   
-  wantarray ? @results : ( @results < 2 ) ? $results[0] : 
-    croak "This method returns a list, but was called in scalar context";
+  my $want = wantarray;
+  ( ! defined $want ) ? () : 
+		$want ? @results :
+     ( @results < 2 ) ? $results[0] : 
+	  croak "This method returns a list, but was called in scalar context";
 }
 
 sub catch_query_exception {
@@ -748,9 +751,11 @@ sub fetchall_hashref_columns {
 sub visitall_hashref {
   my ($self, $sth, $coderef) = @_;
   my $rowhash;
+  my @results;
   while ($rowhash = $sth->fetchrow_hashref) {
-    &$coderef( $rowhash );
+    push @results, &$coderef( $rowhash );
   }
+  return @results;
 }
 
 # $self->visitall_array( $sth, $coderef );
@@ -758,9 +763,11 @@ sub visitall_hashref {
 sub visitall_array {
   my ($self, $sth, $coderef) = @_;
   my @row;
+  my @results;
   while (@row = $sth->fetchrow_hashref) {
-    &$coderef( @row );
+    push @results, &$coderef( @row );
   }
+  return @results;
 }
 
 

@@ -6,11 +6,22 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Release 0.007
+
+2002-05-24 Minor error-handling improvements. 
+
+2002-05-24 Collect and return the results from visit_* methods.
+
+2002-05-24 Added DBIx::SQLEngine::Criteria::Not, contributed by Christian Glahn.
+
+2002-04-10 Added "fetch without execute" to the catch_query_exception handler for MySQL and Pg.
+
+
 =head2 Release 0.006
 
 2002-03-23 Released as DBIx-SQLEngine-0.006.
 
-2002-03-23 Added basic support for passing SQL functions and expressions to SQLEngine::Default and SQLEngine::Critera::Comparion in a way that allows them to be used directly, rather than being treated as literals and bound to placeholders.
+2002-03-23 Added basic support for passing SQL functions and expressions to SQLEngine::Default and SQLEngine::Critera::Comparison in a way that allows them to be used directly, rather than being treated as literals and bound to placeholders.
 
 2002-03-01 Fixed syntax errors in MySQL subclass. Fixed suspected Perl-version dependency (return from inside eval) in Default detect_any.
 
