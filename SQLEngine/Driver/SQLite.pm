@@ -128,6 +128,32 @@ sub dbms_create_column_text_long_type {
 
 ########################################################################
 
+=head2 dbms_column_types_unsupported
+
+  $sqldb->dbms_column_types_unsupported () : 1
+
+Capability Limitation: This driver does not store column type information.
+
+=head2 dbms_indexes_unsupported
+
+  $sqldb->dbms_indexes_unsupported () : 1
+
+Capability Limitation: This driver does not support indexes.
+
+=head2 dbms_storedprocs_unsupported
+
+  $sqldb->dbms_storedprocs_unsupported () : 1
+
+Capability Limitation: This driver does not support stored procedures.
+
+=cut
+
+sub dbms_column_types_unsupported { 1 }
+sub dbms_indexes_unsupported      { 1 }
+sub dbms_storedprocs_unsupported  { 1 }
+
+########################################################################
+
 # sub catch_query_exception {
   # if ( $error =~ /\Q{TYPE}: unrecognised attribute\E/i ) {
   # This means the query failed; we'll return nothing.

@@ -141,15 +141,13 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.014;
+$VERSION = 0.015;
 
 use strict;
 
 use DBI;
 use DBIx::AnyDBD;
 use Class::MakeMethods;
-
-use DBIx::SQLEngine::Criteria;
 
 ########################################################################
 
@@ -228,7 +226,9 @@ sub SQLLogging { shift; DBIx::SQLEngine::Driver::Default->SQLLogging( @_ ) }
 
 ########################################################################
 
+# Set up default driver package and ensure that we don't try to require it later
 package DBIx::SQLEngine::Driver::Default;
+
 BEGIN { $INC{'DBIx/SQLEngine/Driver.pm'} = __FILE__ }
 BEGIN { $INC{'DBIx/SQLEngine/Driver/Default.pm'} = __FILE__ }
 
@@ -241,7 +241,7 @@ use Carp;
 
 Information is obtained from a DBI database through the Data Query Language features of SQL.
 
-=head2 Retrieving Data With Select
+=head2 Select to Retrieve Data
 
 The following methods may be used to retrieve data using SQL select statements. They all accept a flexible set of key-value arguments describing the query to be run, as described in the "SQL Select Clauses" section below.
 
@@ -281,13 +281,17 @@ Generate a SQL select statement and returns it as a query string and a list of v
 
 =back
 
-B<SQL Select Clauses>: The above select methods accept a hash describing the clauses of the SQL statement they are to generate, and require a value for one or more of the following keys: 
+B<SQL Select Clauses>: The above select methods accept a hash describing the clauses of the SQL statement they are to generate, using the values provided for the keys defined below. 
 
 =over 4
 
+=item named_query 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
+
 =item sql
 
-Optional; can not be used in combination with the table and columns arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+Can not be used in combination with the table and columns arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
 =item table I<or> tables
 
@@ -299,11 +303,7 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item criteria
 
-Optional. May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
-
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
-
-Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior. 
+Optional. May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
 =item order
 
@@ -332,11 +332,7 @@ B<Examples:>
 Each query can be written out explicitly or generated on demand using whichever syntax is most appropriate to your application:
 
   $hashes = $sqldb->fetch_select( 
-    sql => "select * from students where status = 'minor'"
-  );
-
-  $hashes = $sqldb->fetch_select( 
-    sql => [ 'select * from students where status = ?', 'minor' ]
+    table => 'students', criteria => { 'status' => 'minor' } 
   );
 
   $hashes = $sqldb->fetch_select( 
@@ -344,16 +340,27 @@ Each query can be written out explicitly or generated on demand using whichever 
   );
 
   $hashes = $sqldb->fetch_select( 
-    table => 'students', criteria => { 'status' => 'minor' } 
-  );
-
-  $hashes = $sqldb->fetch_select( 
     sql => 'select * from students', criteria => { 'status' => 'minor' }
   );
 
-  $crit = DBIx::SQLEngine::Criteria::Equality->new('status' => 'minor');
   $hashes = $sqldb->fetch_select( 
-    table => 'students', criteria => $crit
+    table => 'students', criteria => 
+      DBIx::SQLEngine::Criteria->type_new('Equality','status'=>'minor')
+  );
+
+  $hashes = $sqldb->fetch_select( 
+    sql => "select * from students where status = 'minor'"
+  );
+
+  $hashes = $sqldb->fetch_select( 
+    sql => [ 'select * from students where status = ?', 'minor' ]
+  );
+
+  $sqldb->define_named_query(
+    'minor_students' => "select * from students where status = 'minor'" 
+  );
+  $hashes = $sqldb->fetch_select( 
+    named_query => 'minor_students' 
   );
 
 =item *
@@ -436,7 +443,7 @@ You can collect values along the way:
 
 =item *
 
-You can use any combination of the other clauses supported by fetch_select:
+You can visit with any combination of the other clauses supported by fetch_select:
 
    $sqldb->visit_select( 
     sub {
@@ -481,11 +488,20 @@ sub visit_select {
 }
 
 sub sql_select {
-  my $self = shift;
-  my %clauses = @_;
+  my ( $self, %clauses ) = @_;
 
   my $keyword = 'select';
   my ($sql, @params);
+
+  if ( my $named = delete $clauses{'named_query'} ) {
+    my %named = $self->interpret_named_query( ref($named) ? @$named : $named );
+    %clauses = ( %named, %clauses );
+  }
+
+  if ( my $action = delete $clauses{'action'} ) {
+    confess("Action mismatch: expecting $keyword, not $action query") 
+	unless ( $action eq $keyword );
+  }
 
   if ( my $literal = delete $clauses{'sql'} ) {
     ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
@@ -524,7 +540,7 @@ sub sql_select {
     $sql .= " from $tables";
   }
   
-  if ( my $criteria = delete $clauses{'criteria'} ) {
+  if ( my $criteria = delete $clauses{'criteria'} || delete $clauses{'where'} ){
     ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
@@ -588,7 +604,16 @@ Modifies the SQL statement and parameters list provided to apply the specified l
 
   $sqldb->sql_where( $criteria, $sql, @params ) : $sql, @params
 
-Modifies the SQL statement and parameters list provided to append the specified criteria as a where clause. Triggered by use of criteria in a call to sql_select().
+Modifies the SQL statement and parameters list provided to append the specified criteria as a where clause. Triggered by use of criteria in a call to sql_select(), sql_update(), or sql_delete(). 
+
+The criteria may be a literal SQL where clause (everything after the word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
+
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+
+Alternately, if the criteria argument is a reference to an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior. 
+
+If no SQL statement or parameters are provided, this just returns the where clause and associated parameters. If a SQL statement is provided, the where clauses is appended to it; if the SQL statement already includes a where clause, the additional criteria are inserted into the existing statement and AND'ed together with the existing criteria.
+
 
 =item sql_escape_text_for_like()
 
@@ -602,13 +627,21 @@ Subclasses should, based on the datasource's server_type, protect a literal valu
 
 =cut
 
+use DBIx::SQLEngine::Criteria;
+
 sub sql_where {
   my $self = shift;
   my ( $criteria, $sql, @params ) = @_;
   
   my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
   if ( $sql_crit ) {
-    $sql .= " where $sql_crit";
+    if ( ! defined $sql ) { 
+      $sql = "where $sql_crit";
+    } elsif ( $sql =~ s{(\bwhere\b)(.*?)(\border by|\bgroup by|$)}
+			{$1 ($2) AND $sql_crit $3}i ) {
+    } else {
+      $sql .= " where $sql_crit";
+    }
     push @params, @cp;
   }
   
@@ -637,7 +670,7 @@ sub sql_limit {
 
 Information is entered into a DBI database through the Data Manipulation Language features of SQL.
 
-=head2 Adding Data With Insert
+=head2 Insert to Add Data 
 
 =over 4
 
@@ -658,6 +691,10 @@ Generate a SQL insert statement and returns it as a query string and a list of v
 B<SQL Insert Clauses>: The above insert methods accept a hash describing the clauses of the SQL statement they are to generate, and require a value for one or more of the following keys: 
 
 =over 4
+
+=item named_query 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
 =item sql
 
@@ -687,7 +724,7 @@ B<Examples:>
 
 =item *
 
-Here's a simple insert using a hash of column-value pairsL
+Here's a simple insert using a hash of column-value pairs:
 
   $sqldb->do_insert( 
     table => 'students', 
@@ -709,7 +746,18 @@ Here's the same insert using separate arrays of column names and values to be in
 Of course you can also use your own arbitrary SQL and placeholder parameters.
 
   $sqldb->do_insert( 
-    sql => [ 'insert into students (id, name) values (?, ?)', 201, 'Dave' ]
+    sql=>['insert into students (id, name) values (?, ?)', 201, 'Dave']
+  );
+
+=item *
+
+And the named_query interface is supported as well:
+
+  $sqldb->define_named_query(
+    'insert_student' => 'insert into students (id, name) values (?, ?)'
+  );
+  $hashes = $sqldb->do_insert( 
+    named_query => [ 'insert_student', 201, 'Dave' ]
   );
 
 =back
@@ -729,11 +777,20 @@ sub do_insert {
 }
 
 sub sql_insert {
-  my $self = shift;
-  my %clauses = @_;
+  my ( $self, %clauses ) = @_;
 
   my $keyword = 'insert';
   my ($sql, @params);
+
+  if ( my $named = delete $clauses{'named_query'} ) {
+    my %named = $self->interpret_named_query( ref($named) ? @$named : $named );
+    %clauses = ( %named, %clauses );
+  }
+
+  if ( my $action = delete $clauses{'action'} ) {
+    confess("Action mismatch: expecting $keyword, not $action query") 
+	unless ( $action eq $keyword );
+  }
 
   if ( my $literal = delete $clauses{'sql'} ) {
     return ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
@@ -825,7 +882,7 @@ To standardize their use, this package defines an interface with several typical
 
 =item do_insert_with_sequence()
 
-  $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
+  $sqldb->do_insert_with_sequence( $seq_name, %sql_clauses ) : $row_count
 
 Insert a single row into a table in the datasource, using a sequence to fill in the values of the column named in the first argument. Should return 1, unless there's an exception.
 
@@ -896,7 +953,7 @@ sub seq_increment {
 
 ########################################################################
 
-=head2 Changing Data With Update
+=head2 Update to Change Data 
 
 =over 4
 
@@ -918,6 +975,10 @@ B<SQL Update Clauses>: The above update methods accept a hash describing the cla
 
 =over 4
 
+=item named_query 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
+
 =item sql
 
 Optional; conflicts with table, columns and values arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
@@ -936,11 +997,7 @@ Required unless sql argument is used. May contain a string with one or more comm
 
 =item criteria
 
-Optional, but remember that ommitting this will cause all of your rows to be updated! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
-
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
-
-Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior. 
+Optional, but remember that ommitting this will cause all of your rows to be updated! May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
 =back
 
@@ -950,6 +1007,8 @@ B<Examples:>
 
 =item *
 
+Here's a basic update statement with a hash of columns-value pairs to change:
+
   $sqldb->do_update( 
     table => 'students', 
     criteria => 'age > 20', 
@@ -957,6 +1016,8 @@ B<Examples:>
   );
 
 =item *
+
+Here's an equivalent update statement using separate lists of columns and values:
 
   $sqldb->do_update( 
     table => 'students', 
@@ -967,8 +1028,22 @@ B<Examples:>
 
 =item *
 
+You can also use your own arbitrary SQL statements and placeholders:
+
   $sqldb->do_update( 
-    sql => [ 'update students set status = ? where age > ?', 'adult', 20 ]
+    sql=>['update students set status = ? where age > ?', 'adult', 20]
+  );
+
+=item *
+
+And the named_query interface is supported as well:
+
+  $sqldb->define_named_query(
+    'update_minors' => 
+	[ 'update students set status = ? where age > ?', 'adult', 20 ]
+  );
+  $hashes = $sqldb->do_update( 
+    named_query => 'update_minors'
   );
 
 =back
@@ -982,11 +1057,20 @@ sub do_update {
 }
 
 sub sql_update {
-  my $self = shift;
-  my %clauses = @_;
+  my ( $self, %clauses ) = @_;
   
   my $keyword = 'update';
   my ($sql, @params);
+
+  if ( my $named = delete $clauses{'named_query'} ) {
+    my %named = $self->interpret_named_query( ref($named) ? @$named : $named );
+    %clauses = ( %named, %clauses );
+  }
+
+  if ( my $action = delete $clauses{'action'} ) {
+    confess("Action mismatch: expecting $keyword, not $action query") 
+	unless ( $action eq $keyword );
+  }
   
   if ( my $literal = delete $clauses{'sql'} ) {
     ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
@@ -1058,7 +1142,7 @@ sub sql_update {
     push @params, @v_params;
   }
     
-  if ( my $criteria = delete $clauses{'criteria'} ) {
+  if ( my $criteria = delete $clauses{'criteria'} || delete $clauses{'where'} ){
     ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
@@ -1074,7 +1158,7 @@ sub sql_update {
 
 ########################################################################
 
-=head2 Removing Data With Delete
+=head2 Delete to Remove Data
 
 =over 4
 
@@ -1096,6 +1180,10 @@ B<SQL Delete Clauses>: The above delete methods accept a hash describing the cla
 
 =over 4
 
+=item named_query 
+
+Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
+
 =item sql
 
 Optional; conflicts with 'table' argument. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
@@ -1106,11 +1194,7 @@ Required unless explicit "sql => ..." is used. The name of the table to delete f
 
 =item criteria
 
-Optional, but remember that ommitting this will cause all of your rows to be deleted! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
-
-If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
-
-Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior.
+Optional, but remember that ommitting this will cause all of your rows to be deleted! May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
 =back
 
@@ -1120,11 +1204,15 @@ B<Examples:>
 
 =item *
 
+Here's a basic delete with a table name and criteria.
+
   $sqldb->do_delete( 
     table => 'students', criteria => { 'name'=>'Dave' } 
   );
 
 =item *
+
+You can use your own arbitrary SQL and placeholders:
 
   $sqldb->do_delete( 
     sql => [ 'delete from students where name = ?', 'Dave' ]
@@ -1132,8 +1220,21 @@ B<Examples:>
 
 =item *
 
+You can combine an explicit delete statement with dynamic criteria:
+
   $sqldb->do_delete( 
     sql => 'delete from students', criteria => { 'name'=>'Dave' } 
+  );
+
+=item *
+
+And the named_query interface is supported as well:
+
+  $sqldb->define_named_query(
+    'delete_by_name' => 'delete from students where name = ?'
+  );
+  $hashes = $sqldb->do_delete( 
+    named_query => [ 'delete_by_name', 'Dave' ]
   );
 
 =back
@@ -1147,11 +1248,20 @@ sub do_delete {
 }
 
 sub sql_delete {
-  my $self = shift;
-  my %clauses = @_;
+  my ( $self, %clauses ) = @_;
 
   my $keyword = 'delete';
   my ($sql, @params);
+
+  if ( my $named = delete $clauses{'named_query'} ) {
+    my %named = $self->interpret_named_query( ref($named) ? @$named : $named );
+    %clauses = ( %named, %clauses );
+  }
+
+  if ( my $action = delete $clauses{'action'} ) {
+    confess("Action mismatch: expecting $keyword, not $action query") 
+	unless ( $action eq $keyword );
+  }
   
   if ( my $literal = delete $clauses{'sql'} ) {
     ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
@@ -1172,7 +1282,7 @@ sub sql_delete {
     $sql = "delete from $table";
   }
     
-  if ( my $criteria = delete $clauses{'criteria'} ) {
+  if ( my $criteria = delete $clauses{'criteria'} || delete $clauses{'where'} ){
     ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
@@ -1194,17 +1304,15 @@ sub sql_delete {
 
 The schema of a DBI database is controlled through the Data Definition Language features of SQL.
 
-=head2 Create, Detect, and Drop Tables
+=head2 Detect Tables and Columns
 
 =over 4
 
-=item do_create_table()
+=item detect_table_names()
 
-  $sqldb->do_create_table( $tablename, $column_hash_ary ) 
+  $sqldb->detect_table_names () : @table_names
 
-Create a table.
-
-The columns to be created in this table are defined as an array of hash references, as described in the Column Information section below.
+Attempts to collect a list of the available tables in the database we have connected to. Uses the DBI tables() method.
 
 =item detect_table()
 
@@ -1217,20 +1325,21 @@ If succssful, the columns contained in this table are returned as an array of ha
 
 Catches any exceptions; if the query fails for any reason we return an empty list. The reason for the failure is logged via warn() unless an additional argument with a true value is passed to surpress those error messages.
 
-=item do_drop_table()
+=item sql_detect_table()
 
-  $sqldb->do_drop_table( $tablename ) 
+  $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
 
-Delete the named table.
+Subclass hook. Retrieve something from the given table that is guaranteed to exist but does not return many rows, without knowning its table structure. 
+
+Defaults to "select * from table where 1 = 0", which may not work on all platforms. Your subclass might prefer "select * from table limit 1" or a local equivalent.
 
 =back
 
 =cut
 
-# $rows = $self->do_create_table( $tablename, $columns );
-sub do_create_table {
+sub detect_table_names {
   my $self = shift;
-  $self->do_sql( $self->sql_create_table( @_ ) );
+  $self->get_dbh()->tables();
 }
 
 sub detect_table {
@@ -1252,11 +1361,56 @@ sub detect_table {
   }
 }
 
-# $rows = $self->do_drop_table( $tablename );
-sub do_drop_table {
+sub sql_detect_table {
+  my ($self, $tablename) = @_;
+
+  # Your subclass might prefer one of these...
+  # return ( sql => "select * from $tablename limit 1" )
+  # return ( sql => "select * from $tablename where 1 = 0" )
+  
+  return (
+    table => $tablename,
+    criteria => '1 = 0',
+  )
+}
+
+########################################################################
+
+=head2 Create and Drop Tables
+
+=over 4
+
+=item create_table()
+
+  $sqldb->create_table( $tablename, $column_hash_ary ) 
+
+Create a table.
+
+The columns to be created in this table are defined as an array of hash references, as described in the Column Information section below.
+
+=item drop_table()
+
+  $sqldb->drop_table( $tablename ) 
+
+Delete the named table.
+
+=back
+
+=cut
+
+# $rows = $self->create_table( $tablename, $columns );
+sub create_table {
+  my $self = shift;
+  $self->do_sql( $self->sql_create_table( @_ ) );
+}
+sub do_create_table { &create_table }
+
+# $rows = $self->drop_table( $tablename );
+sub drop_table {
   my $self = shift;
   $self->do_sql( $self->sql_drop_table( @_ ) );
 }
+sub do_drop_table { &drop_table }
 
 =pod
 
@@ -1304,14 +1458,6 @@ B<SQL Generation>: The above do_ methods use the following sql_ methods to gener
 
 Generate a SQL create-table statement based on the column information. Text columns are checked with sql_create_column_text_length() to provide server-appropriate types.
 
-=item sql_detect_table()
-
-  $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
-
-Subclass hook. Retrieve something from the given table that is guaranteed to exist but does not return many rows, without knowning its table structure. 
-
-Defaults to "select * from table where 1 = 0", which may not work on all platforms. Your subclass might prefer one of these: "select * from table limit 1", (I'm unsure of the others)...
-
 =item sql_drop_table()
 
   $sqldb->sql_drop_table ($tablename) : $sql_stmt
@@ -1333,19 +1479,6 @@ sub sql_create_table {
   
   $self->log_sql( $sql );
   return $sql;
-}
-
-sub sql_detect_table {
-  my ($self, $tablename) = @_;
-
-  # Your subclass might prefer one of these...
-  # return ( sql => "select * from $tablename limit 1" )
-  # return ( sql => "select * from $tablename where 1 = 0" )
-  
-  return (
-    table => $tablename,
-    criteria => '1 = 0',
-  )
 }
 
 sub sql_drop_table {
@@ -1443,6 +1576,674 @@ sub dbms_create_column_types {
 
 ########################################################################
 
+=head2 Database Capability Information
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+The following methods all default to returning undef, but may be overridden by subclasses to return a true or false value, indicating whether their connection has this limitation.
+
+=over 4
+
+=item dbms_detect_tables_unsupported
+
+Can the database driver return a list of tables that currently exist? True for some simple drivers like CSV.
+
+=item dbms_joins_unsupported
+
+Does the database driver support select statements with joins across multiple tables? True for some simple drivers like CSV.
+
+=item dbms_drop_column_unsupported
+
+Does the database driver have a problem removing a column from an existing table? True for Postgres.
+
+=item dbms_column_types_unsupported
+
+Does the database driver store column type information, or are all columns the same type? True for some simple drivers like CSV.
+
+=item dbms_null_becomes_emptystring
+
+Does the database driver automatically convert null values in insert and update statements to empty strings? True for some simple drivers like CSV.
+
+=item dbms_emptystring_becomes_null
+
+Does the database driver automatically convert empty strings in insert and update statements to null values? True for Oracle.
+
+=item dbms_placeholders_unsupported
+
+Does the database driver support having ? placehoders or not? True for Linux users of DBD::Sybase connecting to MS SQL Servers on Windows.
+
+=item dbms_multi_sth_unsupported
+
+Does the database driver support having multiple statement handles active at once or not? True for several types of drivers.
+
+=item dbms_indexes_unsupported
+
+Does the database driver support server-side indexes or not?
+
+=item dbms_storedprocs_unsupported
+
+Does the database driver support server-side stored procedures or not?
+
+=back
+
+=cut
+
+
+sub dbms_detect_tables_unsupported { undef }
+sub dbms_joins_unsupported { undef }
+sub dbms_drop_column_unsupported { undef }
+
+sub dbms_column_types_unsupported { undef }
+sub dbms_null_becomes_emptystring { undef }
+sub dbms_emptystring_becomes_null { undef }
+
+sub dbms_placeholders_unsupported { undef }
+sub dbms_multi_sth_unsupported { undef }
+sub dbms_indexes_unsupported { undef }
+sub dbms_storedprocs_unsupported { undef }
+
+########################################################################
+
+=head2 Creating and Dropping Indexes
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+=over 4
+
+=item create_index()
+
+  $sqldb->create_index( %clauses )
+
+=item sql_create_index()
+
+  $sqldb->sql_create_index( %clauses ) : $sql, @params
+
+=item drop_index()
+
+  $sqldb->drop_index( %clauses )
+
+=item sql_drop_index()
+
+  $sqldb->sql_drop_index( %clauses ) : $sql, @params
+
+=back
+
+B<Example:>
+
+=over 2
+
+=item *
+
+  $sqldb->create_index( 
+    table => $table_name, columns => @columns
+  );
+
+  $sqldb->drop_index( 
+    table => $table_name, columns => @columns
+  );
+
+=item *
+
+  $sqldb->create_index( 
+    name => $index_name, table => $table_name, columns => @columns
+  );
+
+  $sqldb->drop_index( 
+    name => $index_name
+  );
+
+=back
+
+=cut
+
+sub create_index { 
+  my $self = shift;
+  $self->do_sql( $self->sql_create_index( @_ ) );
+}
+
+sub drop_index   { 
+  my $self = shift;
+  $self->do_sql( $self->sql_drop_index( @_ ) );
+}
+
+sub sql_create_index { 
+  my ( $self, %clauses ) = @_;
+
+  my $keyword = 'create';
+  my $obj_type = 'index';
+  
+  my $table = delete $clauses{'table'};
+  if ( ! $table ) {
+    confess("Table name is missing or empty");
+  } elsif ( ! ref( $table ) and length( $table ) ) {
+    # should be a single table name
+  } else {
+    confess("Unsupported table spec '$table'");
+  }
+
+  my $columns = delete $clauses{'column'} || delete $clauses{'columns'};
+  if ( ! $columns ) {
+    confess("Column names is missing or empty");
+  } elsif ( ! ref( $columns ) and length( $columns ) ) {
+    # should be one or more comma-separated column names
+  } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
+    $columns = join ', ', $columns->column_names;
+  } elsif ( ref($columns) eq 'ARRAY' ) {
+    $columns = join ', ', @$columns;
+  } else {
+    confess("Unsupported column spec '$columns'");
+  }
+  
+  my $name = delete $clauses{'name'};
+  if ( ! $name ) {
+    $name = join('_', $table, split(/\,\s*/, $columns), 'idx');
+  } elsif ( ! ref( $name ) and length( $name ) ) {
+    # should be an index name
+  } else {
+    confess("Unsupported name spec '$name'");
+  }
+  
+  if ( my $unique = delete $clauses{'unique'} ) {
+    $obj_type = "unique index";
+  }
+  
+  return "$keyword $obj_type $name on $table ( $columns )";
+}
+
+sub sql_drop_index   { 
+  my ( $self, %clauses ) = @_;
+
+  my $keyword = 'create';
+  my $obj_type = 'index';
+    
+  my $name = delete $clauses{'name'};
+  if ( ! $name ) {
+    my $table = delete $clauses{'table'};
+    if ( ! $table ) {
+      confess("Table name is missing or empty");
+    } elsif ( ! ref( $table ) and length( $table ) ) {
+      # should be a single table name
+    } else {
+      confess("Unsupported table spec '$table'");
+    }
+  
+    my $columns = delete $clauses{'column'} || delete $clauses{'columns'};
+    if ( ! $columns ) {
+      confess("Column names is missing or empty");
+    } elsif ( ! ref( $columns ) and length( $columns ) ) {
+      # should be one or more comma-separated column names
+    } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
+      $columns = join ', ', $columns->column_names;
+    } elsif ( ref($columns) eq 'ARRAY' ) {
+      $columns = join ', ', @$columns;
+    } else {
+      confess("Unsupported column spec '$columns'");
+    }
+
+    $name = join('_', $table, split(/\,\s*/, $columns), 'idx');
+  } elsif ( ! ref( $name ) and length( $name ) ) {
+    # should be an index name
+  } else {
+    confess("Unsupported name spec '$name'");
+  }
+
+  return "$keyword $obj_type $name";
+}
+
+########################################################################
+
+=head2 Creating and Dropping Databases
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+These methods are all subclass hooks. Fail with message "DBMS-Specific Function".
+
+Subclasses may 
+
+=over 4
+
+=item create_database()
+
+  $sqldb->create_database( $db_name )
+
+=item drop_database()
+
+  $sqldb->drop_database( $db_name )
+
+=back
+
+=cut
+
+sub create_database { confess("DBMS-Specific Function") }
+sub drop_database   { confess("DBMS-Specific Function") }
+
+sub sql_create_database { 
+  my ( $self, $name ) = @_;
+  return "create database $name"
+}
+
+sub sql_drop_database { 
+  my ( $self, $name ) = @_;
+  return "drop database $name"
+}
+
+########################################################################
+
+=head2 Stored Procedures
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+These methods are all subclass hooks. Fail with message "DBMS-Specific Function".
+
+=over 4
+
+=item fetch_storedproc()
+
+  $sqldb->fetch_storedproc( $proc_name, @arguments ) : $rows
+
+=item do_storedproc()
+
+  $sqldb->do_storedproc( $proc_name, @arguments ) : $row_count
+
+=item create_storedproc()
+
+  $sqldb->create_storedproc( $proc_name, $definition )
+
+=item drop_storedproc()
+
+  $sqldb->drop_storedproc( $proc_name )
+
+=back
+
+=cut
+
+sub fetch_storedproc  { confess("DBMS-Specific Function") }
+sub do_storedproc     { confess("DBMS-Specific Function") }
+sub create_storedproc { confess("DBMS-Specific Function") }
+sub drop_storedproc   { confess("DBMS-Specific Function") }
+
+########################################################################
+
+########################################################################
+
+=head1 NAMED QUERY CATALOG
+
+The following methods manage a collection of named query definitions. 
+
+Note: this feature has been added recently, and the interface is subject to change.
+
+=head2 Defining Named Queries
+
+=over 4
+
+=item named_queries()
+
+  $sqldb->named_queries() : %query_names_and_info
+  $sqldb->named_queries( $query_name ) : $query_info
+  $sqldb->named_queries( \@query_names ) : @query_info
+  $sqldb->named_queries( $query_name, $query_info, ... )
+  $sqldb->named_queries( \%query_names_and_info )
+
+Accessor and mutator for a hash mappping query names to their definitions. Created with Class::MakeMethods::Standard::Inheritable, so if called as a class method, uses class-wide methods, and if called on an instance inherits from its class but is overrideable.
+
+=item named_query()
+
+  $sqldb->named_query( $query_name ) : $query_info
+
+Retrieves the query definition matching the name provided, or croaks.
+
+=item define_named_query()
+
+  $sqldb->define_named_query( $query_name, $query_info )
+
+Provides a new query definition for the name provided. The query definition 
+must be in one of the following formats:
+
+=over 4
+
+=item *
+
+A literal SQL string. May contain placeholders to be passed as arguments.
+
+=item *
+
+A reference to an array of a SQL string and placeholder parameters. Parameters which should be replaced by user-supplied arguments should be represented by references to the special Perl variables $1, $2, $3, and so forth, corresponding to the argument order. 
+
+=item *
+
+A reference to a hash of a clauses supported by one of the SQL generation methods. Parameters which should be replaced by user-supplied arguments should be represented by references to the special Perl variables $1, $2, $3, and so forth, corresponding to the argument order. 
+
+=item *
+
+A reference to a subroutine or code block which will process the user-supplied arguments and return either a SQL statement, a reference to an array of a SQL statement and associated parameters, or a list of key-value pairs to be used as clauses by the SQL generation methods.
+
+=back
+
+=item define_named_queries()
+
+  $sqldb->define_named_queries( %query_names_and_info )
+
+Defines one or more queries, using define_named_query. 
+
+=item define_named_query_from_text()
+
+  $sqldb->define_named_query_from_text($query_name, $query_info_text)
+
+Defines a query, using some special processing to facilitate storing dynamic query definitions in an external source such as a text file or database table. Query definitions which begin with a [ or { character are presumed to contain an array or hash definition and are evaluated immediately. Definitions which begin with a " or ; character are presumed to contain a code definition and evaluated as the contents of an anonymous subroutine. All evaluations are done via a Safe compartment, which is required when this function is first used, so the code is extremely limited and can not call most other functions. 
+
+=item define_named_queries_from_text()
+
+  $sqldb->define_named_queries_from_text(%query_names_and_info_text)
+
+Defines one or more queries, using define_named_query_from_text. 
+
+=item interpret_named_query()
+
+  $sqldb->interpret_named_query( $query_name, @params ) : %clauses
+
+Combines the query definition matching the name provided with the following arguments and returns the resulting hash of query clauses.
+
+=back
+
+=cut
+
+use Class::MakeMethods ( 'Standard::Inheritable:hash' => 'named_queries' );
+
+# $query_def = $sqldb->named_query( $name )
+sub named_query {
+  my ( $self, $name ) = @_;
+  $self->named_queries( $name ) or croak("No query named '$name'");
+}
+
+# $sqldb->define_named_query( $name, $string_hash_or_sub )
+sub define_named_query {
+  my ( $self, $name, $query_def ) = @_;
+  $self->named_queries( $name => $query_def )
+}
+
+sub define_named_queries {
+  my $self = shift;
+  while ( scalar @_ ) {
+    $self->define_named_query( splice( @_, 0, 2 ) )
+  }
+}
+
+# $sqldb->define_named_query_from_text( $name, $string )
+my $safe_eval;
+sub define_named_query_from_text {
+  my ( $self, $name, $text ) = @_;
+  $safe_eval ||= do {
+    require Safe;
+    my $compartment = Safe->new();
+    $compartment->share_from( 'main', [ map { '$' . $_ } ( 1 .. 9 ) ] );
+    sub { $compartment->reval( shift ) };
+  };
+  my $query_def = do {
+    if ( $text =~ /^\s*[\[|\{]/ ) {
+      &$safe_eval( $text );
+    } elsif ( $text =~ /^\s*[\"|\;]/ ) {
+      &$safe_eval( "sub { $text }" );
+    } else {
+      $text
+    }
+  };
+  $self->define_named_query( $name, $query_def );
+}
+
+sub define_named_queries_from_text {
+  my $self = shift;
+  while ( scalar @_ ) {
+    $self->define_named_query_from_text( splice( @_, 0, 2 ) )
+  }
+}
+
+# %clauses = $sqldb->interpret_named_query( $name, @args ) 
+sub interpret_named_query {
+  my ( $self, $name, @query_args ) = @_;
+  my $query_def = $self->named_query( $name );
+  if ( ! $query_def ) {
+    croak("No definition was provided for named query '$name': $query_def")
+  } elsif ( ! ref $query_def ) {
+    return ( sql => [ $query_def, @query_args ] );
+  } elsif ( ref($query_def) eq 'ARRAY' ) {
+    return ( sql => _clone_with_parameters($query_def, @query_args) );
+  } elsif ( ref($query_def) eq 'HASH' ) {
+    return ( %{ _clone_with_parameters($query_def, @query_args) } );
+  } elsif ( ref($query_def) eq 'CODE' ) {
+    my @results = $query_def->( @query_args );
+    unshift @results, 'sql' if scalar(@results) == 1;
+    return @results;
+  } else {
+    croak("Unable to interpret definition of named query '$name': $query_def")
+  }
+}
+
+########################################################################
+
+# based on Class::MakeMethods::Utility::Ref::ref_clone()
+
+my @num_refs = map { \$_ } ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );
+my %num_refs = map { $num_refs[ $_ -1 ] => $_ } ( 1 .. 9 );
+
+use vars qw( %CopiedItems @Paramaters @ParamatersUsed );
+
+# $deep_copy = _clone_with_parameters( $value_or_ref );
+sub _clone_with_parameters {
+  my $item = shift;
+  local @Paramaters = @_;
+  local %CopiedItems = ();
+  local @ParamatersUsed = ();
+  my $clone = __clone_with_parameters( $item );
+  if ( scalar @ParamatersUsed < scalar @Paramaters ) { 
+    confess( "Too many arguments:  " . scalar(@Paramaters) . 
+		    " instead of " . scalar(@ParamatersUsed));
+  }
+  return $clone;
+}
+
+# $copy = __clone_with_parameters( $value_or_ref );
+sub __clone_with_parameters {
+  my $source = shift;
+
+  if ( my $placeholder = $num_refs{ $source } ) {
+    if ( $placeholder > scalar @Paramaters ) {
+      confess( "Too few arguments:  " . scalar(@Paramaters) . 
+		      " instead of $placeholder");
+    }
+    $ParamatersUsed[ $placeholder -1 ] ++;
+    return $Paramaters[ $placeholder -1 ];
+  }
+  
+  my $ref_type = ref $source;
+  return $source if (! $ref_type);
+  
+  return $CopiedItems{ $source } if ( exists $CopiedItems{ $source } );
+  
+  my $class_name;
+  if ( "$source" =~ /^\Q$ref_type\E\=([A-Z]+)\(0x[0-9a-f]+\)$/ ) {
+    $class_name = $ref_type;
+    $ref_type = $1;
+  }
+  
+  my $copy;
+  if ($ref_type eq 'SCALAR') {
+    $copy = \( $$source );
+  } elsif ($ref_type eq 'REF') {
+    $copy = \( __clone_with_parameters($$source) );
+  } elsif ($ref_type eq 'HASH') {
+    $copy = { map { __clone_with_parameters($_) } %$source };
+  } elsif ($ref_type eq 'ARRAY') {
+    $copy = [ map { __clone_with_parameters($_) } @$source ];
+  } else {
+    $copy = $source;
+  }
+  
+  bless $copy, $class_name if $class_name;
+  
+  $CopiedItems{ $source } = $copy;
+  
+  return $copy;
+}
+
+########################################################################
+
+=head2 Executing Named Queries
+
+=over 4
+
+=item fetch_named_query()
+
+  $sqldb->fetch_named_query( $query_name, @params ) : $rows
+  $sqldb->fetch_named_query( $query_name, @params ) : ( $rows, $columns )
+
+Calls fetch_select using the named query and arguments provided.
+
+=item visit_named_query()
+
+  $sqldb->visit_named_query($query_name, @params, $code) : @results
+  $sqldb->visit_named_query($code, $query_name, @params) : @results
+
+Calls visit_select using the named query and arguments provided.
+
+=item do_named_query()
+
+  $sqldb->do_named_query( $query_name, @params ) : $row_count
+
+Calls do_query using the named query and arguments provided.
+
+=back
+
+B<Examples:>
+
+=over 2
+
+=item *
+
+A simple named query can be defined in SQL or as generator clauses:
+
+  $sqldb->define_named_query('all_students', 'select * from students');
+  $sqldb->define_named_query('all_students', { table => 'students' });
+
+The results of a named select query can be retrieved in several equivalent ways:
+
+  $rows = $sqldb->fetch_named_query( 'all_students' );
+  $rows = $sqldb->fetch_select( named_query => 'all_students' );
+  @rows = $sqldb->visit_select( named_query => 'all_students', sub { $_[0] } );
+
+=item *
+
+There are numerous ways of defining a query which accepts parameters; any of the following are basically equivalent:
+
+  $sqldb->define_named_query('student_by_id', 
+			'select * from students where id = ?' );
+  $sqldb->define_named_query('student_by_id', 
+	      { sql=>['select * from students where id = ?', \$1 ] } );
+  $sqldb->define_named_query('student_by_id', 
+	      { table=>'students', criteria=>[ 'id = ?', \$1 ] } );
+  $sqldb->define_named_query('student_by_id', 
+	      { table=>'students', criteria=>{ 'id' => \$1 } } );
+  $sqldb->define_named_query('student_by_id', 
+    { action=>'select', table=>'students', criteria=>{ 'id'=>\$1 } } );
+
+Using a named query with parameters requires that the arguments be passed after the name:
+
+  $rows = $sqldb->fetch_named_query( 'student_by_id', $my_id );
+  $rows = $sqldb->fetch_select(named_query=>['student_by_id', $my_id]);
+
+If the query is defined using a plain string, as in the first line of the student_by_id example, no checking is done to ensure that the correct number of parameters have been passed; the result will depend on your database server, but will presumably be a fatal error. In contrast, the definitions that use the \$1 format will have their parameters counted and arranged before being executed.
+
+=item *
+
+Queries which insert, update, or delete can be defined in much the same way as select queries are; again, all of the following are roughly equivalent:
+
+  $sqldb->define_named_query('delete_student', 
+			    'delete from students where id = ?');
+  $sqldb->define_named_query('delete_student', 
+		    [ 'delete from students where id = ?', \$1 ]);
+  $sqldb->define_named_query('delete_student', 
+    { action=>'delete', table=>'students', criteria=>{ id=>\$1 } });
+
+These modification queries can be invoked with one of the do_ methods:
+
+  $sqldb->do_named_query( 'delete_student', 201 );
+  $sqldb->do_query(  named_query => [ 'delete_student', 201 ] );
+  $sqldb->do_delete( named_query => [ 'delete_student', 201 ] );
+
+=item *
+
+Queries can be defined using subroutines:
+
+  $sqldb->define_named_query('name_search', sub {
+    my $name = lc( shift );
+    return "select * from students where name like '%$name%'"
+  });
+
+  $rows = $sqldb->fetch_named_query( 'name_search', 'DAV' );
+
+=item *
+
+Query definitions can be stored in external text files or database tables and then evaluated into data structures or code references.
+
+  open( QUERIES, '/path/to/my/queries' );
+  my %queries = map { split ':', $_, 2 } <QUERIES>;
+  close QUERIES;
+
+  $sqldb->define_named_queries_from_text( %queries );
+
+Placing the following text in the target file will define all of the queries used above:
+
+  all_students: select * from students
+  student_by_id: [ 'select * from students where id = ?', \$1 ]
+  delete_student: { action => 'delete', table => 'students', criteria => { id => \$1 } });
+  name_search: "select * from students where name like '%\L$_[0]\E%'"
+
+=back
+
+=cut
+
+# ( $row_hashes, $column_hashes ) = $sqldb->fetch_named_query( $name, @args )
+sub fetch_named_query {
+  (shift)->fetch_select( named_query => [ @_ ] );
+}
+
+# @results = $sqldb->visit_named_query( $name, @args, $code_ref )
+sub visit_named_query {
+  (shift)->visit_select( ( ref($_[0]) ? shift : pop ), named_query => [ @_ ] );
+}
+
+# $result = $sqldb->do_named_query( $name, @args )
+sub do_named_query {
+  (shift)->do_query( named_query => [ @_ ] );
+}
+
+########################################################################
+
+# $row_count = $sqldb->do_query( %clauses );
+sub do_query {
+  my ( $self, %clauses ) = @_;
+
+  if ( my $named = delete $clauses{'named_query'} ) {
+    my %named = $self->interpret_named_query( ref($named) ? @$named : $named );
+    %clauses = ( %named, %clauses );
+  }
+
+  my ($sql, @params);
+  if ( my $action = delete $clauses{'action'} ) {
+    my $method = "sql_$action";
+    ($sql, @params) = $self->$method( %clauses );
+
+  } elsif ( my $literal = delete $clauses{'sql'} ) {
+    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
+  
+  } else {
+    croak( "Can't call do_query without either action or sql clauses" );
+  }
+
+  $self->do_sql( $sql, @params );
+}
+
+########################################################################
+
 ########################################################################
 
 =head1 GENERIC QUERY EVALUTION
@@ -1487,7 +2288,14 @@ Execute a SQL query by sending it to the DBI connection, and returns any rows th
   $sqldb->visit_sql ($coderef, $sql, @params) : @results
   $sqldb->visit_sql ($sql, @params, $coderef) : @results
 
-Similar to fetch_sql, but calls your coderef on each row, rather than returning them. Returns the results of each of those calls. For your convenience, will accept a coderef as either the first or the last argument.
+Similar to fetch_sql, but calls your coderef on each row, passing it as a hashref, and returns the results of each of those calls. For your convenience, will accept a coderef as either the first or the last argument.
+
+=item visit_sql_rows()
+
+  $sqldb->visit_sql ($coderef, $sql, @params) : @results
+  $sqldb->visit_sql ($sql, @params, $coderef) : @results
+
+Similar to fetch_sql, but calls your coderef on each row, passing it as a list of values, and returns the results of each of those calls. For your convenience, will accept a coderef as either the first or the last argument.
 
 =back
 
@@ -1513,14 +2321,20 @@ sub fetch_sql_rows {
   (shift)->try_query( (shift), [ @_ ], 'fetchall_arrayref' )  
 }
 
-# @results = $self->visit_sql($coderef, $sql);
 # @results = $self->visit_sql($coderef, $sql, @params);
-# @results = $self->visit_sql($sql, $coderef);
 # @results = $self->visit_sql($sql, @params, $coderef);
 sub visit_sql {
   my $self = shift;
   my $coderef = ( ref($_[0]) ? shift : pop );
   $self->try_query( (shift), [ @_ ], 'visitall_hashref', $coderef )
+}
+
+# @results = $self->visit_sql_rows($coderef, $sql, @params);
+# @results = $self->visit_sql_rows($sql, @params, $coderef);
+sub visit_sql_rows {
+  my $self = shift;
+  my $coderef = ( ref($_[0]) ? shift : pop );
+  $self->try_query( (shift), [ @_ ], 'visitall_array', $coderef )
 }
 
 ########################################################################
@@ -1914,7 +2728,9 @@ The $result_method should be the name of a method supported by that SQLEngine in
 
 Prepare, bind, and execute a SQL statement to create a DBI statement handle.
 
-Uses prepare_cached().
+Uses prepare_cached(), bind_param(), and execute(). 
+
+If you need to pass type information with your parameters, pass a reference to an array of the parameter and the type information.
 
 =item done_with_query()
 
@@ -2335,8 +3151,8 @@ This example, based on a writeup by Ron Savage, shows a connection being opened,
 	length => 255,
       },
     ];
-    $engine->do_drop_table($table_name);
-    $engine->do_create_table($table_name, $columns);
+    $engine->drop_table($table_name);
+    $engine->create_table($table_name, $columns);
   
     $engine->do_insert(table => $table_name, values => {sqle_name => 'One'});
     $engine->do_insert(table => $table_name, values => {sqle_name => 'Two'});
@@ -2396,6 +3212,15 @@ Many thanks to the kind people who have contributed code and other feedback:
   Ron Savage
   Christian Glahn, Innsbruck University
   Michael Kroll, Innsbruck University
+
+=head2 Source Material
+
+Inspiration, tricks, and bits of useful code were taken from these CPAN modules:
+
+  DBIx::AnyDBD
+  DBIx::Compat
+  DBIx::Datasource
+  DBIx::Renderer
 
 =head2 Copyright
 

@@ -143,6 +143,46 @@ sub dbms_create_column_text_long_type {
 
 ########################################################################
 
+=head2 dbms_joins_unsupported
+
+  $sqldb->dbms_joins_unsupported () : 1
+
+Capability Limitation: This driver does not support joins.
+
+=head2 dbms_column_types_unsupported
+
+  $sqldb->dbms_column_types_unsupported () : 1
+
+Capability Limitation: This driver does not store column type information.
+
+=head2 dbms_null_becomes_emptystring
+
+  $sqldb->dbms_null_becomes_emptystring () : 1
+
+Capability Limitation: This driver does not store real null or undefined values, converting them instead to empty strings.
+
+=head2 dbms_indexes_unsupported
+
+  $sqldb-> dbms_indexes_unsupported () : 1
+
+Capability Limitation: This driver does not support indexes.
+
+=head2 dbms_storedprocs_unsupported
+
+  $sqldb-> dbms_storedprocs_unsupported () : 1
+
+Capability Limitation: This driver does not support stored procedures.
+
+=cut
+
+sub dbms_joins_unsupported        { 1 }
+sub dbms_column_types_unsupported { 1 }
+sub dbms_null_becomes_emptystring { 1 }
+sub dbms_indexes_unsupported      { 1 }
+sub dbms_storedprocs_unsupported  { 1 }
+
+########################################################################
+
 =head1 SEE ALSO
 
 See L<DBIx::SQLEngine> for the overall interface and developer documentation.

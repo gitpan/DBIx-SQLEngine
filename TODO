@@ -4,77 +4,36 @@ NAME
 TO DO
     There are a number of things that could be done to improve this module.
 
-  Internals
-
-    Centralize logging interface by making 'DBI', 'SQL' arguments to general
-    function.
-
-    Consider becoming a subclass of DBI via RootClass and DbTypeSubclass,
-    rather than using composition via DBIx::AnyDBD. This is somewhat
-    attractive: it might run faster by eliminating a layer of delegation,
-    and it would facilitate separation of the DBH and STH methods. The
-    downside is loosing the flexibility of composition: if someone had their
-    own DBI subclass, we could dynamically wrap around it if using
-    composition, but it might be harder to dynamically inherit from it.
-    There's also a certain degree of inertia
-
   Distribution
 
-    The test script is fairly minimal and really ought to exercise much more
-    of the public interface. Specific things to add to the test include:
+    Consider bumping the version number; the leading 0.0xx may deter some
+    potential users by suggesting a less complete package.
+
+  Tests
+
+    The test scripts are fairly minimal and really ought to exercise much
+    more of the public interface. Specific things to add to the test
+    include:
 
     - Test for inserting, updating and selecting nulls, including "is null"
     test.
 
     - Test new transaction code.
 
-    Consider bumping the version number; the leading 0.0xx may deter some
-    potential users by suggesting a very incomplete package.
-
-  Columns
+  Schema Information
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 
-  Helper Classes
+    Bless the column info hashes into new Column and ColumnSet classes.
 
-    Consider blessing the column info hashes into new Column and ColumnSet
-    classes.
-
-    Consider adding very simple Table and TableSet classes.
-
-  Proposed Array Select interface
-
-    # ( $row_arrays, $column_hashes ) = $self->fetch_rows( %clauses );
-
-    // Also visit_rows, fetch_named_query_rows... [?]
-
-  Pre-defined Query Library
-
-    Proposed "Named Query" interface:
-
-    # $sqldb->define_named_query( name , string_or_sub ) // or return
-    current
-
-    # %clauses = $sqldb->prepare_named_query( name, args ) // with
-    conversion, recursion
-
-    # ( $row_hashes, $column_hashes ) = $sqldb->fetch_named_query( name,
-    args )
-
-    # @results = $sqldb->visit_named_query( code, name, args )
-
-    # $result = $sqldb->do_named_query( name, args )
+    Add very simple Table and TableSet classes.
 
   Additional Criteria
 
-    The Criteria subclasses are woefully incomplete. Candidates include:
-
-      package DBO::Criteria::SubString;
-      package DBO::Criteria::CaseInsensitiveSubString;
-      package DBO::Criteria::NumericEquality;
-      package DBO::Criteria::NumericInequality;
-      package DBO::Criteria::StringInequality;
+    The Criteria subclasses are incomplete. Candidates include: SubString,
+    CaseInsensitiveSubString, NumericEquality, NumericInequality,
+    StringInequality.
 
     Consider enabling pure-Perl interpretation of criteria:
 
@@ -88,20 +47,26 @@ TO DO
         return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
       }
 
-  Future Database-specific Functionality
+  Internals
+
+    Centralize logging interface by making 'DBI', 'SQL' arguments to general
+    function, or using log4perl.
+
+    Consider becoming a subclass of DBI via RootClass and DbTypeSubclass,
+    rather than using composition via DBIx::AnyDBD. This is somewhat
+    attractive: it might run faster by eliminating a layer of delegation,
+    and it would facilitate separation of the DBH and STH methods. The
+    downside is loosing the flexibility of composition: if someone had their
+    own DBI subclass, we could dynamically wrap around it if using
+    composition, but it might be harder to dynamically inherit from it.
+    There's also a certain degree of inertia in favor of not changing it.
+
+  Database Subclasses
+
+    Collect more subclasses.
 
     Review DBIx::Compat; it seems like this information should map fairly
     directly to candidate methods and subclasses.
-
-    Additional subclass logic will be required to support the following:
-
-    *   Oracle: single, trailing long.
-
-    *   MySQL, Oracle: downcase column names.
-
-    *   DB2: Long insertion via multiple updates.
-
-    *   Informix: escape newlines on insert/update/where and select
 
 SEE ALSO
     the DBIx::SQLEngine::ReadMe manpage

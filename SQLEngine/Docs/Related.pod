@@ -22,11 +22,12 @@ date, and many modules have been omitted.
 
 =head1 RELATED MODULES 
 
-Most of these provide simple wrappers around DBI's connect, prepare,
-and fetch methods, but do not appear to support any kind of cross-DBMS
-portability mechanism. See L<DBIx::Abstract>, L<DBIx::AbstractLite>,
-and L<DBIx::Broker> for examples of this group. (Single-platform
-solutions like L<MySQL::Easy> are also available.)
+Most of these provide simple wrappers around DBI's connect, prepare, and
+fetch methods, but do not appear to support any kind of cross-DBMS portability
+mechanism. See L<DBIx::Abstract>, L<DBIx::Broker>, and L<DBIx::Simple> for
+examples of this group. See also , L<DBIx::AbstractLite>, L<DBIx::Wrap>,
+L<DBIx::Wraper>, and L<DBIx::YAWM>. Single-platform solutions like
+L<MySQL::Easy> are also available.
 
 Some provide at least partial cross-DBMS support via specialized
 subclasses for the DBDs they support. See L<DBIx::SearchBuilder>,
@@ -49,12 +50,14 @@ this area.
 
 The L<SQL::AnyDBD> is new addition which uses L<DBIx::AnyDBD>.
 
+Some packages focus on storing libraries of pre-defined named queries. See L<SQL::Catalog>, L<SQL::Library>, L<DBIx::PhraseBook>, L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
+
+Some packages focus on managing database schema information. See L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>
+
 
 =head1 SEE ALSO
 
 See L<DBIx::SQLEngine> for module interface and developer documentation.
-
-See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
 See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
 this distribution, including installation and license information.

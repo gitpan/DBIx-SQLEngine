@@ -33,17 +33,16 @@ Adds support for SQL select limit clause.
 sub sql_limit {
   my $self = shift;
   my ( $limit, $offset, $sql, @params ) = @_;
-    
-  # this will work only if there are no properties of the same name 
-  # from different tables are requested...
-  my ($properties) = ($sql =~ /^\s*SELECT\s(.*)\sFROM\s/i);
-  my $unaliasedprops = $properties;
-  $unaliasedprops =~ s/\w\.//g;
+
+  # remove tablealiases and group-functions from outer query properties
+  my $properties = ($sql =~ /^\s*SELECT\s(.*?)\sFROM\s/i);
+  $properties =~ s/[^\s]+\s*as\s*//ig;
+  $properties =~ s/\w+\.//g;
   
   $offset ||= 0;
   my $position = ( $offset + $limit );
   
-  $sql = "SELECT $unaliasedprops FROM ( SELECT $unaliasedprops, ROWNUM AS position FROM ( $sql ) ) WHERE position > $offset AND position <= $position";
+  $sql = "SELECT $properties FROM ( SELECT $properties, ROWNUM AS sqle_position FROM ( $sql ) ) WHERE sqle_position > $offset AND sqle_position <= $position";
   
   return ($sql, @params);
 }

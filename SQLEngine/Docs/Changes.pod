@@ -5,6 +5,36 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 =head1 HISTORY
 
+=head2 Version 0.015
+
+2004-03-22 Released as DBIx-SQLEngine-0.015.
+
+2004-03-22 Added some database capability methods inspired by DBIx::Compat.
+
+2004-03-22 Added create_ and drop_index methods inspired by DBIx::Renderer.
+
+2004-03-22 Added create_ and drop_database methods inspired by
+DBIx::DataSource.
+
+2004-03-22 Removed do_ prefix from create_ and drop_table methods, with
+aliases for backwards compatibility.
+
+2004-03-22 Added initial interface for DBMS stored procedures.
+
+2004-03-22 Added NullP subclass and null.t test with basic SQL generation
+and named query tests.
+
+2004-03-22 Added named_query interface to support libraries of named queries.
+
+2004-03-22 Added visit_sql_rows.
+
+2004-03-22 Applied patch to Oracle driver's sql_limit() from Michael Kroll.
+
+2004-03-22 Incorporated support for mixing explicit SQL and additional
+criteria by having sql_where() splice them together, based on a patch from
+Michael Kroll.
+
+
 =head2 Version 0.014
 
 2004-03-14 Released as DBIx-SQLEngine-0.014.

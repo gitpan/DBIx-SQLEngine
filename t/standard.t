@@ -13,7 +13,7 @@ BEGIN {
 ########################################################################
 
 use Test;
-BEGIN { plan tests => ( $dsn ? 25 : 1 ) }
+BEGIN { plan tests => ( $dsn ? 28 : 1 ) }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -78,7 +78,6 @@ if ( ! $dsn ) {
     "Skipping: specify DBI_DSN in environment to test your local server.\n",
     0,
   );
-
   exit 0;
 
 }
@@ -98,16 +97,26 @@ warn <<".";
 
 sleep(1);
 
-my $sqldb;
-ok( $sqldb = DBIx::SQLEngine->new($dsn, $user, $pass) );
+my ($sqldb) = DBIx::SQLEngine->new($dsn, $user, $pass);
+my ($type) = ( ref($sqldb) =~ /DBIx::SQLEngine::(.+)/ );
 
-ok( ref($sqldb) =~ /DBIx::SQLEngine::(.+)/ );
+if ( ! $sqldb ) {
+warn <<".";
+  Skipping: Could not connect to this DBI_DSN to test your local server.
+
+.
+  skip(
+    "Skipping: Could not connect to this DBI_DSN to test your local server.\n",
+    0,
+  );
+  exit 0;
+}
 
 warn <<".";
-
   Connected using DBIx::SQLEngine::$1 and DBD::$sqldb->{dbh}->{Driver}->{Name}.
 
 .
+ok( $sqldb and $type );
 
 ok( $sqldb->detect_any );
 
@@ -161,10 +170,13 @@ INSERTS_AND_SELECTS: {
   
   $sqldb->do_insert( table => $table, sequence => 'id', 
 			values => { name=>'Dave', color=>'blue' } );
+  
+  $sqldb->do_insert( table => $table, sequence => 'id', 
+			values => { name=>'Bill', color=>'blue' } );
   ok( 1 );
   
   $rows = $sqldb->fetch_select( table => $table );
-  ok( ref $rows and scalar @$rows == 4 );
+  ok( ref $rows and scalar @$rows == 5 );
 
 }
 
@@ -183,6 +195,19 @@ SELECT_CRITERIA: {
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
   
   $rows = $sqldb->fetch_select( sql => "select * from $table", criteria => [ "name = ?", 'Dave' ] );
+  ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
+
+
+  $rows = $sqldb->fetch_select( table => $table, criteria => {color=>'blue'});
+  ok( ref $rows and scalar @$rows == 2 and ( $rows->[0]->{'name'} eq 'Dave' or $rows->[1]->{'name'} eq 'Dave' ) );
+
+  $rows = $sqldb->fetch_select( table => $table, criteria => {color=>'blue', name=>'Dave'});
+  ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
+  
+  $rows = $sqldb->fetch_select( sql => "select * from $table where name = 'Dave'", criteria => {color=>'blue'});
+  ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
+
+  $rows = $sqldb->fetch_select( sql => "select * from $table where color = 'blue'", criteria => {name=>'Dave'});
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
 
 }
@@ -213,7 +238,7 @@ DELETE: {
   ok( 1 );
   
   my $rows = $sqldb->fetch_select( table => $table );
-  ok( ref $rows and scalar @$rows == 3 );
+  ok( ref $rows and scalar @$rows == 4 );
 
 }
 
