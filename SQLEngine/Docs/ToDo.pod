@@ -35,17 +35,24 @@ The handling of primary keys in Schema::Table and Schema::Column is not yet corr
 
 =head2 Driver Internals
 
-Review DBIx::Compat; it seems like this information should map 
-fairly directly to candidate methods and subclasses.
-
 The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
 
 Consider centralizing logging interface by making 'DBI', 'SQL' arguments to general function, or using log4perl.
 
 
-=head2 Driver Subclassing
+=head2 Driver Features
 
-Collect subclasses for other drivers, including Sybase, Informix, ODBC.
+Review DBIx::Compat; it seems like this information should map 
+fairly directly to candidate methods and subclasses.
+
+Consider interface for handling BLOBs on drivers where they need to be retrieved separately.
+
+Consider interface for handling multiple simultaneous statement handles on drivers where this needs special treatement, such as Sybase.
+
+Determine which features, if any, should be handled by an ODBC driver subclass.
+
+
+=head2 Driver Subclassing
 
 Determine the right way to handle the multiplexing drivers, DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may reconnect to a different server in mid-stream.
 

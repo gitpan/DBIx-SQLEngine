@@ -17,9 +17,9 @@ DBIx::SQLEngine::Schema::TableSet - Array of Schema::Table objects
 
   $ts->create_tables;
 
-=head1
+=head1 DESCRIPTION
 
-This is an example use of the DBIx::DBO2 framework used for testing purposes.
+DBIx::SQLEngine::Schema::TableSet objects contain an array of DBIx::SQLEngine::Schema::Table objects
 
 =cut
 

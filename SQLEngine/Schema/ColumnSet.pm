@@ -18,7 +18,7 @@ DBIx::SQLEngine::Schema::ColumnSet - Array of Schema::Column objects
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine::Schema::ColumnSet objects contain an ordered set of DBIx::SQLEngine::Schema::Column objects
+DBIx::SQLEngine::Schema::ColumnSet objects contain an array of DBIx::SQLEngine::Schema::Column objects
 
 =cut
 

@@ -36,13 +36,11 @@ B<Basics:> Common operations on a record.
 B<Schema:> Access to table and columns.
 
   unless ( $class_name->table_exists ) {
-    $class_name->table->create_table( { name => 'id', type => 'int'} );
+    $class_name->create_table( { name => 'id', type => 'int'} );
   }
 
 
 =head1 DESCRIPTION
-
-This package is not yet complete.
 
 DBIx::SQLEngine::Record::Base is a superclass for database records in tables accessible via DBIx::SQLEngine.
 
@@ -147,7 +145,8 @@ Return the number of rows in the table. If called with criteria, returns the num
 
 use Class::MakeMethods (
   'Standard::Universal:delegate' => [ [ qw( 
-	detect_sqlengine table_exists 
+	detect_sqlengine 
+	table_exists create_table drop_table 
 	fetch_one_value count_rows 
 	columnset column_primary_name 
     ) ] => { target=>'get_table' },

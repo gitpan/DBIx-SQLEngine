@@ -60,7 +60,7 @@ L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
 Some packages focus on managing database schema information. See
 L<DBIx::DataSource>, L<DBIx::Admin::TableInfo>, L<DBIx::SystemCatalog>.
 
-http://poop.sourceforge.net/
+For more information about the object mapping modules, see the Poop-Group comparison page at http://poop.sourceforge.net/.
 
 =head2 Feature Matrix
 
@@ -72,23 +72,11 @@ Please note that much of this information was collected just from scanning docum
   Schema Access   -- Detect or create tables and other structures.
   Named Configs   -- Manage connection params and query definitions.
   Portability     -- Consistent way of performing queries across platforms.
-  Object Mapping  -- Treat rows of data as objects, or vice-versa.
+  Object Mapping  -- Treat rows of data as objects or tied references.
 
 Comparison:
 
  __PACKAGE__        	DBIWrap	OneCall	DataSQL	NameCfg	Schema	Portble	ObjectM
-  
- DBIx::SQLEngine	  Y	  Y	  Y	  Y	  Y	  Y	  Y
- 
- __Object_Mappers__
- Alzabo                	  Y	  Y	  Y	  -?	  Y	  Y	  Y
- Class::DBI/Ima::DBI	  Y	  Y	  Y	  Y?	  ?	  Y	  Y
- DBIx::RecordSet/Compat	  Y	  ?	  Y	  -?	  Y	  Y	  Y
- DBIx::SearchBuilder	  Y	  Y	  Y	  -	  -	  Y	  Y?
- MKDoc::SQL         	  Y	  Y	  Y	  -?	  ?	  Y/-	  Y
- Rosetta/SQL::SyntaxModel Y?	  -?	  Y?	  -?	  Y?	  Y?	  Y?
- SPOPS              	  Y	  Y	  Y	  -	  Y	  Y	  Y
- Tangram        	  Y	  Y	  Y	  -	  Y?	  Y	  Y
  
  __DBI_Wrappers__
  DBIx::Abstract        	  Y	  Y	  Y	  -	  -	  -	  -
@@ -111,7 +99,7 @@ Comparison:
  DBIx::SearchProfiles	  Y	  Y	  Y	  Y	  -	  -	  -
  SQL::Catalog        	  Y	  -	  -	  Y	  -	  -	  -
  
- __Query Generation__
+ __Query_Generation__
  Class::Phrasebook::SQL	  -	  -	  -	  Y	  -	  -	  -	  
  SQL::Abstract        	  -	  -	  Y	  -	  -	  -	  -
  SQL::Generator        	  -	  -	  Y	  Y	  -	  -
@@ -121,8 +109,29 @@ Comparison:
  DBIx::Admin::TableInfo	  Y	  -	  -	  -	  Y	  -	  -
  DBIx::DataSource	  -	  -	  -	  -	  Y	  Y	  -
  DBIx::SystemCatalog	  Y	  -	  -	  -	  Y	  Y	  -
+ 
+ __Tied_Access__
+ DBIx::RecordSet/Compat	  Y	  ?	  Y	  -?	  Y	  Y	  tie
+ Tie::DBI		  Y	  Y	  ?	  -	  -	  -	  tie
+ Tie::RDBM/::Cached	  Y	  Y	  ?	  -	  Y/-	  -	  tie
+ Tie::Table		  Y	  Y	  ?	  -	  -	  -	  tie
+
+ __Object_Mappers__
+ Alzabo                	  Y	  Y	  Y	  -?	  Y	  Y	  Y
+ Class::DBI/Ima::DBI	  Y	  Y	  Y	  Y?	  ?	  Y	  Y
+ Class::Tables		  Y	  Y	  Y/-	  -	  Y	  Y	  Y
+ DBIx::SearchBuilder	  Y	  Y	  Y	  -	  -	  Y	  Y
+ MKDoc::SQL         	  Y	  Y	  Y	  -?	  ?	  Y/-	  Y
+ Rosetta/SQL::SyntaxModel Y?	  -?	  Y?	  -?	  Y?	  Y?	  Y?
+ SPOPS              	  Y	  Y	  Y	  -	  Y	  Y	  Y
+ Tangram        	  Y	  Y	  Y	  -	  Y?	  Y	  Y
   
+ __This Module__
+ DBIx::SQLEngine	  Y	  Y	  Y	  Y	  Y	  Y	  Y
+
                   	DBIWrap	OneCall	DataSQL	NameCfg	Schema	Portble	ObjectM
+
+Items marked C<Y/-> seem to have only partial support for the feature. I've included a question mark for the cases I was least certain about. 
 
 
 =head1 SEE ALSO

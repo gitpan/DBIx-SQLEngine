@@ -4,11 +4,12 @@ DBIx::SQLEngine::Docs::ReadMe - Welcome to DBIx::SQLEngine
 
 =head1 ABSTRACT
 
-The DBIx::SQLEngine class provides an extended interface for the
-DBI database framework. Each SQLEngine object is a wrapper around
-a DBI database handle, adding methods that support ad-hoc SQL
-generation and query execution in a single call. Dynamic subclassing
-based on database server type enables cross-platform portability.
+The DBIx::SQLEngine class provides an extended interface for the DBI database
+framework. Each SQLEngine object is a wrapper around a DBI database handle,
+adding methods that support ad-hoc SQL generation and query execution in a
+single call. Dynamic subclassing based on database server type enables
+cross-platform portability.  An object mapping layer provides classes
+for tables, columns, and records.
 
 
 =head1 INTRODUCTION
@@ -19,6 +20,13 @@ and object-relational mapping toolkits. Its goal is to simplify
 dynamic query execution with the following capabilities:
 
 =over 4
+
+=item *
+
+B<Full DBI Access:> Accepts arbitrary SQL queries with placeholder parameters
+to be passed through, and delegates any unknown method calls to the wrapped
+database handle, allowing access to the entire DBI API for cases when
+high-level interfaces are insufficient
 
 =item *
 
@@ -34,10 +42,10 @@ flexibly converted to form clauses in standard SQL query syntax.
 
 =item *
 
-B<Full DBI Access:> Accepts arbitrary SQL queries with placeholder parameters
-to be passed through, and delegates any unknown method calls to the wrapped
-database handle, allowing access to the entire DBI API for cases when
-high-level interfaces are insufficient
+B<Named Definitions:> Enables pre-registration of a collection of names for
+sets of connection parameters, and a collection of of names for queries in
+either data-driven or plain-SQL formats. The definitions may include
+placeholders to be replaced by additional values at run-time.
 
 =item *
 
@@ -45,13 +53,6 @@ B<Portability Subclasses:> Uses dynamic subclassing to allow platform-specific
 support for driver idiosyncrasies and DBMS workarounds. This release includes
 subclasses for connections to MySQL, PostgreSQL, Oracle, and Microsoft SQL
 servers, as well as for the standalone SQLite, AnyData, and CSV packages.
-
-=item *
-
-B<Named Definitions:> Enables pre-registration of a collection of names for
-sets of connection parameters, and a collection of of names for queries in
-either data-driven or plain-SQL formats. The definitions may include
-placeholders to be replaced by additional values at run-time.
 
 =item *
 
@@ -163,10 +164,15 @@ http://testers.cpan.org/show/DBIx-SQLEngine.html
 
 =head2 Known Problems
 
-Many types of database servers are not yet supported.
+Many types of databases are not yet directly supported. While the default
+functionality should work with any DBI-accessible data source, support for
+complex queries and advanced features will typically require the addition of
+a Driver subclass which compensates for local idiom.
 
-See L<DBIx::SQLEngine::ToDo> for additional bugs and missing
-features.
+Some of the more advanced capabililities have only been added recently, and 
+have not yet been tested in real-world conditions.
+
+See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
 
 =head2 Release Status
 
