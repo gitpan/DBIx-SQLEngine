@@ -73,12 +73,32 @@ sub sql_create_columns {
     return '  ' . $name . 
 	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
 	    'serial';
+  } elsif ( $type eq 'binary' ) {
+    return '  ' . $name . 
+	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
+	    'bytea';
   } else {
     $self->SUPER::sql_create_columns( $table, $column , $columns );
   }
 }
 
 sub sql_create_column_text_long_type { 'text' }
+
+########################################################################
+
+sub catch_query_exception {
+  my $self = shift;
+  my $error = shift;
+  if ( $error =~ /backend closed the channel unexpectedly/ ) {
+      $self->reconnect() and return 'REDO';
+  } elsif ( $error =~ /There is no connection to the backend/ ) {
+      $self->reconnect() and return 'REDO';
+  } elsif ( $error =~ /field number \d is out of range 0\.\.-1/ ) {
+      return 'REDO';
+  } else {
+    $self->SUPER::catch_query_exception( $error, @_ );
+  }
+}
 
 ########################################################################
 

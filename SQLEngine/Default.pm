@@ -462,18 +462,18 @@ sub try_query {
     if ( $@ ) {
       my $catch = $self->catch_query_exception($@, @_);
       if ( ! $catch ) {
-	die "Query failed: $@";
+	die "DBIx::SQLEngine Query failed: $_[0]\n$@";
       } elsif ( $catch eq 'OK' ) {
 	return;
       } elsif ( $catch eq 'REDO' ) {
 	if ( $attempts < 5 ) {
-	  warn "Retrying query after failure: $@";
+	  warn "DBIx::SQLEngine Retrying query after failure: $_[0]\n$@";
 	  redo ATTEMPT;
 	} else {
-	  confess "Query failed on $attempts consecutive attempts: $@\n";
+	  confess "DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$@\n";
 	}
       } else {
-	confess "Query failed: $@\n" . 
+	confess "DBIx::SQLEngine Query failed: $_[0]\n$@\n" . 
 		"Unknown return from exception handler '$catch'";
       }
     }
@@ -848,7 +848,9 @@ __PACKAGE__->column_type_codes(
 
 The various sql_* methods below each accept a hash of arguments and combines then to return a SQL statement and corresponding parameters. Data for each clause of the statement is accepted in a variety of formats to facilitate query abstraction. 
 
-Each method also supports passing arbitrary queries through.
+In general, these methods aim to produce generic, database-independent queries, using standard SQL syntax. Subclasses may override these methods to compensate for SQL syntax idiosyncrasies.
+
+Each method also supports passing arbitrary queries through using a C<sql> parameter.
 
 =cut
 
@@ -943,22 +945,8 @@ sub sql_select {
   }
   $sql .= " from $tables";
   
-  my $criteria = $clauses{'criteria'};
+  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
   delete $clauses{'criteria'};
-  my @cp;
-  if ( ! $criteria ) {
-    # select all
-  } elsif ( ! ref( $criteria ) and length( $criteria ) ) {
-    # should be a SQL where expression
-  } elsif ( UNIVERSAL::can($criteria, 'sql_where') ) {
-    ($criteria, @cp) = $criteria->sql_where;
-  } elsif ( ref($criteria) eq 'ARRAY' ) {
-    ($criteria, @cp) = @$criteria;
-  } elsif ( ref($criteria) eq 'HASH' ) {
-    ($criteria, @cp) = DBIx::SQLEngine::Criteria::HashGroup->new( %$criteria )->sql_where;
-  } else {
-    confess("Unsupported criteria spec '$criteria'");
-  }
   if ( $criteria ) {
     $sql .= " where $criteria";
     push @params, @cp;
@@ -1225,22 +1213,8 @@ sub sql_update {
   $sql .= " set " . join ', ', map "$_ = ?", @columns;
   push @params, @v_params;
   
-  my $criteria = ( $clauses{'criteria'} );
+  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
   delete $clauses{'criteria'};
-  my @cp;
-  if ( ! $criteria ) {
-    # update all
-  } elsif ( ! ref( $criteria ) and length( $criteria ) ) {
-    # should be a SQL where expression
-  } elsif ( UNIVERSAL::can($criteria, 'sql_where') ) {
-    ($criteria, @cp) = $criteria->sql_where;
-  } elsif ( ref($criteria) eq 'ARRAY' ) {
-    ($criteria, @cp) = @$criteria;
-  } elsif ( ref($criteria) eq 'HASH' ) {
-    ($criteria, @cp) = DBIx::SQLEngine::Criteria::HashGroup->new( %$criteria )->sql_where;
-  } else {
-    confess("Unsupported criteria spec '$criteria'");
-  }
   if ( $criteria ) {
     $sql .= " where $criteria";
     push @params, @cp;
@@ -1315,22 +1289,8 @@ sub sql_delete {
   }
   $sql = "delete from $table";
   
-  my $criteria = $clauses{'criteria'};
+  my ($criteria, @cp) = DBIx::SQLEngine::Criteria->auto_where( $clauses{'criteria'} );
   delete $clauses{'criteria'};
-  my @cp;
-  if ( ! $criteria ) {
-    # delete all
-  } elsif ( ! ref( $criteria ) and length( $criteria ) ) {
-    # should be a SQL where expression
-  } elsif ( UNIVERSAL::can($criteria, 'sql_where') ) {
-    ($criteria, @cp) = $criteria->sql_where;
-  } elsif ( ref($criteria) eq 'ARRAY' ) {
-    ($criteria, @cp) = @$criteria;
-  } elsif ( ref($criteria) eq 'HASH' ) {
-    ($criteria, @cp) = DBIx::SQLEngine::Criteria::HashGroup->new( %$criteria )->sql_where;
-  } else {
-    confess("Unsupported criteria spec '$criteria'");
-  }
   if ( $criteria ) {
     $sql .= " where $criteria";
     push @params, @cp;

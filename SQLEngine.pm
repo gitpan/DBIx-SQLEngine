@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.004;
+$VERSION = 0.005;
 
 use strict;
 use Carp;

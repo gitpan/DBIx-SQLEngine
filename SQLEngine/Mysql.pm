@@ -95,6 +95,10 @@ sub sql_create_columns {
     return '  ' . $name . 
 	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
 	    'auto_increment';
+  } elsif ( $type eq 'binary' ) {
+    return '  ' . $name . 
+	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
+	    'blob';
   } else {
     $self->SUPER::sql_create_columns( $table, $column , $columns );
   }

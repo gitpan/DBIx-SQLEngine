@@ -5,6 +5,22 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 
 =head1 HISTORY
 
+
+=head2 Release 0.005
+
+2002-03-01 Released as DBIx-SQLEngine-0.005.
+
+2002-02-19 Simon: Added Pg catch_query_exception REDO for "out of range 0..-1". I don't know what this error means but it always seems to succeed when we retry.
+
+2002-02-10 Simon: Modified format of error messages in Default.pm
+
+2002-02-02 Eliminated complaint about empty subclauses in Criteria::Compound
+
+2002-01-31 Extracted Default sql_* criteria handling into DBIx::SQLEngine::Criteria->auto* methods.
+
+2002-01-31 Added catch_query_exception to Pg subclass for automatic reconnection.
+
+
 =head2 Release 0.004
 
 2002-01-30 Released as DBIx-SQLEngine-0.004.

@@ -83,18 +83,21 @@ sub sql_where {
   my (@clauses, @params);
   foreach my $sub ( $self->subs ) {
     my ($sql, @v_params) = $sub->sql_where( @_ );
-    croak "Empty subclause" if ( ! length $sql );
+    next if ( ! length $sql );
     push @clauses, $sql;
     push @params, @v_params;
   }
   return unless scalar @clauses;
-  my $joiner = $self->sql_join or Carp::confess;
-  '( ' . join( " $joiner ", @clauses ) . ' )', @params;
+  return ($clauses[0], @params) if ( scalar @clauses == 1 );
+  my $joiner = $self->sql_join or Carp::confess "Class does not have a joiner";
+  return ( '( ' . join( " $joiner ", @clauses ) . ' )', @params );
 }
 
 ########################################################################
 
-=head1 VERSION
+=head1 CHANGES
+
+2002-01-31 Remove redundant parentheses around single-item list.
 
 2001-06-28 Moved to DBIx::O2:: namespace. Switched to Class::MakeMethods. Renamed from Group to Compound.
 

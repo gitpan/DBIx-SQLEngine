@@ -52,9 +52,6 @@ INSTALLATION
     can connect with permissions to create tables.
 
 STATUS AND SUPPORT
-    Version 0.003 is a preliminary release of DBIx::SQLEngine intended for
-    public review and discussion
-
     Although it based on earlier code that was extensively tested over
     several years of production use, this code has recently been majorly
     refactored, and has not yet been sufficiently tested in its new form.

@@ -1,6 +1,4 @@
-ANNOUNCE
 CHANGES
-DBIx-SQLEngine-0.004/SQLEngine/CSV.pm
 MANIFEST
 Makefile.PL
 README
@@ -13,6 +11,7 @@ SQLEngine/Criteria/And.pm
 SQLEngine/Criteria/Comparison.pm
 SQLEngine/Criteria/Compound.pm
 SQLEngine/Criteria/HashGroup.pm
+SQLEngine/Criteria/LiteralSQL.pm
 SQLEngine/Criteria/NumericLesser.pm
 SQLEngine/Criteria/Or.pm
 SQLEngine/Criteria/StringEquality.pm
@@ -23,6 +22,5 @@ SQLEngine/Mysql.pm
 SQLEngine/Pg.pm
 SQLEngine/ReadMe.pod
 SQLEngine/ToDo.pod
-SQLEngine/unfinished_code
 TODO
 test.pl
