@@ -48,6 +48,7 @@ package DBIx::SQLEngine::Criteria::StringEquality;
 require DBIx::SQLEngine::Criteria::Equality;
        @DBIx::SQLEngine::Criteria::StringEquality::ISA = 
        'DBIx::SQLEngine::Criteria::Equality';
+sub sql_comparator { DBIx::SQLEngine::Criteria::Equality->sql_comparator }
 
 ########################################################################
 
@@ -55,6 +56,7 @@ package DBIx::SQLEngine::Criteria::NumericLesser;
 require DBIx::SQLEngine::Criteria::Lesser;
        @DBIx::SQLEngine::Criteria::NumericLesser::ISA = 
        'DBIx::SQLEngine::Criteria::Lesser';
+sub sql_comparator { DBIx::SQLEngine::Criteria::Lesser->sql_comparator }
 
 ########################################################################
 

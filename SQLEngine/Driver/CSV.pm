@@ -13,7 +13,12 @@ DBIx::SQLEngine::Driver::CSV - Extends SQLEngine for DBMS Idiosyncrasies
 
 =head1 DESCRIPTION
 
-This package provides a subclass of DBIx::SQLEngine which compensates for DBD::CSV's idiosyncrasies.
+This package provides a subclass of DBIx::SQLEngine which compensates for
+some of DBD::CSV's idiosyncrasies.
+
+Note that DBD::CSV does not support the normal full range of SQL DBMS
+functionality. Upgrade to the latest versions of DBI and SQL::Statement and
+consult their documentation to understand their current limits.
 
 =cut
 

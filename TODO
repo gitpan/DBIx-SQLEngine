@@ -6,48 +6,27 @@ TO DO
 
   Distribution
 
-    Consider bumping the version number; the leading 0.0xx may deter some
+    Consider bumping the version number; the leading zero may deter some
     potential users by suggesting a less complete package.
 
   Tests
 
-    The test scripts are fairly minimal and really ought to exercise much
-    more of the public interface. Specific things to add to the test
-    include:
+    The test scripts are incomplete and really ought to exercise much more
+    of the public interface. Specific things to add to the test include:
 
     - Test for inserting, updating and selecting nulls, including "is null"
     test.
 
     - Test new transaction code.
 
-  Schema Information
+    Figure out how to best write tests for features not supported on all
+    platforms, such as the null-value/empty-string distinction or
+    transactions.
+
+  Internals
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
-
-    Bless the column info hashes into new Column and ColumnSet classes.
-
-    Add very simple Table and TableSet classes.
-
-  Additional Criteria
-
-    The Criteria subclasses are incomplete. Candidates include: SubString,
-    CaseInsensitiveSubString, NumericEquality, NumericInequality,
-    StringInequality.
-
-    Consider enabling pure-Perl interpretation of criteria:
-
-      package DBO::Criteria::Equality;
-  
-      sub inverse { 'DBO::Criteria::Inequality' }
-  
-      # $flag = $crit->matches( $record );
-      sub matches {
-        my ($crit, $record) = @_;
-        return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
-      }
-
-  Internals
 
     Centralize logging interface by making 'DBI', 'SQL' arguments to general
     function, or using log4perl.
@@ -61,12 +40,34 @@ TO DO
     composition, but it might be harder to dynamically inherit from it.
     There's also a certain degree of inertia in favor of not changing it.
 
+    Determine the right way to handle the multiplexing drivers,
+    DBD::Multiplex and DBIx::HA, given that they may reconnect to a
+    different server in mid-stream.
+
   Database Subclasses
 
-    Collect more subclasses.
+    Collect more subclasses: Sybase, Informix, ODBC, others.
 
     Review DBIx::Compat; it seems like this information should map fairly
     directly to candidate methods and subclasses.
+
+  Additional Criteria
+
+    The Criteria subclasses are incomplete. Candidates include: SubString,
+    CaseInsensitiveSubString, NumericEquality, NumericInequality,
+    StringInequality.
+
+    Consider enabling pure-Perl interpretation of criteria:
+
+      package DBIx::SQLEngine::Criteria::Equality;
+  
+      sub inverse { 'DBO::Criteria::Inequality' }
+  
+      # $flag = $crit->matches( $record );
+      sub matches {
+        my ($crit, $record) = @_;
+        return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
+      }
 
 SEE ALSO
     the DBIx::SQLEngine::ReadMe manpage

@@ -55,10 +55,32 @@ Dynamically reblesses instances into different subclasses of DBIx::SQLEngine::Sc
 
 use Class::MakeMethods::Template::Hash (
   'Template::Hash:new' => 'new',
-  'Template::ClassName:subclass_name' => 'type',
+  # 'Template::ClassName:subclass_name' => 'type',
   string		=> 'name',
   boolean		=> 'required',
 );
+
+sub type {
+  my $self = shift;
+  if ( ! scalar @_ ) {
+    if ( ref $self ) {
+      return $self->{type}
+    } else {
+      Class::MakeMethods::Template::ClassName::_pack_subclass(__PACKAGE__,$self)
+    }
+  } else {
+    my $classname = shift();
+    my $subclass = Class::MakeMethods::Template::ClassName::_unpack_subclass( 
+			  __PACKAGE__, $classname);
+    my $class = Class::MakeMethods::Template::ClassName::_provide_class( 
+			  __PACKAGE__, $subclass );
+    if ( ref $self ) {
+      $self->{type} = $classname;
+      bless $self, $class;
+    }
+    return $class;
+  }
+}
 
 sub new_from_hash {
   my $class = shift;
@@ -67,6 +89,7 @@ sub new_from_hash {
   foreach my $k ( grep { $_ ne 'type' and $self->can($_) } keys %hash ) {
     $self->$k($hash{$k});
   }
+  $self;
 }
 
 ########################################################################

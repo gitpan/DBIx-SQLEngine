@@ -10,25 +10,46 @@ There are a number of things that could be done to improve this module.
 
 =head2 Distribution
 
-Consider bumping the version number; the leading 0.0xx may deter some potential users by suggesting a less complete package.
+Consider bumping the version number; the leading zero may deter some potential users by suggesting a less complete package.
 
 
 =head2 Tests
 
-The test scripts are fairly minimal and really ought to exercise much more of the public interface. Specific things to add to the test include:
+The test scripts are incomplete and really ought to exercise much more of the public interface. Specific things to add to the test include:
 
 - Test for inserting, updating and selecting nulls, including "is null" test.
 
 - Test new transaction code.
 
+Figure out how to best write tests for features not supported on all platforms, such as the null-value/empty-string distinction or transactions.
 
-=head2 Schema Information
+
+=head2 Internals
 
 The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
 
-Bless the column info hashes into new Column and ColumnSet classes. 
+Centralize logging interface by making 'DBI', 'SQL' arguments to general function, or using log4perl.
 
-Add very simple Table and TableSet classes. 
+Consider becoming a subclass of DBI via RootClass and DbTypeSubclass, rather
+than using composition via DBIx::AnyDBD. This is somewhat attractive: it
+might run faster by eliminating a layer of delegation, and it would facilitate
+separation of the DBH and STH methods. The downside is loosing the flexibility
+of composition: if someone had their own DBI subclass, we could dynamically
+wrap around it if using composition, but it might be harder to dynamically
+inherit from it. There's also a certain degree of inertia in favor of not
+changing it.
+
+Determine the right way to handle the multiplexing drivers, DBD::Multiplex
+and DBIx::HA, given that they may reconnect to a different server
+in mid-stream.
+
+
+=head2 Database Subclasses
+
+Collect more subclasses: Sybase, Informix, ODBC, others.
+
+Review DBIx::Compat; it seems like this information should map 
+fairly directly to candidate methods and subclasses.
 
 
 =head2 Additional Criteria
@@ -37,7 +58,7 @@ The Criteria subclasses are incomplete. Candidates include: SubString, CaseInsen
 
 Consider enabling pure-Perl interpretation of criteria:
 
-  package DBO::Criteria::Equality;
+  package DBIx::SQLEngine::Criteria::Equality;
   
   sub inverse { 'DBO::Criteria::Inequality' }
   
@@ -46,21 +67,6 @@ Consider enabling pure-Perl interpretation of criteria:
     my ($crit, $record) = @_;
     return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
   }
-
-
-=head2 Internals
-
-Centralize logging interface by making 'DBI', 'SQL' arguments to general function, or using log4perl.
-
-Consider becoming a subclass of DBI via RootClass and DbTypeSubclass, rather than using composition via DBIx::AnyDBD. This is somewhat attractive: it might run faster by eliminating a layer of delegation, and it would facilitate separation of the DBH and STH methods. The downside is loosing the flexibility of composition: if someone had their own DBI subclass, we could dynamically wrap around it if using composition, but it might be harder to dynamically inherit from it. There's also a certain degree of inertia in favor of not changing it.
-
-
-=head2 Database Subclasses
-
-Collect more subclasses.
-
-Review DBIx::Compat; it seems like this information should map 
-fairly directly to candidate methods and subclasses.
 
 
 =head1 SEE ALSO 

@@ -96,29 +96,28 @@ sub seq_fetch_current {
   my $current;
   eval {
     local $SIG{__DIE__};
-    return $self->fetch_one_value( 
+    $current = $self->fetch_one_value( 
       sql => [ $self->sql_fetch_current($table, $field) ] 
-    )
+    );
+    unless ( defined $current and length $current ) {
+      $self->seq_insert_record( $table, $field ); 
+      $current = 0; # $self->seq_bootstrap_init( $table, $field ) || 0;
+    }
   };
+  
   if ( my $err = $@ ) {
     eval {
       local $SIG{__DIE__};
       $self->seq_create_table();
+      $self->seq_insert_record( $table, $field );
+      $current = 0;
     };
     if ( $@ ) {
       confess "Unable to select from sequence table $seq_table: $err\n" . 
 	      "Also unable to automatically create sequence table: $@";
     }
-    eval {
-      local $SIG{__DIE__};
-      $self->seq_insert_record( $table, $field );
-    };
-    if ( $@ ) {
-      confess "Unable to select from sequence table $seq_table: $err\n" . 
-	      "Created sequence table but unable to insert record: $@";
-    }
-    return;
   }
+  return $current;
 }
 
 # $sql, @params = $sqldb->sql_fetch_current( $table, $field );
@@ -157,12 +156,7 @@ sub seq_increment {
 
   my ($table, $field, $next) = @_;
 
-  my $current = $self->seq_fetch_current( $table, $field ) || 0;
-  
-  if ( ! defined $current ) {
-    $self->seq_insert_record( $table, $field ); 
-    $current = $self->seq_bootstrap_init( $table, $field ) || 0;
-  }
+  my $current = $self->seq_fetch_current( $table, $field );
   
   ATTEMPT: {
     $next = $current + 1 unless ( $next and $next > $current );
@@ -170,7 +164,7 @@ sub seq_increment {
     return $next if $self->do_update(
       table => $self->seq_table_name,
       values => { seq_value => $next },
-      criteria => ['seq_value = ? and seq_name = ?', $current, "$table.$field"]
+      criteria => ['seq_name = ? and seq_value = ?', "$table.$field", $current]
     );
     
     $current = $self->fetch_one_value( 

@@ -118,7 +118,7 @@ Implemented using SQLite's blob type.
 =cut
 
 sub dbms_create_column_types {
-  'sequential' => 'int auto_increment primary key',
+  'sequential' => 'integer auto_increment primary key',
   'binary' => 'blob',
 }
 

@@ -137,8 +137,6 @@ Calls the provided method name on the associated SQLEngine, passing along the ta
 
 =cut
 
-########################################################################
-
 use Class::MakeMethods (
   'Standard::Hash:object' => { name=>'sqlengine',
 				 class=>'DBIx::SQLEngine::Driver::Default' },
@@ -164,6 +162,38 @@ sub sqlengine_table_method {
   my $sqlengine = $self->sqlengine() 
 	or croak("No sqlengine set for table '$_[0]->{name}'");
   $sqlengine->$method($name, @args)
+}
+
+########################################################################
+
+=head2 Detect Availability
+
+=over 4
+
+=item detect_sqlengine()
+
+  $table->detect_sqlengine : $flag
+
+Detects whether the SQL database is avaialable by attempting to connect.
+
+=item detect_table()
+
+  $table->detect_table : @columns
+
+Checks to see if the table exists in the SQL database by attempting to retrieve its columns.
+
+=back
+
+=cut
+
+# $flag = $table->detect_sqlengine;
+sub detect_sqlengine {
+  (shift)->get_sqlengine()->detect_any;
+}
+
+# @columns = $table->detect_table;
+sub detect_table {
+  (shift)->sqlengine_table_method('detect_table');
 }
 
 ########################################################################
@@ -225,10 +255,8 @@ sub get_columnset {
   );
 }
 
-########################################################################
 
 # To-do: finish adding support for tables with multiple-column primary keys.
-
 use Class::MakeMethods (
   # 'Standard::Inheritable:scalar' => { name=>'column_primary_name',  },
   'Standard::Inheritable:scalar' => { name=>'column_primary_is_sequence',  },
@@ -245,7 +273,7 @@ sub column_primary_name {
 sub primary_criteria {
   my $self = shift;
   my $primary_col = $self->column_primary_name;
-  my @ids = map { ( ref($_) eq 'HASH' ) ? $_->{$primary_col} : $_ } @_;
+  my @ids = map { UNIVERSAL::isa($_, 'HASH') ? $_->{$primary_col} : $_ } @_;
   return { $primary_col => ( scalar(@ids) > 1 ) ? \@ids : $ids[0] }
 }
 
@@ -274,8 +302,15 @@ Calls the provided subroutine on each matching row as it is retrieved. Returns t
 
 =item select_row()
 
-  $table->select_row ( $primary_key_value ) : $row
-  $table->select_row ( \%hash_with_primary_key_value ) : $row
+  $table->select_row ( $primary_key_value ) : $row_hash
+  $table->select_row ( \@compound_primary_key ) : $row_hash
+  $table->select_row ( \%hash_with_primary_key_value ) : $row_hash
+
+Fetches a single row by primary key.
+
+=item select_rows()
+
+  $table->select_row ( @primary_key_values_or_hashrefs ) : $row_hash_array
 
 =back
 
@@ -297,8 +332,6 @@ sub visit_select {
   my $sub = ( ref($_[0]) ? shift : pop );
   $self->sqlengine_do('visit_select', @_, $sub )
 }
-
-########################################################################
 
 # $row = $self->select_row( $id_value );
 # $row = $self->select_row( \@compound_id );
@@ -329,15 +362,15 @@ Calls the corresponding SQLEngine method with the table name and the provided ar
 
 =item insert_row()
 
-  $table->insert_row ( $row_hash ) : ()
+  $table->insert_row ( $row_hash ) : $row_count
 
-Adds the provided row by executing a SQL insert statement. Uses column_names() and column_primary_is_sequence() to produce the proper clauses.
+Adds the provided row by executing a SQL insert statement. Uses column_names() and column_primary_is_sequence() to produce the proper clauses. Returns the total number of rows affected, which is typically 1.
 
 =item insert_rows()
 
-  $table->insert_rows ( @row_hashes ) : ()
+  $table->insert_rows ( @row_hashes ) : $row_count
 
-Insert each of the rows from the provided array into the table.
+Insert each of the rows from the provided list into the table. Returns the total number of rows affected, which is typically the same as the number of arguments passed.
 
 =back
 
@@ -384,9 +417,15 @@ Calls the corresponding SQLEngine method with the table name and the provided ar
 
 =item update_row()
 
-  $table->update_row ( $row_hash ) : ()
+  $table->update_row ( $row_hash ) : $row_count
 
-Update this existing row based on its primary key. Uses column_names() and column_primary_is_sequence() to produce the proper clauses.
+Update this existing row based on its primary key. Uses column_names() and column_primary_is_sequence() to produce the proper clauses. Returns the total number of rows affected, which is typically 1.
+
+=item update_rows()
+
+  $table->update_rows ( @row_hashes ) : $row_count
+
+Update several existing rows based on their primary keys. Uses update_row(). Returns the total number of rows affected, which is typically the same as the number of arguments passed.
 
 =back
 
@@ -432,13 +471,13 @@ Calls the corresponding SQLEngine method with the table name and the provided ar
 
   $table->delete_row ( $row_hash_or_id ) : ()
 
-Deletes the provided row from the table.
+Deletes the provided row from the table. Returns the total number of rows affected, which is typically 1.
 
 =item delete_rows()
 
   $table->delete_rows ( @row_hashes_or_ids ) : ()
 
-Deletes the provided row from the table.
+Deletes all of the provided rows from the table. Returns the total number of rows affected, which is typically the same as the number of arguments passed.
 
 =back
 
@@ -501,36 +540,6 @@ sub fetch_max {
 
 ########################################################################
 
-=head2 Detect Availability
-
-=over 4
-
-=item detect_sqlengine()
-
-  $table->detect_sqlengine : $flag
-
-Detects whether the SQL database is avaialable by attempting to connect.
-
-=item detect_table()
-
-  $table->detect_table : @columns
-
-Checks to see if the table exists in the SQL database by attempting to retrieve its columns.
-
-=back
-
-=cut
-
-# $flag = $table->detect_sqlengine;
-sub detect_sqlengine {
-  (shift)->get_sqlengine()->detect_any;
-}
-
-# @columns = $table->detect_table;
-sub detect_table {
-  (shift)->sqlengine_table_method('detect_table');
-}
-
 ########################################################################
 
 =head2 Create, Detect, and Drop
@@ -570,7 +579,7 @@ sub create_table {
   my $self = shift;
   my $columnset = shift || $self->columnset ||
 	  confess("No column information for table $self->{name}");
-  $self->sqlengine_table_method('create_table', $columnset->as_hashes ) ;
+  $self->sqlengine_table_method('create_table', $columnset ) ;
 }
 
 # $sql_stmt = $table->drop_table();

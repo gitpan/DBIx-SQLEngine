@@ -141,7 +141,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.017;
+$VERSION = 0.018;
 
 use strict;
 
@@ -1534,8 +1534,7 @@ sub sql_create_table {
   my($self, $table, $columns) = @_;
   
   my @sql_columns;
-  my $column;
-  foreach $column ( @$columns ) {
+  foreach my $column ( @$columns ) {
     push @sql_columns, $self->sql_create_columns($table, $column, \@sql_columns)
   }
   
@@ -3130,17 +3129,25 @@ sub log_stop {
   
   my $message;
   if ( ! ref $results ) {
-    $message = "error: $results";
+    $message = "returning an error: $results";
   } elsif ( ref($results) eq 'ARRAY' ) {
     # Successful return
-    if ( ref( $results->[0] ) eq 'ARRAY' ) {
-      $message = scalar(@{ $results->[0] }) . " items";
-    }
+    if ( ! ref( $results->[0] ) ) {
+      if ( $results->[0] =~ /^\d+$/ ) {
+	$message = "affecting $results->[0] rows";
+      } elsif ( $results->[0] eq '0E0' ) {
+	$message = "affecting 0 rows";
+      } else {
+	$message = "producing a value of '$results->[0]'";
+      } 
+    } elsif ( ref( $results->[0] ) eq 'ARRAY' ) {
+      $message = "returning " . scalar(@{ $results->[0] }) . " items";
+    } 
   }
   my $seconds = (time() - $start_time or 'less than one' );
   
   warn "DBI: Completed in $seconds seconds" . 
-	(defined $message ? ", returning $message" : '') . "\n";
+	(defined $message ? ", $message" : '') . "\n";
   
   return;
 }

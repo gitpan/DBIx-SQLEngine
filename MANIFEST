@@ -23,7 +23,6 @@ SQLEngine/Docs/Related.pod
 SQLEngine/Docs/ToDo.pod
 SQLEngine/Driver/AnyData.pm
 SQLEngine/Driver/CSV.pm
-SQLEngine/Driver/File.pm
 SQLEngine/Driver/MSSQL.pm
 SQLEngine/Driver/Mysql.pm
 SQLEngine/Driver/NullP.pm
@@ -39,9 +38,10 @@ TODO
 t/compile.t
 t/core_clone.t
 t/example.t
+t/get_test_dsn.pl
 t/null_named.t
 t/null_sqlgen.t
 t/null_table.t
 t/standard.t
-test_data/about_test_data
-test_data/test.sqlite
+t/test-multi.sh
+t/test_data/about_test_data

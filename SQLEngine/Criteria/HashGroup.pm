@@ -26,7 +26,7 @@ sub normalized {
 	    } @$value
 	  )
 	: DBIx::SQLEngine::Criteria::StringComparison->new($key, $value)
-    } keys %$hashref 
+    } sort keys %$hashref 
   )
 }
 

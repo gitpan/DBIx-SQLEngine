@@ -2,6 +2,44 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Version 0.018
+
+    2004-03-30 Released as DBIx-SQLEngine-0.018.
+
+    2004-03-30 Fixed sequential type in Driver::SQLite to say "integer" not
+    "int".
+
+    2004-03-30 Removed driver for DBD::File, which isn't intended to be used
+    directly.
+
+    2004-03-30 Changed Criteria::HashGroup to asciibetically sort the hash
+    keys, so that criteria are predictable for testing and better statement
+    handle caching.
+
+    2004-03-26 Fixed Mixin::SeqTable's seq_fetch_current, which returned
+    undef due to scope confusion with return inside an eval block.
+
+    2004-03-26 Minor cleanup to Schema::Table to improve documentation.
+
+    2004-03-26 Fixed Schema::Column's new_from_hash() and type() methods.
+
+  Version 0.017
+
+    2004-03-26 Released as DBIx-SQLEngine-0.017.
+
+    2004-03-26 Fixed parens in Oracle's sql_limit, with apologies to Michael
+    Kroll.
+
+    2004-03-25 Brough Schema::Table up to workable condition and added basic
+    tests.
+
+    2004-03-25 Added simple last_query method to NullP for faster testing.
+
+    2004-03-23 Added fetch_select_rows() and visit_select_rows().
+
+    2004-03-23 Re-ordered a few chunks of code so that the POD pages are
+    clearer.
+
   Version 0.016
 
     2004-03-23 Released as DBIx-SQLEngine-0.016.
@@ -34,7 +72,7 @@ HISTORY
 
     2004-03-22 Added visit_sql_rows.
 
-    2004-03-22 Applied patch to Oracle driver's sql_limit() from Michael
+    2004-03-22 Applied patch to Driver::Oracle's sql_limit() from Michael
     Kroll.
 
     2004-03-22 Incorporated support for mixing explicit SQL and additional

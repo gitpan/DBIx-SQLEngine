@@ -6,6 +6,25 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.018
+
+2004-03-30 Released as DBIx-SQLEngine-0.018.
+
+2004-03-30 Fixed sequential type in Driver::SQLite to say "integer" not "int".
+
+2004-03-30 Removed driver for DBD::File, which isn't intended to be used directly.
+
+2004-03-30 Changed Criteria::HashGroup to asciibetically sort the hash keys, so
+that criteria are predictable for testing and better statement handle caching.
+
+2004-03-26 Fixed Mixin::SeqTable's seq_fetch_current, which returned 
+undef due to scope confusion with return inside an eval block.
+
+2004-03-26 Minor cleanup to Schema::Table to improve documentation.
+
+2004-03-26 Fixed Schema::Column's new_from_hash() and type() methods. 
+
+
 =head2 Version 0.017
 
 2004-03-26 Released as DBIx-SQLEngine-0.017.
