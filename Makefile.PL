@@ -23,6 +23,9 @@ cleanmanifest:
 again:
 	make clean; perl Makefile.PL; make
 
+testsuite:
+	perl t/test_suite.pl
+
 docs : README CHANGES TODO
 
 README: SQLEngine/Docs/ReadMe.pod

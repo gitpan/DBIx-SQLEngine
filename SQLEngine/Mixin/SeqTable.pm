@@ -47,7 +47,9 @@ sub import { goto &Exporter::import }
   do_insert_with_sequence
   seq_table_name seq_create_table seq_drop_table 
   seq_insert_record seq_delete_record 
-  seq_fetch_current sql_fetch_current seq_increment seq_bootstrap_init
+  seq_fetch_current sql_seq_fetch_current 
+  seq_increment sql_seq_increment 
+  seq_bootstrap_init
 );
 %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
@@ -77,11 +79,13 @@ sub do_insert_with_sequence {
 
 Fetches the current sequence value. 
 
-Implemented as an exception-handling wrapper around sql_fetch_current(), and attempts to create the sequence table if it doesn't exist.
+Implemented as an exception-handling wrapper around the query defined in
+sql_seq_fetch_current(), which attempts to create the sequence table if it
+doesn't exist and insert a row for this sequence if needed.
 
-=head2 sql_fetch_current
+=head2 sql_seq_fetch_current
 
-  $sqldb->sql_fetch_current( $table, $field ) : $sql, @params
+  $sqldb->sql_seq_fetch_current( $table, $field ) : $sql, @params
 
 Returns a SQL statement to fetch the current value from the sequence table.
 
@@ -97,7 +101,7 @@ sub seq_fetch_current {
   eval {
     local $SIG{__DIE__};
     $current = $self->fetch_one_value( 
-      sql => [ $self->sql_fetch_current($table, $field) ] 
+      sql => [ $self->sql_seq_fetch_current($table, $field) ] 
     );
     unless ( defined $current and length $current ) {
       $self->seq_insert_record( $table, $field ); 
@@ -120,8 +124,8 @@ sub seq_fetch_current {
   return $current;
 }
 
-# $sql, @params = $sqldb->sql_fetch_current( $table, $field );
-sub sql_fetch_current {
+# $sql, @params = $sqldb->sql_seq_fetch_current( $table, $field );
+sub sql_seq_fetch_current {
   my ($self, $table, $field) = @_;
   my $seq_table = $self->seq_table_name;
   $self->sql_select(
@@ -152,27 +156,30 @@ If the sequence record does not yet exist, attempts to create it automatically.
 # $nextid = $sqldb->seq_increment( $table, $field );
 # $nextid = $sqldb->seq_increment( $table, $field, $value);
 sub seq_increment {
-  my $self = shift;
-
-  my ($table, $field, $next) = @_;
-
-  my $current = $self->seq_fetch_current( $table, $field );
+  my ($self, $table, $field, $next) = @_;
   
   ATTEMPT: {
+    my $current = $self->seq_fetch_current( $table, $field );
+
     $next = $current + 1 unless ( $next and $next > $current );
     
     return $next if $self->do_update(
-      table => $self->seq_table_name,
-      values => { seq_value => $next },
-      criteria => ['seq_name = ? and seq_value = ?', "$table.$field", $current]
+      sql => [ $self->sql_seq_increment( $table, $field, $current, $next ) ] 
     );
     
-    $current = $self->fetch_one_value( 
-      sql => [ $self->sql_fetch_current($table, $field) ] 
-    );
-
     redo ATTEMPT;
   }
+}
+
+# $sql, @params = $sqldb->sql_seq_increment( $table, $field, $current, $next );
+sub sql_seq_increment {
+  my ($self, $table, $field, $current, $next) = @_;
+  my $seq_table = $self->seq_table_name;
+  $self->sql_update(
+    table => $seq_table,
+    values => { seq_value => $next },
+    criteria => ['seq_name = ? and seq_value = ?', "$table.$field", $current]
+  );
 }
 
 ########################################################################
@@ -290,6 +297,11 @@ sub seq_bootstrap_init {
 ########################################################################
 
 =head1 SEE ALSO
+
+See L<DBIx::SQLEngine> for the overall interface and developer documentation.
+
+See L<DBIx::SQLEngine::Docs::ReadMe> for general information about
+this distribution, including installation and license information.
 
 See L<DBIx::Sequence> for another version of the sequence-table functionality, which greatly inspired this module.
 

@@ -48,6 +48,7 @@ if ( ! $dsn ) {
     'blib$', 	  # for file-based DBDs, don't show the compilation directory
     'SQLEngine$', # nor the source directory...
   );
+  require DBI;
   foreach my $driver ( DBI->available_drivers ) {
     eval {
       DBI->install_driver($driver);
@@ -92,6 +93,11 @@ warn <<".";
   The remaining tests will use the DBI DSN specified in your environment: 
     $dsn
 
+.
+
+unless ( $ENV{DBI_DSN_WARN_SUPR} ) {
+
+  warn <<".";
   In a few seconds, this script will connect to this data source, create a
   table named sqle_test, run various queries against it, and then drop it.
 
@@ -101,4 +107,6 @@ warn <<".";
 
 .
 
-sleep(3) unless $dsn =~ /test_data/;
+  sleep(3) unless $dsn =~ /test_data/;
+
+}

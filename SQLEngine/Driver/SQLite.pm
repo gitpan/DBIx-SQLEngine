@@ -146,11 +146,19 @@ Capability Limitation: This driver does not support indexes.
 
 Capability Limitation: This driver does not support stored procedures.
 
+=head2 dbms_detect_tables_unsupported
+
+  $sqldb->dbms_detect_tables_unsupported () : 1
+
+Capability Limitation: This driver does not return a list of available tables.
+
 =cut
 
 sub dbms_column_types_unsupported { 1 }
 sub dbms_indexes_unsupported      { 1 }
 sub dbms_storedprocs_unsupported  { 1 }
+
+sub dbms_detect_tables_unsupported   { 1 }
 
 ########################################################################
 

@@ -29,6 +29,8 @@ SQLEngine/Driver/NullP.pm
 SQLEngine/Driver/Oracle.pm
 SQLEngine/Driver/Pg.pm
 SQLEngine/Driver/SQLite.pm
+SQLEngine/Mixin/NoComplexJoins.pm
+SQLEngine/Mixin/NoUnions.pm
 SQLEngine/Mixin/SeqTable.pm
 SQLEngine/Schema/Column.pm
 SQLEngine/Schema/ColumnSet.pm
@@ -43,5 +45,5 @@ t/null_named.t
 t/null_sqlgen.t
 t/null_table.t
 t/standard.t
-t/test-multi.sh
 t/test_data/about_test_data
+t/test_suite.pl

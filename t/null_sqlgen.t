@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 11 }
+BEGIN { plan tests => 21 }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -22,6 +22,46 @@ ok( $sqldb->last_query, 'select * from foo where bar = ?/Baz' );
 
 $sqldb->fetch_select( table => 'foo', criteria => { bar=>'Baz', buz=>'Blee' } );
 ok( $sqldb->last_query, 'select * from foo where ( bar = ? and buz = ? )/Baz/Blee');
+
+########################################################################
+
+$sqldb->fetch_select( table => [ 'foo' ] );
+ok( $sqldb->last_query, 'select * from foo' );
+
+$sqldb->fetch_select( table => [ 'foo', 'bar' ] );
+ok( $sqldb->last_query, 'select * from foo, bar' );
+
+$sqldb->fetch_select( table => [ 'foo', 'bar' ], criteria => { bar => 'Baz' } );
+ok( $sqldb->last_query, 'select * from foo, bar where bar = ?/Baz' );
+
+$sqldb->fetch_select( table => [ 'foo', 'bar', 'baz' ] );
+ok( $sqldb->last_query, 'select * from foo, bar, baz' );
+
+$sqldb->fetch_select( table => [ [ 'foo', 'bar' ], [ 'baz', 'blee' ] ] );
+ok( $sqldb->last_query, 'select * from ( foo, bar ), ( baz, blee )' );
+
+$sqldb->fetch_select( table => [ 'foo', inner_join=>['foo = bar'], 'bar' ] );
+ok( $sqldb->last_query, 'select * from foo inner join bar on foo = bar' );
+
+$sqldb->fetch_select( table => [ 'foo', inner_join=>{'foo'=>\'bar'}, 'bar' ] );
+ok( $sqldb->last_query, 'select * from foo inner join bar on foo = bar' );
+
+$sqldb->fetch_select( table => [ 'foo',left_outer_join=>{'foo'=>\'bar'},'bar']);
+ok( $sqldb->last_query, 'select * from foo left outer join bar on foo = bar' );
+
+########################################################################
+
+$sqldb->fetch_select( union => [
+  [ table => 'foo', criteria => { bar=>'Baz' } ],
+  [ table => 'bar', criteria => { buz=>'Blee' } ],
+] );
+ok( $sqldb->last_query, 'select * from foo where bar = ? union select * from bar where buz = ?/Baz/Blee');
+
+$sqldb->fetch_select( union => [
+  { table => 'foo', criteria => { bar=>'Baz' } },
+  { table => 'bar', criteria => { buz=>'Blee' } },
+] );
+ok( $sqldb->last_query, 'select * from foo where bar = ? union select * from bar where buz = ?/Baz/Blee');
 
 ########################################################################
 

@@ -141,7 +141,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.018;
+$VERSION = 0.019;
 
 use strict;
 
@@ -305,11 +305,15 @@ Uses the named_query catalog to build the query. May contain a defined query nam
 
 =item sql
 
-Can not be used in combination with the table and columns arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders. Can not be used in combination with the table and columns arguments. 
+
+=item union
+
+Calls sql_union() to produce a query that combines the results of multiple calls to sql_select(). Should contain a reference to an array of hash-refs, each of which contains key-value pairs to be used in one of the unified selects. Can not be used in combination with the table and columns arguments. 
 
 =item table I<or> tables
 
-Required unless sql is provided. The name of the tables to select from.
+The name of the tables to select from. Required unless one of the above parameters is provided. May contain a string with one or more table names, or a reference to an array of table names and join parameters. See the sql_join() method for details.
 
 =item columns
 
@@ -395,11 +399,31 @@ Here's a criteria clause that uses a function to find the youngest people; note 
 
 =item *
 
-Here's a join of two tables; note that we're using a backslash again to make it clear that we're looking for tuples where the students.id column matches that the grades.student_id column, rather than trying to match the literal string 'grades.student_id':
+Here's a join of two tables, using a basic inner join:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => [ 
+      'students', INNER_JOIN=>['students.id = grades.student_id'], 'grades'
+    ],
+    order => 'students.name'
+  );
+
+=item *
+
+Here's another way of expressing a join; note that we're using a backslash again to make it clear that we're looking for tuples where the students.id column matches that the grades.student_id column, rather than trying to match the literal string 'grades.student_id':
 
   $hashes = $sqldb->fetch_select( 
     tables => 'students, grades', 
     criteria => { 'students.id' = \'grades.student_id' } 
+    order => 'students.name'
+  );
+
+=item *
+
+You can also construct various kinds of outer joins using literal snippits of SQL describing the join:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => 'students OUTER JOIN grades ON students.id = grades.student_id' } 
     order => 'students.name'
   );
 
@@ -530,11 +554,21 @@ sub sql_select {
 	unless ( $action eq $keyword );
   }
 
+  if ( my $union = delete $clauses{'union'} ) {
+    if ( my ( $conflict ) = grep $clauses{$_}, qw/sql table tables columns/ ) { 
+      croak("Can't build a $keyword query using both union and $conflict args")
+    }
+    ref($union) eq 'ARRAY' or 
+      croak("Union clause must be a reference to an array of hashes or arrays");
+    
+    $clauses{'sql'} = [ $self->sql_union( @$union ) ]
+  } 
+
   if ( my $literal = delete $clauses{'sql'} ) {
-    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
-    if ( my ( $conflict ) = grep $clauses{$_}, qw/ columns table tables / ) { 
+    if ( my ( $conflict ) = grep $clauses{$_}, qw/ table tables columns / ) { 
       croak("Can't build a $keyword query using both sql and $conflict clauses")
     }
+    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
   
   } else {
   
@@ -560,7 +594,8 @@ sub sql_select {
     } elsif ( UNIVERSAL::can($tables, 'table_names') ) {
       $tables = $tables->table_names;
     } elsif ( ref($tables) eq 'ARRAY' ) {
-      $tables = join ', ', @$tables;
+      ($tables, my @join_params) = $self->sql_join( @$tables );
+      push @params, @join_params;
     } else {
       confess("Unsupported table spec '$tables'");
     }
@@ -615,17 +650,9 @@ sub sql_select {
 
 ########################################################################
 
-=pod
-
-B<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
+=head2 Methods for Advanced Queries
 
 =over 4
-
-=item sql_limit()
-
-  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
-
-Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
 
 =item sql_where()
 
@@ -641,7 +668,6 @@ Alternately, if the criteria argument is a reference to an object which supports
 
 If no SQL statement or parameters are provided, this just returns the where clause and associated parameters. If a SQL statement is provided, the where clauses is appended to it; if the SQL statement already includes a where clause, the additional criteria are inserted into the existing statement and AND'ed together with the existing criteria.
 
-
 =item sql_escape_text_for_like()
 
   $sqldb->sql_escape_text_for_like ( $text ) : $escaped_expr
@@ -649,6 +675,43 @@ If no SQL statement or parameters are provided, this just returns the where clau
 Fails with message "DBMS-Specific Function".
 
 Subclasses should, based on the datasource's server_type, protect a literal value for use in a like expression.
+
+=item sql_join()
+
+  $sqldb->sql_join( $table1, $table2, ... ) : $sql, @params
+  $sqldb->sql_join( $table1, $join_type=>\%criteria, $table2 ) : $sql, @params
+
+Processes one or more table names to create the "from" clause of a select statement. Table names may appear in succession for normal "cross joins", or you may specify a "complex join" by placing an inner or outer joining operation between them.
+
+A joining operation consists of a string containing the word C<join>, followed by an array reference or hash reference that specifies the criteria. The string should be one of the types of joins supported by your database, typically the following: "cross join", "inner join", "outer join", "left outer join", "right outer join". Any underscores in the string are converted to spaces, making it easier to use as an unquoted string. 
+
+The joining criteria can be an array reference of a SQL snippet followed by any necessary placeholder parameters, or a hash reference which will be converted to SQL with the DBIx::SQLEngine::Criteria package.
+
+You can use nested array references to produce grouped join expressions:
+
+    my $rows = $sqldb->fetch_select( table => [
+      [ 'table1', inner_join=>{ 'table1.foo' => \'table2.foo' }, 'table2' ],
+	outer_join=>{ 'table1.bar' => \'table3.bar' },
+      [ 'table3', inner_join=>{ 'table3.baz' => \'table4.baz' }, 'table4' ],
+    ] );
+
+B<Portability:> While the cross and inner joins are widely supported, the various outer join capabilities are only present in some databases. Subclasses may provide a degree of emulation; see L<DBIx::SQLEngine::Mixin::NoComplexJoins> foe details.
+
+=item sql_limit()
+
+  $sqldb->sql_limit( $limit, $offset, $sql, @params ) : $sql, @params
+
+Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
+
+B<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
+
+=item sql_union()
+
+  $sqldb->sql_union( \%clauses_1, \%clauses_2, ... ) : $sql, @params
+
+Returns a combined select query using the C<union> operator between the SQL statements produced by calling sql_select() with each of the provided arrays of arguments. Triggered by use of a union clause in a call to sql_select(). 
+
+B<Portability:> Union queries are only supported by some databases. Croaks if the dbms_union_unsupported() capability method is set. Subclasses may provide a degree of emulation; see L<DBIx::SQLEngine::Mixin::NoUnions> foe details.
 
 =back
 
@@ -679,6 +742,60 @@ sub sql_escape_text_for_like {
   confess("DBMS-Specific Function")
 }
 
+########################################################################
+
+# ( $sql, @params ) = $sqldb->sql_join( $table_name, $table_name, ... );
+# ( $sql, @params ) = $sqldb->sql_join( $table_name, join=>\%crit, $table_name);
+sub sql_join {
+  my ($self, @exprs) = @_;
+  my $sql = '';
+  my @params;
+  while ( scalar @exprs ) {
+    my $expr = shift @exprs;
+    if ( ! ref $expr and $expr =~ /^[\w\s]+join$/i and ref($exprs[0]) ) {
+      my $join = $expr;
+      my $criteria = shift @exprs;
+      my $table = shift @exprs or croak("No table name provided to join to");
+
+      $join =~ tr[_][ ];
+      $sql .= " $join";
+
+      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
+      $sql .= " $expr_sql";
+      push @params, @expr_params;
+
+      my ($crit_sql, @crit_params) = 
+			DBIx::SQLEngine::Criteria->auto_where( $criteria );
+      $sql .= " on $crit_sql" if ( $crit_sql );
+      push @params, @crit_params;
+
+    } else {
+      my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $expr );
+      $sql .= ", $expr_sql";
+      push @params, @expr_params;
+    }
+  }
+  $sql =~ s/^, // or carp("Suspect table join: '$sql'");
+  ( $sql, @params );
+}
+
+# ( $sql, @params ) = $sqldb->sql_join_expr( $table_name_or_arrayref );
+sub sql_join_expr {
+  my ( $self, $table ) = @_;
+  if ( ! ref $table ) {
+    $table 
+  } elsif ( ref($table) eq 'ARRAY' ) {
+    my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
+    "( $sub_sql )", @sub_params
+  } elsif ( UNIVERSAL::can($table, 'name') ) {
+    $table->name
+  } else {
+    Carp::confess("Unsupported expression in sql_join: '$table'");
+  }
+}
+
+########################################################################
+
 sub sql_limit {
   my $self = shift;
   my ( $limit, $offset, $sql, @params ) = @_;
@@ -687,6 +804,36 @@ sub sql_limit {
   $sql .= " offset $offset" if $offset;
   
   return ($sql, @params);
+}
+
+########################################################################
+
+sub sql_union {
+  my ( $self, @queries ) = @_;
+  my ( @sql, @params );
+  if ( $self->dbms_union_unsupported ) {
+    croak("SQL Union not supported by this database");
+  }
+  foreach my $query ( @queries ) {
+    my ( $q_sql, @q_params ) = $self->sql_select( 
+	( ref($query) eq 'ARRAY' ) ? @$query : %$query );
+    push @sql, $q_sql;
+    push @params, @q_params;
+  }
+  return ( join( ' union ', @sql ), @params )
+}
+
+sub detect_union_supported {
+  my $self = shift;
+  my $quietly = shift;
+  my $result = 0;
+  eval {
+    local $SIG{__DIE__};
+    $self->fetch_select( sql => 'select 1 union select 2' );
+    $result = 1;
+  };
+  $result or warn "Unable to detect_any: $@" unless $quietly;
+  return $result;
 }
 
 ########################################################################
@@ -1661,6 +1808,10 @@ Can the database driver return a list of tables that currently exist? (True for 
 
 Does the database driver support select statements with joins across multiple tables? (True for some simple drivers like CSV.)
 
+=item dbms_union_unsupported()
+
+Does the database driver support select queries with unions to join the results of multiple select statements? (True for many simple databases.)
+
 =item dbms_drop_column_unsupported()
 
 Does the database driver have a problem removing a column from an existing table? (True for Postgres.)
@@ -1701,7 +1852,14 @@ Does the database driver support server-side stored procedures or not?
 
 =cut
 
+sub dbms_select_table_as_unsupported { undef }
+
 sub dbms_joins_unsupported { undef }
+sub dbms_join_on_unsupported { undef }
+sub dbms_outer_join_unsupported { undef }
+
+sub dbms_union_unsupported { undef }
+
 sub dbms_detect_tables_unsupported { undef }
 sub dbms_drop_column_unsupported { undef }
 
@@ -2463,6 +2621,7 @@ Execute a SQL query by sending it to the DBI connection, and returns any rows th
 =item fetch_sql_rows()
 
   $sqldb->fetch_sql_rows ($sql, @params) : $row_ary_ary
+  $sqldb->fetch_sql_rows ($sql, @params) : ( $row_ary_ary, $columnset )
 
 Execute a SQL query by sending it to the DBI connection, and returns any rows that were produced, as an array of arrays, with the values in each entry keyed by column order. If called in a list context, also returns a reference to an array of information about the columns returned by the query.
 
@@ -2501,7 +2660,7 @@ sub fetch_sql {
 # $array_of_arrays = $self->fetch_sql_rows($sql, @params);
 # ($array_of_arrays, $columns) = $self->fetch_sql_rows($sql);
 sub fetch_sql_rows {
-  (shift)->try_query( (shift), [ @_ ], 'fetchall_arrayref' )  
+  (shift)->try_query( (shift), [ @_ ], 'fetchall_arrayref_columns' )  
 }
 
 # @results = $self->visit_sql($coderef, $sql, @params);
@@ -2891,12 +3050,6 @@ Does nothing.
 
 Returns the row count reported by the last statement executed.
 
-=item fetchall_arrayref()
-
-  $sqldb->fetchall_arrayref ($sth) : $array_of_arrays
-
-Calls the STH's fetchall_arrayref method to retrieve all of the result rows into an array of arrayrefs.
-
 =item fetchall_hashref()
 
   $sqldb->fetchall_hashref ($sth) : $array_of_hashes
@@ -2905,9 +3058,23 @@ Calls the STH's fetchall_arrayref method with an empty hashref to retrieve all o
 
 =item fetchall_hashref_columns()
 
-  $sqldb->fetchall_hashref ($sth) : $array_of_hashes, $column_info
+  $sqldb->fetchall_hashref ($sth) : $array_of_hashes
+  $sqldb->fetchall_hashref ($sth) : ( $array_of_hashes, $column_info )
 
-Calls the STH's fetchall_arrayref method with an empty hashref, and also retrieves information about the columns used in the query result set.
+Calls the STH's fetchall_arrayref method with an empty hashref, and if called in a list context, also retrieves information about the columns used in the query result set.
+
+=item fetchall_arrayref()
+
+  $sqldb->fetchall_arrayref ($sth) : $array_of_arrays
+
+Calls the STH's fetchall_arrayref method to retrieve all of the result rows into an array of arrayrefs.
+
+=item fetchall_arrayref_columns()
+
+  $sqldb->fetchall_hashref ($sth) : $array_of_arrays
+  $sqldb->fetchall_hashref ($sth) : ( $array_of_arrays, $column_info )
+
+Calls the STH's fetchall_arrayref method, and if called in a list context, also retrieves information about the columns used in the query result set.
 
 =item visitall_hashref()
 
@@ -2939,6 +3106,13 @@ sub fetchall_arrayref {
   $sth->fetchall_arrayref();
 }
 
+sub fetchall_arrayref_columns {
+  my ($self, $sth) = @_;
+  my $cols = wantarray() ? $self->retrieve_columns( $sth ) : undef;
+  my $rows = $sth->fetchall_arrayref();
+  wantarray ? ( $rows, $cols ) :   $rows;
+}
+
 sub fetchall_hashref {
   my ($self, $sth) = @_;
   $sth->fetchall_arrayref( {} );
@@ -2946,8 +3120,9 @@ sub fetchall_hashref {
 
 sub fetchall_hashref_columns {
   my ($self, $sth) = @_;
-  wantarray ? ( $sth->fetchall_arrayref( {} ), $self->retrieve_columns( $sth ) )
-	    :   $sth->fetchall_arrayref( {} );
+  my $cols = wantarray() ? $self->retrieve_columns( $sth ) : undef;
+  my $rows = $sth->fetchall_arrayref( {} );
+  wantarray ? ( $rows, $cols ) :   $rows;
 }
 
 # $self->visitall_hashref( $sth, $coderef );
@@ -3010,6 +3185,7 @@ sub retrieve_columns {
   
   my $type_defs = $self->column_type_codes();
   my $names = $sth->{'NAME_lc'};
+
   my $types = eval { $sth->{'TYPE'} || [] };
   # warn "Types: " . join(', ', map "'$_'", @$types);
   my $type_codes = [ map { 
@@ -3296,12 +3472,13 @@ Many thanks to the kind people who have contributed code and other feedback:
 
 =head2 Source Material
 
-Inspiration, tricks, and bits of useful code were taken from these CPAN modules:
+Inspiration, tricks, and bits of useful code were mined from these CPAN modules:
 
   DBIx::AnyDBD
   DBIx::Compat
   DBIx::Datasource
   DBIx::Renderer
+  Alzabo
 
 =head2 Copyright
 

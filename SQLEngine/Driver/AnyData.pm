@@ -26,6 +26,10 @@ use Carp;
 
 ########################################################################
 
+use DBIx::SQLEngine::Mixin::NoUnions ':all';
+
+########################################################################
+
 =head2 fetch_one_value
 
 Special handling for simple functions.
@@ -173,6 +177,40 @@ communication failures or other incidental errors.
 sub recoverable_query_exceptions {
   'resource',
 }
+
+########################################################################
+
+=head2 dbms_select_table_as_unsupported
+
+  $sqldb->dbms_select_table_as_unsupported () : 1
+
+Capability Limitation: This driver does not support table aliases such as "select * from foo as bar".
+
+=head2 dbms_column_types_unsupported
+
+  $sqldb->dbms_column_types_unsupported () : 1
+
+Capability Limitation: This driver does not store column type information.
+
+=head2 dbms_indexes_unsupported
+
+  $sqldb->dbms_indexes_unsupported () : 1
+
+Capability Limitation: This driver does not support indexes.
+
+=head2 dbms_storedprocs_unsupported
+
+  $sqldb->dbms_storedprocs_unsupported () : 1
+
+Capability Limitation: This driver does not support stored procedures.
+
+=cut
+
+sub dbms_select_table_as_unsupported { 1 }
+
+sub dbms_column_types_unsupported    { 1 }
+sub dbms_indexes_unsupported         { 1 }
+sub dbms_storedprocs_unsupported     { 1 }
 
 ########################################################################
 

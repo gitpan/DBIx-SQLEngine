@@ -31,6 +31,12 @@ use Carp;
 
 ########################################################################
 
+use DBIx::SQLEngine::Mixin::NoUnions ':all';
+
+use DBIx::SQLEngine::Mixin::NoComplexJoins ':all';
+
+########################################################################
+
 =head2 fetch_one_value
 
 Special handling for simple functions.
@@ -82,7 +88,18 @@ Implemented using DBIx::SQLEngine::Mixin::SeqTable.
 
 =cut
 
-use DBIx::SQLEngine::Mixin::SeqTable ':all';
+use DBIx::SQLEngine::Mixin::SeqTable  qw( :all !sql_seq_increment );
+
+# $sql, @params = $sqldb->sql_seq_increment( $table, $field, $current, $next );
+sub sql_seq_increment {
+  my ($self, $table, $field, $current, $next) = @_;
+  my $seq_table = $self->seq_table_name;
+  $self->sql_update(
+    table => $seq_table,
+    values => { seq_value => $next },
+    criteria => ['seq_name = ?', "$table.$field"]
+  );
+}
 
 ########################################################################
 
@@ -154,6 +171,12 @@ sub dbms_create_column_text_long_type {
 
 Capability Limitation: This driver does not support joins.
 
+=head2 dbms_select_table_as_unsupported
+
+  $sqldb->dbms_select_table_as_unsupported () : 1
+
+Capability Limitation: This driver does not support table aliases such as "select * from foo as bar".
+
 =head2 dbms_column_types_unsupported
 
   $sqldb->dbms_column_types_unsupported () : 1
@@ -180,11 +203,13 @@ Capability Limitation: This driver does not support stored procedures.
 
 =cut
 
-sub dbms_joins_unsupported        { 1 }
-sub dbms_column_types_unsupported { 1 }
-sub dbms_null_becomes_emptystring { 1 }
-sub dbms_indexes_unsupported      { 1 }
-sub dbms_storedprocs_unsupported  { 1 }
+sub dbms_select_table_as_unsupported { 1 }
+
+sub dbms_joins_unsupported           { 1 }
+sub dbms_column_types_unsupported    { 1 }
+sub dbms_null_becomes_emptystring    { 1 }
+sub dbms_indexes_unsupported         { 1 }
+sub dbms_storedprocs_unsupported     { 1 }
 
 ########################################################################
 

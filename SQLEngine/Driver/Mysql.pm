@@ -26,6 +26,10 @@ use Carp;
 
 ########################################################################
 
+use DBIx::SQLEngine::Mixin::NoUnions ':all';
+
+########################################################################
+
 =head2 sql_limit
 
 Adds support for SQL select limit clause.

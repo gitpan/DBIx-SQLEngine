@@ -28,8 +28,8 @@ TO DO
     The column-information retrieve in DBIx::SQLEngine::Default should be
     using DBI's type_info methods.
 
-    Centralize logging interface by making 'DBI', 'SQL' arguments to general
-    function, or using log4perl.
+    Consider centralizing logging interface by making 'DBI', 'SQL' arguments
+    to general function, or using log4perl.
 
     Consider becoming a subclass of DBI via RootClass and DbTypeSubclass,
     rather than using composition via DBIx::AnyDBD. This is somewhat
@@ -43,6 +43,9 @@ TO DO
     Determine the right way to handle the multiplexing drivers,
     DBD::Multiplex and DBIx::HA, given that they may reconnect to a
     different server in mid-stream.
+
+    Determine the right way to code the driver traits currently stored in
+    Mixin::*.
 
   Database Subclasses
 

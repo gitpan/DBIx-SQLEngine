@@ -56,7 +56,7 @@ L<SQL::Catalog>, L<SQL::Library>, L<DBIx::PhraseBook>,
 L<Class::Phrasebook::SQL>, and L<DBIx::Librarian>.
 
 Some packages focus on managing database schema information. See
-L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>
+L<DBIx::DataSource>, L<DBIx::Schema>, L<DBIx::Admin::TableInfo>, L<DBIx::SystemCatalog>.
 
 
 =head1 SEE ALSO

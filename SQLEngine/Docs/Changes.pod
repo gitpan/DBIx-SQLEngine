@@ -6,6 +6,18 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.019
+
+2004-04-04 Released as DBIx-SQLEngine-0.019.
+
+2004-04-03 Added initial support for constructing complex joins and 
+Mixin::NoComplexJoins to provide emulation for the simplest inside joins.
+
+2004-04-03 Added Mixin::NoUnions to provide emulation of unions where needed.
+
+2004-04-02 Added initial support for selects with unions.
+
+
 =head2 Version 0.018
 
 2004-03-30 Released as DBIx-SQLEngine-0.018.

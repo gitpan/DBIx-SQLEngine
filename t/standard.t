@@ -8,7 +8,7 @@ use DBIx::SQLEngine;
 
 BEGIN { require 't/get_test_dsn.pl' }
 
-BEGIN { plan tests => 35 }
+BEGIN { plan tests => 40 }
 
 ########################################################################
 
@@ -21,7 +21,7 @@ warn <<".";
 
 .
   skip(
-    "Skipping: Could not connect to this DBI_DSN to test your local server.\n",
+    "Skipping: Could not connect to this DBI_DSN to test your local server.",
     0,
   );
   exit 0;
@@ -103,7 +103,7 @@ INSERTS_AND_SELECTS: {
 
 }
 
-SELECT_CRITERIA: {
+SELECT_CRITERIA_SINGLE: {
 
   my $rows = $sqldb->fetch_select( table => $table, criteria => {name=>'Dave'});
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
@@ -120,8 +120,11 @@ SELECT_CRITERIA: {
   $rows = $sqldb->fetch_select( sql => "select * from $table", criteria => [ "name = ?", 'Dave' ] );
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
 
+}
 
-  $rows = $sqldb->fetch_select( table => $table, criteria => {color=>'blue'});
+SELECT_CRITERIA_MULTI: {
+
+  my $rows = $sqldb->fetch_select( table => $table, criteria =>{color=>'blue'});
   ok( ref $rows and scalar @$rows == 2 and ( $rows->[0]->{'name'} eq 'Dave' or $rows->[1]->{'name'} eq 'Dave' ) );
 
   $rows = $sqldb->fetch_select( table => $table, criteria => {color=>'blue', name=>'Dave'});
@@ -132,6 +135,38 @@ SELECT_CRITERIA: {
 
   $rows = $sqldb->fetch_select( sql => "select * from $table where color = 'blue'", criteria => {name=>'Dave'});
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
+
+}
+
+SELECT_CRITERIA_JOIN: {
+
+  if ( $sqldb->dbms_select_table_as_unsupported ) {
+    skip("Skipping: This database does not support selects with table aliases.", 0);
+    skip("Skipping: This database does not support selects with table aliases.", 0);
+    skip("Skipping: This database does not support selects with table aliases.", 0);
+  } else {
+
+    my $rows = $sqldb->fetch_select( table => ["$table as a", "$table as b"] );
+    ok( ref $rows and scalar @$rows == 25 );
+  
+    $rows = $sqldb->fetch_select( table => [ "$table as a", "$table as b" ], criteria => { 'a.color'=>'blue'});
+    ok( ref $rows and scalar @$rows == 10 );
+    
+    $rows = $sqldb->fetch_select( table => [ "$table as a", inner_join=>[ 'a.color = b.color' ],  "$table as b" ]);
+    ok( ref $rows and scalar @$rows == 7 );
+  }
+
+}
+
+SELECT_UNION: {
+
+  my $rows = $sqldb->fetch_select( union => [
+    { table => $table, criteria => {color=>'orange'} },
+    { table => $table, criteria => {color=>'purple'} },
+  ] );
+
+  ok( ref $rows and scalar @$rows == 2 );
+  ok( $rows->[0]->{'name'} eq 'Ellen' or $rows->[1]->{'name'} eq 'Ellen' );
 
 }
 
@@ -173,16 +208,24 @@ NULL_VALUE_LOGIC: {
   $sqldb->do_update( table => $table, criteria => { name=>\"'Dave'" }, values => { name=>undef() } );
   ok( 1 );
   
-  $rows = $sqldb->fetch_select( table=>$table, criteria=>{ name=>undef() } );
-  ok( (ref $rows and scalar @$rows == 1 and $rows->[0]->{'color'} eq 'mauve'), 1, "Couldn't select null value rows" );
+  if ( $sqldb->dbms_null_becomes_emptystring ) { 
+    skip("Skipping: This database does not support storing null values.", 0);
+  } else {
+    $rows = $sqldb->fetch_select( table=>$table, criteria=>{ name=>undef() } );
+    ok( (ref $rows and scalar @$rows == 1 and $rows->[0]->{'color'} eq 'mauve'), 1, "Couldn't select null value rows" );
+  }
 
 }
-
 
 TABLESET: {
 
   ok( ref( $sqldb->tables ) );
-  ok( scalar( $sqldb->tables->table_names ) > 0 );
+
+  if ( $sqldb->dbms_detect_tables_unsupported() ) {
+    skip("Skipping: This database does not support retrieving table names.", 0);
+  } else {
+    ok( scalar( $sqldb->tables->table_names ) > 0, 1, "Couldn't detect tables" );
+  }
   ok( scalar( $sqldb->tables->table_names ) == scalar ($sqldb->detect_table_names) );
 
 }
