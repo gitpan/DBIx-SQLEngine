@@ -84,8 +84,8 @@ use Class::MethodMaker::Compatibility (
   ) ],
 );
 
-sub namespace { 
-  (shift)->__cache_namespace( @_ ) 
+sub get_namespace { 
+  (shift)->__cache_namespace() 
 }
 
 ########################################################################

@@ -58,6 +58,7 @@ use strict;
 use Carp;
 
 use DBIx::SQLEngine::Schema::Table;
+use DBIx::SQLEngine::Record::Set;
 
 ########################################################################
 
@@ -499,7 +500,7 @@ sub table_fetch_one_method {
 sub table_fetch_set_method {
   my $self = shift;
   my $method = shift;
-  $self->record_set_from_table( $self->get_table()->$method( @_ ) )
+  $self->record_set_from_table( scalar $self->get_table()->$method( @_ ) )
 }
 
 # $record_class->record_from_table( $hash_ref );
@@ -507,7 +508,6 @@ sub table_fetch_set_method {
 # $record = $record_class->record_from_table( %hash_contents );
 sub record_from_table {
   my $class = shift;
-  ! ref($class) or croak("Can't call this class method on a record object");
   my $hash = ( @_ == 1 ) ? shift : { @_ }
 	or return;
   confess("from table : '$hash'") unless $hash; 
@@ -519,7 +519,6 @@ sub record_from_table {
 # $record_set = $record_class->record_set_from_table( @hash_refs );
 sub record_set_from_table {
   my $class = shift;
-  ! ref($class) or croak("Can't call this class method on a record object");
   my $array = ( @_ == 1 ) ? shift : [ @_ ];
   bless [ map { bless $_, $class } @$array ], 'DBIx::SQLEngine::Record::Set';
 }

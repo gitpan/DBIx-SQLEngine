@@ -57,7 +57,8 @@ t/get_test_dsn.pl
 t/internal_clone.t
 t/named_queries.t
 t/record_accessors.t
-t/record_class.t
+t/record_base.t
+t/record_cache.t
 t/record_extras.t
 t/record_hooks.t
 t/table_objects.t

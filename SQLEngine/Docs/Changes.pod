@@ -6,9 +6,20 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.024
+
+2004-04-14 Released as DBIx-SQLEngine-0.024.
+
+2004-04-13 Fixed support for literal SQL in Schema::Table, Record::Trait::Cache.
+
+2004-04-13 Added a few more methods to Record::Trait::Extras for compatibility with older DBO classes.
+
+2004-04-11 Fixed a few problems in Record::Trait::Cache and Cache::TrivialCache. Added initial test script for record caching.
+
+
 =head2 Version 0.023
 
-2004-04-   Released as DBIx-SQLEngine-0.023.
+2004-04-10 Released as DBIx-SQLEngine-0.023.
 
 2004-04-10 Added feature matrix to Docs::Related. Added Docs::Comparison.
 

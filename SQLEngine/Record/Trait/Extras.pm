@@ -78,17 +78,25 @@ Re-retrieve the values for this record from the database based on its primary ke
 
 =cut
 
+sub new { (shift)->new_with_values( @_ ) }
+
+########################################################################
+
 sub fetch_records { (shift)->fetch_select( @_ ) }
 sub visit_records { (shift)->visit_select( @_ ) }
+sub fetch_sql     { (shift)->fetch_select( sql => [ @_ ] ) }
+sub fetch_id      { (shift)->select_record( @_ ) }
 
-sub fetch_id { (shift)->select_row( @_ ) }
-
-sub change { (shift)->change_values() }
+sub fetch {
+  (shift)->fetch_select( 
+	( ref $_[0] or ! defined $_[0] ) ? (where=>$_[0], order=>$_[1]) 
+					: @_ 
+  );
+}
 
 sub fetch_one {
   my $self = shift;
-  
-  my $records = $self->fetch_select( @_ );
+  my $records = $self->fetch( @_ );
   ( scalar @$records < 2 ) or
       carp "Multiple matches for fetch_one: " . join(', ', map "'$_'", @_ );
   
@@ -103,6 +111,17 @@ sub refetch_record {
   $self->post_fetch;
   $self;
 }
+
+########################################################################
+
+sub change { (shift)->change_values() }
+
+########################################################################
+
+sub save_row   { (shift)->save_record(@_) }
+sub insert_row { (shift)->insert_record( @_ ) }
+sub update_row { (shift)->update_record( @_ ) }
+sub delete_row { (shift)->delete_record( @_ ) }
 
 ########################################################################
 

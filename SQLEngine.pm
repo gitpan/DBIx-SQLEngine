@@ -234,7 +234,7 @@ for the various classes.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.023;
+$VERSION = 0.024;
 
 use strict;
 
@@ -595,7 +595,7 @@ subclasses to compensate for differences in the SQL dialect or execution
 ideosyncracies of that platform.
 
 The only methods that are actually provided by the DBIx::SQLEngine package
-itself are the constructors like new(). All of the other methods desribed here
+itself are the constructors like new(). All of the other methods described here
 are defined in DBIx::SQLEngine::Driver::Default, or in one of its
 automatically-loaded subclasses.
 

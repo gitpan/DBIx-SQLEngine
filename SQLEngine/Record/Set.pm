@@ -326,6 +326,21 @@ sub sum {
 
 ########################################################################
 
+# @results = $rs->visit_sub( $subref, @$leading_args, @$leading_args );
+sub visit_sub {
+  my $rs = shift;  
+  my $subref = shift;
+  my @pre_args = map { ref($_) ? @$_ : defined($_) ? $_ : () } shift;
+  my @post_args = map { ref($_) ? @$_ : defined($_) ? $_ : () } shift;
+  my @result;
+  foreach my $record ( $rs->records ) {
+    push @result, $subref->( @pre_args, $record, @post_args )
+  }
+  return @result;
+}
+
+########################################################################
+
 # $rs->push_unique_records( @records );
 sub push_unique_records {
   my $rs = shift;

@@ -162,12 +162,13 @@ Calls the provided method name on the associated SQLEngine, passing along the ta
 =cut
 
 sub sqlengine_do {
-  my ($self, $method, @args) = @_;
+  my ($self, $method, %args) = @_;
   my $name = $self->name() 
 	or croak("No name set for table in '$self->{sqlengine}'");
   my $sqlengine = $self->sqlengine() 
 	or croak("No sqlengine set for table '$_[0]->{name}'");
-  $sqlengine->$method(table => $name, @args)
+  $args{table} = $name unless( $args{sql} || $args{named_query} );
+  $sqlengine->$method( %args)
 }
 
 sub sqlengine_table_method {
@@ -563,10 +564,11 @@ use Class::MakeMethods (
 sub get_columnset {
   my $self = shift;
   
-  $self->columnset or $self->columnset(
-    DBIx::SQLEngine::Schema::ColumnSet->new( $self->detect_table() or
-	confess("Couldn't fetch column information for table $self->{name}") 
-    ) 
+  $self->columnset or $self->columnset( do {
+      my @columns = $self->detect_table() or
+	  confess("Couldn't fetch column information for table $self->{name}");
+      DBIx::SQLEngine::Schema::ColumnSet->new( @columns )
+    }
   );
 }
 
@@ -578,8 +580,9 @@ use Class::MakeMethods (
 );
 
 sub column_primary_name {
-  my $columns = (shift)->get_columnset;
-  $columns->[0]->name;
+  my $columns = (shift)->get_columnset or return;
+  my $column = $columns->[0] or return;
+  $column->name;
 }
 
 # (__PACKAGE__)->column_primary_name( 'id' );

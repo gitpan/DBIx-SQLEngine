@@ -62,7 +62,7 @@ use strict;
 use Carp;
 use vars qw( @MIXIN );
 
-use Cache::Cache;
+# use Cache::Cache;
 use Storable 'freeze';
 use String::Escape 'qprintable';
 
@@ -113,7 +113,7 @@ Clear some or all values in the cache.
 
 =back
 
-B<Included Cache Classes:> Two small classes are included that support this interface; see L<DBIx::SQLEngine::Record::Cache::TrivialCache> and  L<DBIx::SQLEngine::Record::Cache::BasicCache>.
+B<Included Cache Classes:> Two small classes are included that support this interface; see L<DBIx::SQLEngine::Cache::TrivialCache> and  L<DBIx::SQLEngine::Cache::BasicCache>.
 
 =cut
 
@@ -191,9 +191,7 @@ sub cache_get_set {
   
   if ( ! defined $current ) {
     $current = &$sub( @args );
-    $self->cache_log_operation( $cache, 'write', $key );
-    $current = defined($current) ? $current : '';
-    $cache->set( $key, $current );
+    &$update( defined($current) ? $current : '' );
   }
   
   $current;
@@ -243,9 +241,9 @@ sub cache_log_operation {
     warn "Cache $namespace: $oper " . qprintable($key) . "\n";
   } else {
     my $history = ( $CachingHistory{ $key } ||= [] );
-    push @$history, $oper;
     warn "Cache $namespace: $oper (" . join(' ', @$history ) . ") "  .
 				      qprintable($key)."\n";
+    push @$history, $oper;
   }
 }
 
@@ -291,7 +289,7 @@ sub define_cache_styles {
 
 sub use_cache_style {
   my ( $class, $style, %options ) = @_;
-  my $sub = $CacheStyles{ $style };
+  my $sub = $class->cache_styles( $style );
   my $cache = $sub->( $class, %options );
   $class->cache_cache( $cache );
 }
@@ -306,7 +304,7 @@ B<Defaults:> The following cache styles are predefined. Except for 'simple', usi
 
 =item 'simple'
 
-Uses DBIx::SQLEngine::Record::Cache::TrivialCache.
+Uses DBIx::SQLEngine::Cache::TrivialCache.
 
 =item 'live'
 
@@ -330,8 +328,8 @@ Uses Cache::FileCache with a default expiration time of 30 seconds.
 
 __PACKAGE__->define_cache_styles( 
   'simple' => sub {
-    require DBIx::SQLEngine::Record::Cache::TrivialCache;
-    DBIx::SQLEngine::Record::Cache::TrivialCache->new();
+    require DBIx::SQLEngine::Cache::TrivialCache;
+    DBIx::SQLEngine::Cache::TrivialCache->new();
   },
   'live' => sub {
     require Cache::FastMemoryCache;
@@ -411,13 +409,15 @@ __PACKAGE__->define_cache_styles(
 
 =cut
 
+
+
 # $records = $record_class->fetch_select( %select_clauses );
 BEGIN { push @MIXIN, "#line ".__LINE__.' "'.__FILE__.'"', "", <<'/' }
 sub fetch_select {
   my $self = shift;
   my %clauses = @_;
   
-  my ($records, $update) = $self->cache_get({ %clauses, table => $self->table->name });
+  my ($records, $update) = $self->cache_get( $self->cache_key_for_fetch( %clauses ) );
   
   if ( ! defined $records ) {
     $records = $self->SUPER::fetch_select( %clauses );
@@ -429,13 +429,22 @@ sub fetch_select {
 /
 
 sub fetch_one_record {
-  (shift)->fetch_records( @_, 'limit' => 1 )->record( 0 )
+  local $SIG{__DIE__} = \&Carp::confess;
+  (shift)->fetch_select( @_, 'limit' => 1 )->record( 0 )
 }
 
 # $record = $record_class->select_record( $id_value );
 sub select_record {
   my ( $self, $id ) = @_;
   $self->fetch_one_record( where => $self->get_table()->primary_criteria($id) )
+}
+
+########################################################################
+
+sub cache_key_for_fetch {
+  my ($self, %clauses) = @_;
+  
+  join "\0/\0", $self->get_table->sqlengine_do( 'sql_select', %clauses )
 }
 
 ########################################################################
@@ -492,6 +501,8 @@ sub cache_records {
   my $self = shift;
   my $id_col = $self->column_primary_name();
   foreach my $record ( @_ ) {
+    my $tablename = $self->table->name;
+    my $criteria = { $id_col => $record->{ $id_col } };
     my %index = ( where => { $id_col => $record->{ $id_col } }, limit => 1, table => $self->table->name );
     $self->cache_set( \%index, DBIx::SQLEngine::Record::Set->new($record) );
   }
@@ -617,31 +628,13 @@ __END__
   # 2000-04-12 Check whether being called on instance or class before blessing.
   # 2000-04-11 Fixed really anoying fetch_id problem. 
   # 2000-04-05 Completed expiration and pruning methods.
-  # 2000-04-04 Check for empty-string criteria, ordering in stringify_fetch_args
+  # 2000-04-04 Check for empty-string criteria, ordering in cache_key_for_fetch
   # 2000-03-29 Fixed cache expiration for multi-row fetch.
   # 2000-03-06 Touchups.
   # 2000-01-13 Overhauled. -Simon
 
 ########################################################################
 
-
-sub stringify_fetch_args {
-  my $row_class = shift;
-  my ( $criteria, $ordering ) = @_;
-  
-  my $criteria_str = ( ( defined($criteria) and length($criteria) )
-    ? $row_class->table_or_die()->sql_where( $criteria )
-    : 'all'
-  );
-  my $order_str = ( ! ( defined($ordering) and length($ordering) )
-    ? ''
-    : ( ! ref($ordering)
-      ? $ordering
-      : join '__', @$ordering
-    )
-  );
-  return $criteria_str . ( $order_str ? '__' . $order_str : '' );
-}
 
 
 
@@ -650,31 +643,31 @@ sub stringify_fetch_args {
 
 # $rows = RowClass->fetch( $criteria, $order )
 sub fetch {
-  my $row_class = shift;
+  my $self = shift;
   
-  return $row_class->query_cache->retrieve_or_replace(
-    $row_class->stringify_fetch_args( @_ ),
-    \&___cache_fetch, $row_class, @_
+  return $self->query_cache->cache_get_set(
+    $self->cache_key_for_fetch( @_ ),
+    \&___cache_fetch, $self, @_
   );
 }
 
 # $rows = RowClass->fetch_sql( $sql )
 sub fetch_sql {
-  my $row_class = shift;
+  my $self = shift;
   
-  return $row_class->query_cache->retrieve_or_replace(
+  return $self->query_cache->cache_get_set(
     join('__', @_),
-    \&___cache_fetch_sql, $row_class, @_
+    \&___cache_fetch_sql, $self, @_
   );
 }
 
 # $row = RowClass->fetch_id( $id )
 sub fetch_id {
-  my $row_class = shift;
+  my $self = shift;
 
-  return $row_class->row_cache->retrieve_or_replace(
+  return $self->row_cache->cache_get_set(
     join('__', @_),
-    \&___cache_fetch_id, $row_class, @_
+    \&___cache_fetch_id, $self, @_
   );
 }
 

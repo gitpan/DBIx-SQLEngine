@@ -51,7 +51,7 @@ sub new { my $class = shift; bless { @_ }, $class }
 
 =over 4
 
-=item namespace()
+=item get_namespace()
 
 Returns nothing.
 
@@ -59,7 +59,7 @@ Returns nothing.
 
 =cut
 
-sub namespace { (shift) }
+sub get_namespace { "Trivial" }
 
 ########################################################################
 
@@ -77,11 +77,11 @@ sub namespace { (shift) }
 
 =cut
 
-sub get { (shift)->{ (shift) } }
+sub get { ($_[0])->{ $_[1] } }
 
-sub set { (shift)->{ (shift) } = (shift) }
+sub set { ($_[0])->{ $_[1] } = $_[2] }
 
-sub clear { %{ (shift) } = () }
+sub clear { %{ $_[0] } = () }
 
 ########################################################################
 
