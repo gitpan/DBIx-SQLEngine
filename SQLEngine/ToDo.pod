@@ -1,0 +1,49 @@
+=head1 NAME
+
+DBIx::SQLEngine::ToDo - Tasks, ideas, and bugs
+
+=head1 TO DO
+
+Although it based on earlier code that was extensively tested over several years of production use, this code has recently been majorly refactored, and has not yet been sufficiently tested in its new form.
+
+This version to be posted for review and discussion on DBI list, Perl Monks, and Perl Modules list.
+
+The test script is very minimal and really ought to exercise the entire public interface.
+
+The Criteria subclasses are woefully incomplete. See the unfinished_code file for more.
+
+The column-information retrieve in DBIx::SQLEngine::Default should probably be using DBI's type_info methods.
+
+Additional subclasses will be required to support the following:
+
+=over 4
+
+=item *
+
+All: type of long field
+
+=item *
+
+Oracle: single, trailing long.
+
+=item *
+
+MySQL, Oracle: downcase column names.
+
+=item *
+
+DB2: Long insertion via multiple updates.
+
+=item *
+
+Informix: escape newlines on insert/update/where and select
+
+=back
+
+=cut
+
+=head1 SEE ALSO 
+
+L<DBIx::SQLEngine::ReadMe>
+
+=cut

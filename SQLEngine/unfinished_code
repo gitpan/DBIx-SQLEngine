@@ -1,0 +1,36 @@
+########################################################################
+
+=head2 Name - Template::Hash:string_index
+
+Allows you to name SQLEngines and then later find them by name.
+
+Provides a simple scoping mechanism for shared pools of datasources.
+
+=over 4
+
+=item name ($string)
+
+Set a name.
+
+=item name () : $string?
+
+Get the name, if any,
+
+=item name (undef)
+
+To dispose of an instance you must clear its name.
+
+=item find_name ($string) : $instance?
+
+Class method. Locate an instance
+
+=back
+
+=cut
+
+use Class::MakeMethods (
+#  'Template::Hash:string_index' => 'name',
+);
+
+########################################################################
+

@@ -1,0 +1,96 @@
+NAME
+    DBIx::SQLEngine::ReadMe - Introduction to DBIx::SQLEngine.
+
+DESCRIPTION
+    The DBIx::SQLEngine class provides an extended interface for DBI
+    database handles, adding methods that support ad-hoc SQL generation and
+    query execution in a single call.
+
+MOTIVATION
+    This is the most recent version of a collection of libraries that I've
+    used over the last several years to develop business data applications
+    and object-relational mapping toolkits.
+
+    Its goal is to simplify dynamic query execution with the following
+    capabilities:
+
+    *   Data-driven SQL: Ad-hoc generation of SQL statements from Perl data
+        structures in a variety of formats.
+
+    *   High-Level Interface: Standard operations are handled by a single
+        method call each. Error handling is standardized.
+
+    *   Full API Access: Pass-through arbitrary SQL and allow access to
+        entire DBI API for cases when high-level interfaces are insufficient
+        or inconvenient.
+
+    *   Portability: Dynamic subclassing (via DBIx::AnyDBD) to allow
+        platform-specific support for driver idiosyncrasies and DBMS
+        workarounds.
+
+DEPENDENCIES
+    This module requires these other modules and libraries:
+
+      DBI                   1.0
+      DBIx::AnyDBD          2.0
+      Class::MakeMethods    1.000_015
+
+INSTALLATION
+    To install this module type the following:
+
+      perl Makefile.PL
+      make
+      make test
+      make install
+
+    In order for the test to succeed, you must also have at least one
+    working DBD module installed, and must provide a DSN to which the script
+    can connect with permissions to create tables.
+
+STATUS AND SUPPORT
+    Version 0.002 is a preliminary release of DBIx::SQLEngine intended for
+    public review and discussion
+
+    Although it based on earlier code that was extensively tested over
+    several years of production use, this code has recently been majorly
+    refactored, and has not yet been sufficiently tested in its new form.
+
+    The proposed CPAN module list entry is as follows:
+
+      Name            DSLI  Description
+      --------------  ----  ---------------------------------------------
+      DBIx::
+      :: SQLEngine    bdpo  Extends DBI with high-level operations
+
+    Further information and support for this module is available at
+    http://www.evoscript.org.
+
+    Please report bugs or other problems to "<simonm@cavalletto.org>".
+
+    See the DBIx::SQLEngine::ToDo manpage for bugs and missing features.
+
+SEE ALSO
+    See the DBIx::SQLEngine manpage for interface documentation.
+
+    See the DBIx::SQLEngine::Changes manpage for revision history.
+
+  Similar Modules
+
+    Several other CPAN modules provide a similar abstraction layer.
+
+    See the DBIx::Abstract manpage, the DBIx::AbstractLite manpage, the
+    DBIx::Broker manpage, the DBIx::Easy manpage, and the DBIx::DWIW
+    manpage, among others.
+
+COPYRIGHT AND LICENSE
+    Copyright 2001, 2002 Matthew Cavalletto. Portions originally copyright
+    1997, 1998, 1999, 2000, 2001 Evolution Online Systems, Inc.
+
+    You may use, modify, and distribute this software under the same terms
+    as Perl.
+
+    Developed by Matthew Simon Cavalletto <simonm@cavalletto.org>.
+
+    Contributors: Eric Schneider <roark@evolution.com>, E. J. Evans
+    <piglet@piglet.org<gt>.
+

@@ -1,0 +1,64 @@
+NAME
+    DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
+
+HISTORY
+    2002-01-13 Fixed logging scope errors. Filled in several mising chunks
+    of documentation. Makefile.PL touchups for distribution.
+
+    2001-12-01 Separated from object-relational mapping functionality. Moved
+    to DBIx::SQLEngine namespace.
+
+    2001-11-30 Began adjusting namespace for CPAN distribution. Fixed use of
+    AnyDBD to not require non-standard patch.
+
+    2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved
+    SQL-generation code from Table to SQLEngine.
+
+    2001-06-27 Moved to DBO2 namespace. Renamed from Adaptor to SQLEngine.
+    Flattened class hierarchy; we're only going to support DBI. Expunged old
+    code. Switched to new Class::MakeMethods distribution.
+
+    2001-02-14 Reversed boolean sense of 'nullable' to 'required'.
+
+    2001-01-29 Fixed code to detect length and nullable column information.
+
+    2001-01-13 Added retry on "Lost connection to MySQL" errors
+
+    2000-11-29 Switched to use of Class::MethodMaker 2.0 features.
+
+    2000-03-31 Added SQL-string to execution failure.
+
+    2000-03-03 Adjusted clear_connection.
+
+    1999-08-18 Added MySQL tinyint column code
+
+    1999-07-27 Added use of DBO::Column package.
+
+    1999-04-21 Added explicit disconnect if existing connection's ping
+    fails.
+
+    1999-04-05 Added reconnect if can't ping server behaviour; add'l type
+    codes
+
+    1998-12-08 Cleanup of logging.
+
+    1998-12-08 Added parameter handling and on-demand class loading.
+
+    1998-11-01 Changed importing style for Class::MethodMaker.
+
+    1998-10-05 Revised. Rewrote POD.
+
+    1998-05-09 Moved connection behaviour from SQL Table into Adaptor
+    classes.
+
+    1998-03-16 DBAdaptor package (and subpackages) renamed to DBO::Table.
+
+    1997-11-18 Simon: Updated to current practice.
+
+    1997-09-24 IntraNetics97 Version 1.00.000
+
+    1997-08-20 Eric: Created
+
+SEE ALSO
+    the DBIx::SQLEngine::ReadMe manpage
+

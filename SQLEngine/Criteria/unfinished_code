@@ -1,0 +1,27 @@
+package DBO::Criteria::SimpleSQL;
+package DBO::Criteria::StringEquality;
+package DBO::Criteria::Like;
+package DBO::Criteria::SubString;
+package DBO::Criteria::CaseInsensitiveSubString;
+package DBO::Criteria::NumericEquality;
+package DBO::Criteria::NumericInequality;
+package DBO::Criteria::NumericGreater;
+package DBO::Criteria::NumericLesser;
+package DBO::Criteria::NumericGreaterOrEqual;
+package DBO::Criteria::NumericLesserOrEqual;
+package DBO::Criteria::StringInequality;
+
+
+package DBO::Criteria::StringEquality;
+
+# Concrete subclass of DBO::Criteria::SimpleSQL, named 'isstring'
+@DBO::Criteria::StringEquality::ISA = 'DBO::Criteria::SimpleSQL';
+
+DBO::Criteria::StringEquality->add_criteria_class_name('isstring');
+sub inverse { 'DBO::Criteria::StringInequality' }
+
+# $flag = $crit->matches( $record );
+sub matches {
+  my ($crit, $record) = @_;
+  return ($crit->value( $record ) eq $crit->{'value'}) ? 1 : 0;
+}
