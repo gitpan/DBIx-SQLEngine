@@ -9,7 +9,7 @@ dbi:SQLite:dbname=t/test_data/test.sqlite
 dbi:CSV:f_dir=t/test_data
 .
 
-print qx! make !;
+system qq! make !;
 
 print $separator;
 system qq! perl -Mblib -MTest::Harness=runtests -e '\$ENV{DBI_DSN}=""; runtests grep { /standard/ ? 0 : 1 } \@ARGV' t/*.t !;
@@ -18,7 +18,7 @@ foreach my $dsn ( @dsns ) {
 
   print $separator;
   my $result = qx! perl -Mblib -MTest::Harness=runtests -e '\$ENV{DBI_DSN}="$dsn"; \$ENV{DBI_DSN_WARN_SUPR}="1"; runtests "t/standard.t"' !;
-  print( ( $result =~ /\n(All tests successful.\n|Failed.*\Z)/s )[0] || $result );
+  print( ( $result =~ /\n(All tests successful.*?\n|Failed.*\Z)/s )[0] || $result );
 
 }
 

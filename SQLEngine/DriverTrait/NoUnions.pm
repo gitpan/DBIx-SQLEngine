@@ -1,11 +1,11 @@
 =head1 NAME
 
-DBIx::SQLEngine::Mixin::NoUnions - For databases without select unions
+DBIx::SQLEngine::DriverTrait::NoUnions - For databases without select unions
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have native unions
-  use DBIx::SQLEngine::Mixin::NoUnions ':all';
+  use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
   
   # Implements a workaround for unavailable sql_union capability
   $rows = $sqldb->fetch_select_rows( union => [
@@ -15,7 +15,7 @@ DBIx::SQLEngine::Mixin::NoUnions - For databases without select unions
 
 =head1 DESCRIPTION
 
-This mixin supports SQL database servers which do natively provide a SQL
+This package supports SQL database servers which do natively provide a SQL
 select with unions. Instead, queries with unions are executed separately and
 their results combined.
 
@@ -27,10 +27,6 @@ Because of the way DBIx::AnyDBD munges the inheritance tree, DBIx::SQLEngine
 subclasses can not reliably inherit from this package. To work around this,
 we export all of the methods into their namespace using Exporter and @EXPORT.
 
-Note that, strictly speaking, this is not a real mixin class, but the above
-implementation issue was not discovered and worked around until after the
-package namespace had already been put into service.
-
 In addition we go through some effort to re-dispatch methods because we can't
 rely on SUPER and we don't want to require NEXT. This isn't too complicated,
 as we know the munged inheritance tree only uses single inheritance. See the
@@ -40,7 +36,7 @@ source code for the _super_dispatch function that handles this.
 
 ########################################################################
 
-package DBIx::SQLEngine::Mixin::NoUnions;
+package DBIx::SQLEngine::DriverTrait::NoUnions;
 
 use Exporter;
 sub import { goto &Exporter::import } 

@@ -17,11 +17,14 @@ WriteMakefile(
 
 sub MY::postamble { q{
 
-cleanmanifest:
-	rm MANIFEST ; touch MANIFEST; make manifest
+everything:
+	make again; make cleanmanifest; make docs; make testsuite
 
 again:
 	make clean; perl Makefile.PL; make
+
+cleanmanifest:
+	rm MANIFEST ; touch MANIFEST; make manifest
 
 testsuite:
 	perl t/test_suite.pl

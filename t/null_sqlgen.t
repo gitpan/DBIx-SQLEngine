@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 21 }
+BEGIN { plan tests => 23 }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -19,6 +19,9 @@ ok( $sqldb->last_query, 'select * from foo' );
 
 $sqldb->fetch_select( table => 'foo', criteria => { bar => 'Baz' } );
 ok( $sqldb->last_query, 'select * from foo where bar = ?/Baz' );
+
+$sqldb->fetch_select( table => 'foo', criteria => { bar => 'Baz' },distinct=>1);
+ok( $sqldb->last_query, 'select distinct * from foo where bar = ?/Baz' );
 
 $sqldb->fetch_select( table => 'foo', criteria => { bar=>'Baz', buz=>'Blee' } );
 ok( $sqldb->last_query, 'select * from foo where ( bar = ? and buz = ? )/Baz/Blee');
@@ -48,6 +51,13 @@ ok( $sqldb->last_query, 'select * from foo inner join bar on foo = bar' );
 
 $sqldb->fetch_select( table => [ 'foo',left_outer_join=>{'foo'=>\'bar'},'bar']);
 ok( $sqldb->last_query, 'select * from foo left outer join bar on foo = bar' );
+
+$sqldb->fetch_select( table => [ 
+  ['foo',left_outer_join=>{'foo'=>\'bar'},'bar'],
+    inner_join=>{'bar'=>\'baz'},
+  ['baz',right_outer_join=>{'baz'=>\'blee'},'blee']
+] );
+ok( $sqldb->last_query, 'select * from ( foo left outer join bar on foo = bar ) inner join ( baz right outer join blee on baz = blee ) on bar = baz' );
 
 ########################################################################
 

@@ -17,7 +17,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::StringComparison - Equality or Wildcard Pattern
+DBIx::SQLEngine::Criteria::StringComparison - Equality or Wildcard Criteria
 
 =head1 SYNOPSIS
 

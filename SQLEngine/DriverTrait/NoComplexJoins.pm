@@ -1,11 +1,11 @@
 =head1 NAME
 
-DBIx::SQLEngine::Mixin::NoComplexJoins - For databases without complex joins
+DBIx::SQLEngine::DriverTrait::NoComplexJoins - For databases without complex joins
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have joins using ON
-  use DBIx::SQLEngine::Mixin::NoComplexJoins ':all';
+  use DBIx::SQLEngine::DriverTrait::NoComplexJoins ':all';
   
   # Implements a workaround for unavailable "inner join on ..." capability
   $rows = $sqldb->fetch_select_rows( tables => [
@@ -19,7 +19,7 @@ DBIx::SQLEngine::Mixin::NoComplexJoins - For databases without complex joins
 
 =head1 DESCRIPTION
 
-This mixin supports SQL database servers which do natively provide a SQL
+This package supports SQL database servers which do natively provide a SQL
 select with inner and outer joins. Instead, inner joins are replaced with cross joins and a where clause. Outer joins, including left and right joins, are not supported and will cause an exception.
 
 Note: this feature has been added recently, and the interface is subject to change.
@@ -30,15 +30,11 @@ Because of the way DBIx::AnyDBD munges the inheritance tree, DBIx::SQLEngine
 subclasses can not reliably inherit from this package. To work around this,
 we export all of the methods into their namespace using Exporter and @EXPORT.
 
-Note that, strictly speaking, this is not a real mixin class, but the above
-implementation issue was not discovered and worked around until after the
-package namespace had already been put into service.
-
 =cut
 
 ########################################################################
 
-package DBIx::SQLEngine::Mixin::NoComplexJoins;
+package DBIx::SQLEngine::DriverTrait::NoComplexJoins;
 
 use Exporter;
 sub import { goto &Exporter::import } 

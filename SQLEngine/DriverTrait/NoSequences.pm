@@ -1,13 +1,13 @@
 =head1 NAME
 
-DBIx::SQLEngine::Mixin::SeqTable - For databases without native sequences
+DBIx::SQLEngine::DriverTrait::NoSequences - For databases without native sequences
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have native sequences
-  use DBIx::SQLEngine::Mixin::SeqTable ':all';
+  use DBIx::SQLEngine::DriverTrait::NoSequences ':all';
   
-  # Public interface for SeqTable functionality
+  # Public interface for NoSequences functionality
   $nextid = $sqldb->seq_increment( $table, $field );
 
   # Housekeeping functions for setup and removal
@@ -18,7 +18,7 @@ DBIx::SQLEngine::Mixin::SeqTable - For databases without native sequences
 
 =head1 DESCRIPTION
 
-This mixin supports SQL database servers which do natively support
+This package supports SQL database servers which do natively support
 an auto-incrementing or unique sequence trigger. Instead, a special
 table is allocated to store sequence values, and queries are used
 to atomically retrieve and increment the sequence value to ensure
@@ -31,15 +31,11 @@ DBIx::SQLEngine subclasses can not reliably inherit from this
 package. To work around this, we export all of the methods into
 their namespace using Exporter and @EXPORT. 
 
-Note that, strictly speaking, this is not a real mixin class, but
-the above implementation issue was not discovered and worked around
-until after the class had already been put into service.
-
 =cut
 
 ########################################################################
 
-package DBIx::SQLEngine::Mixin::SeqTable;
+package DBIx::SQLEngine::DriverTrait::NoSequences;
 
 use Exporter;
 sub import { goto &Exporter::import } 

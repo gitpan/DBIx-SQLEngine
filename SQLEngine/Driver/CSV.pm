@@ -31,9 +31,9 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::Mixin::NoUnions ':all';
+use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
 
-use DBIx::SQLEngine::Mixin::NoComplexJoins ':all';
+use DBIx::SQLEngine::DriverTrait::NoComplexJoins ':all';
 
 ########################################################################
 
@@ -84,11 +84,11 @@ sub sql_limit {
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
-Implemented using DBIx::SQLEngine::Mixin::SeqTable.
+Implemented using DBIx::SQLEngine::DriverTrait::NoSequences.
 
 =cut
 
-use DBIx::SQLEngine::Mixin::SeqTable  qw( :all !sql_seq_increment );
+use DBIx::SQLEngine::DriverTrait::NoSequences  qw( :all !sql_seq_increment );
 
 # $sql, @params = $sqldb->sql_seq_increment( $table, $field, $current, $next );
 sub sql_seq_increment {

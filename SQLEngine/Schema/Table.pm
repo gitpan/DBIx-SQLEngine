@@ -15,7 +15,7 @@ DBIx::SQLEngine::Schema::Table - A table in a data source
   $row = $table->fetch_row( $primary_key );
   $row->{somefield} = 'New Value';
   $table->update_row( $row );
-  $table->detele_row( $row );
+  $table->delete_row( $row );
 
 
 =head1 DESCRIPTION
@@ -30,6 +30,8 @@ The *_row() methods use this information about the table columns to facilitate c
 
 =cut
 
+########################################################################
+
 package DBIx::SQLEngine::Schema::Table;
 use strict;
 
@@ -42,7 +44,7 @@ use DBIx::SQLEngine::Schema::ColumnSet;
 
 ########################################################################
 
-=head1 REFERENCE
+=head1 INSTANTIATION AND ACCESSORS
 
 =head2 Table Object Creation
 
@@ -121,6 +123,25 @@ to the remote data storage.
 
 Returns the SQLEngine, or throws an exception if it is not set.
 
+=back
+
+=cut
+
+use Class::MakeMethods (
+  'Standard::Hash:object' => { name=>'sqlengine',
+				 class=>'DBIx::SQLEngine::Driver::Default' },
+);
+
+sub get_sqlengine {
+  ($_[0])->sqlengine() or croak("No sqlengine set for table '$_[0]->{name}'")
+}
+
+########################################################################
+
+=head2 SQLEngine Method Invocation
+
+=over 4
+
 =item sqlengine_do()
 
   $table->sqlengine_do( $method, %sql_clauses ) : $results or exception
@@ -136,15 +157,6 @@ Calls the provided method name on the associated SQLEngine, passing along the ta
 =back
 
 =cut
-
-use Class::MakeMethods (
-  'Standard::Hash:object' => { name=>'sqlengine',
-				 class=>'DBIx::SQLEngine::Driver::Default' },
-);
-
-sub get_sqlengine {
-  ($_[0])->sqlengine() or croak("No sqlengine set for table '$_[0]->{name}'")
-}
 
 sub sqlengine_do {
   my ($self, $method, @args) = @_;
@@ -198,88 +210,9 @@ sub detect_table {
 
 ########################################################################
 
-=head2 ColumnSet
-
-=over 4
-
-=item columnset()
-
-  $table->columnset () : $columnset
-
-Returns the current columnset, if any.
-
-=item get_columnset()
-
-  $table->get_columnset () : $columnset
-
-Returns the current columnset, or runs a trivial query to detect the columns in the sqlengine. If the table doesn't exist, the columnset will be empty.
-
-=item columns()
-
-  $table->columns () : @columns
-
-Return the column objects from the current columnset.
-
-=item column_names()
-
-  $table->column_names () : @column_names
-
-Return the names of the columns, in order.
-
-=item column_named()
-
-  $table->column_named ( $name ) : $column
-
-Return the column info object for the specifically named column.
-
-=back
-
-=cut
-
-use Class::MakeMethods (
-  'Standard::Hash:object' => { name=>'columnset', 
-				class=>'DBIx::SQLEngine::Schema::ColumnSet' },
-  'Standard::Universal:delegate' => [
-    [ qw( columns column_names column_named column_primary ) ] => 
-				{ target=>'get_columnset' },
-  ],
-);
-
-sub get_columnset {
-  my $self = shift;
-  
-  $self->columnset or $self->columnset(
-    DBIx::SQLEngine::Schema::ColumnSet->new( $self->detect_table() or
-	confess("Couldn't fetch column information for table $self->{name}") 
-    ) 
-  );
-}
-
-
-# To-do: finish adding support for tables with multiple-column primary keys.
-use Class::MakeMethods (
-  # 'Standard::Inheritable:scalar' => { name=>'column_primary_name',  },
-  'Standard::Inheritable:scalar' => { name=>'column_primary_is_sequence',  },
-);
-
-sub column_primary_name {
-  my $columns = (shift)->get_columnset;
-  $columns->[0]->name;
-}
-
-# (__PACKAGE__)->column_primary_name( 'id' );
-# (__PACKAGE__)->column_primary_is_sequence( 1 );
-
-sub primary_criteria {
-  my $self = shift;
-  my $primary_col = $self->column_primary_name;
-  my @ids = map { UNIVERSAL::isa($_, 'HASH') ? $_->{$primary_col} : $_ } @_;
-  return { $primary_col => ( scalar(@ids) > 1 ) ? \@ids : $ids[0] }
-}
-
 ########################################################################
 
-########################################################################
+=head1 FETCHING DATA (SQL DQL)
 
 =head2 Select to Retrieve Rows
 
@@ -349,6 +282,48 @@ sub select_rows {
 }
 
 ########################################################################
+
+=head2 Selecting Agregate Values
+
+=over 4
+
+=item count_rows()
+
+  $table->count_rows ( CRITERIA ) : $number
+
+Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
+
+=item fetch_max()
+
+  $table->count_rows ( $colname, CRITERIA ) : $number
+
+Returns the largest value in the named column. 
+
+=back
+
+=cut
+
+# $rowcount = $self->count_rows
+# $rowcount = $self->count_rows( $criteria );
+sub count_rows {
+  (shift)->fetch_one_value( columns => 'count(*)', criteria => (shift) )
+}
+
+sub try_count_rows {
+  my $count = eval { (shift)->count_rows  };
+  wantarray ? ( $count, $@ ) : $count
+}
+
+# $max_value = $self->fetch_max( $colname, $criteria );
+sub fetch_max {
+  (shift)->fetch_one_value( columns => "max(".(shift).")", criteria => (shift) )
+}
+
+########################################################################
+
+########################################################################
+
+=head1 EDITING DATA (SQL DML)
 
 =head2 Insert to Add Rows
 
@@ -502,47 +477,92 @@ sub delete_rows {
 
 ########################################################################
 
-=head2 Selecting Agregate Values
+########################################################################
+
+=head1 DEFINING STRUCTURES (SQL DDL)
+
+=head2 ColumnSet
 
 =over 4
 
-=item count_rows()
+=item columnset()
 
-  $table->count_rows ( CRITERIA ) : $number
+  $table->columnset () : $columnset
 
-Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
+Returns the current columnset, if any.
 
-=item fetch_max()
+=item get_columnset()
 
-  $table->count_rows ( $colname, CRITERIA ) : $number
+  $table->get_columnset () : $columnset
 
-Returns the largest value in the named column. 
+Returns the current columnset, or runs a trivial query to detect the columns in the sqlengine. If the table doesn't exist, the columnset will be empty.
+
+=item columns()
+
+  $table->columns () : @columns
+
+Return the column objects from the current columnset.
+
+=item column_names()
+
+  $table->column_names () : @column_names
+
+Return the names of the columns, in order.
+
+=item column_named()
+
+  $table->column_named ( $name ) : $column
+
+Return the column info object for the specifically named column.
 
 =back
 
 =cut
 
-# $rowcount = $self->count_rows
-# $rowcount = $self->count_rows( $criteria );
-sub count_rows {
-  (shift)->fetch_one_value( columns => 'count(*)', criteria => (shift) )
+use Class::MakeMethods (
+  'Standard::Hash:object' => { name=>'columnset', 
+				class=>'DBIx::SQLEngine::Schema::ColumnSet' },
+  'Standard::Universal:delegate' => [
+    [ qw( columns column_names column_named column_primary ) ] => 
+				{ target=>'get_columnset' },
+  ],
+);
+
+sub get_columnset {
+  my $self = shift;
+  
+  $self->columnset or $self->columnset(
+    DBIx::SQLEngine::Schema::ColumnSet->new( $self->detect_table() or
+	confess("Couldn't fetch column information for table $self->{name}") 
+    ) 
+  );
 }
 
-sub try_count_rows {
-  my $count = eval { (shift)->count_rows  };
-  wantarray ? ( $count, $@ ) : $count
+
+# To-do: finish adding support for tables with multiple-column primary keys.
+use Class::MakeMethods (
+  # 'Standard::Inheritable:scalar' => { name=>'column_primary_name',  },
+  'Standard::Inheritable:scalar' => { name=>'column_primary_is_sequence',  },
+);
+
+sub column_primary_name {
+  my $columns = (shift)->get_columnset;
+  $columns->[0]->name;
 }
 
-# $max_value = $self->fetch_max( $colname, $criteria );
-sub fetch_max {
-  (shift)->fetch_one_value( columns => "max(".(shift).")", criteria => (shift) )
+# (__PACKAGE__)->column_primary_name( 'id' );
+# (__PACKAGE__)->column_primary_is_sequence( 1 );
+
+sub primary_criteria {
+  my $self = shift;
+  my $primary_col = $self->column_primary_name;
+  my @ids = map { UNIVERSAL::isa($_, 'HASH') ? $_->{$primary_col} : $_ } @_;
+  return { $primary_col => ( scalar(@ids) > 1 ) ? \@ids : $ids[0] }
 }
 
 ########################################################################
 
-########################################################################
-
-=head2 Create, Detect, and Drop
+=head2 Create and Drop Tables
 
 =over 4
 

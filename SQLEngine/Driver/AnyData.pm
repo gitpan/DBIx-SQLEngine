@@ -26,7 +26,7 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::Mixin::NoUnions ':all';
+use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
 
 ########################################################################
 
@@ -81,11 +81,11 @@ sub sql_limit {
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
-Implemented using DBIx::SQLEngine::Mixin::SeqTable.
+Implemented using DBIx::SQLEngine::DriverTrait::NoSequences.
 
 =cut
 
-use DBIx::SQLEngine::Mixin::SeqTable ':all';
+use DBIx::SQLEngine::DriverTrait::NoSequences ':all';
 
 ########################################################################
 
