@@ -1,6 +1,6 @@
 package DBIx::SQLEngine;
 
-$VERSION = 0.91;
+$VERSION = 0.92;
 
 use DBIx::SQLEngine::Driver;
 @ISA = qw( DBIx::SQLEngine::Driver );
@@ -69,12 +69,12 @@ B<Named Definitions:> Pre-define connections and queries.
     'production' => [ 'dbi:Mysql:our_data:dbhost', 'user', 'passwd' ],
   );
 
+  $sqldb = DBIx::SQLEngine->new( 'test' );
+
   DBIx::SQLEngine->define_named_queries(
     'all_students'  => 'select * from students',
     'delete_student' => [ 'delete * from students where id = ?', \$1 ],
   );
-
-  $sqldb = DBIx::SQLEngine->new( 'test' );
 
   $hash_ary = $sqldb->fetch_named_query( 'all_students' );
 
@@ -150,7 +150,7 @@ The Driver also allows direct access to the wrapped database handle,
 enabling use of the entire DBI API for cases when high-level interfaces are
 insufficient.
 
-Relevant methods are descrbed in the L<"Driver Object Creation"|DBIx::SQLEngine::Driver/"Driver Object Creation">, L<"Connection Methods"|DBIx::SQLEngine::Driver/"CONNECTION METHODS (DBI DBH)">, and L<"Statement Methods"|DBIx::SQLEngine::Driver/"STATEMENT METHODS (DBI STH)"> sections of L<DBIx::SQLEngine::Driver>.
+Relevant methods are descrbed in the L<Driver Object Creation|DBIx::SQLEngine::Driver/"Driver Object Creation">, L<Connection Methods|DBIx::SQLEngine::Driver/"CONNECTION METHODS (DBI DBH)">, and L<Statement Methods|DBIx::SQLEngine::Driver/"STATEMENT METHODS (DBI STH)"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 High-Level Interface
 
@@ -162,8 +162,8 @@ The various fetch_*, visit_* and do_* methods that don't end in _sql, like
 fetch_select and do_insert, are wrappers that combine a SQL-generation and a
 SQL-execution method to provide a simple ways to perform a query in one call.
 
-These methods are defined in L<"Fetching Data"|DBIx::SQLEngine::Driver/"FETCHING DATA (SQL DQL)">, L<"Editing Data"|DBIx::SQLEngine::Driver/"EDITING DATA
-(SQL DML)">, and L<"Defining Structures"|DBIx::SQLEngine::Driver/"DEFINING STRUCTURES (SQL DDL)"> sections of L<DBIx::SQLEngine::Driver>.
+These methods are defined in the L<Fetching Data|DBIx::SQLEngine::Driver/"FETCHING DATA (SQL DQL)">, L<Editing Data|DBIx::SQLEngine::Driver/"EDITING DATA
+(SQL DML)">, and L<Defining Structures|DBIx::SQLEngine::Driver/"DEFINING STRUCTURES (SQL DDL)"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 Data-Driven SQL
 
@@ -189,7 +189,7 @@ placeholders to be replaced by additional values at run-time. References to
 subroutines can also be registed as definitions, to be called at run-time with
 any additional values to produce the connection or query arguments.
 
-This functionality is described in L<"Named Connections"|DBIx::SQLEngine::Driver/"Named Connections"> and L<"Named Query Catalog"|DBIx::SQLEngine::Driver/"NAMED QUERY
+This functionality is described in the L<Named Connections|DBIx::SQLEngine::Driver/"Named Connections"> and L<Named Query Catalog|DBIx::SQLEngine::Driver/"NAMED QUERY
 CATALOG"> sections of L<DBIx::SQLEngine::Driver>.
 
 =head2 Portability Subclasses
@@ -703,13 +703,27 @@ The following provides a brief overview of methods provided by the record classe
 
 =head2 Setting Up a Record Class
 
+=over 4
+
+=item record_class()
+
+  $sqldb->record_class( $table_name ) : $record_class
+
+=back
+
+Examples:
+
 =over 2
 
 =item *
 
+Generate a record class, giving it a new unique name:
+
   $class_name = $sqldb->record_class( $table_name );
 
 =item *
+
+Generate a record class with a pre-defined name:
 
   $sqldb->record_class( $table_name, $class_name );
 
@@ -717,9 +731,13 @@ The following provides a brief overview of methods provided by the record classe
 
 =head2 Selecting Records
 
+Examples:
+
 =over 2
 
 =item *
+
+Retrieves a set of records meeting some criteria:
   
   $record_set = $class_name->fetch_select( criteria => { status=>2 } );
   
@@ -727,26 +745,38 @@ The following provides a brief overview of methods provided by the record classe
 
 =item *
 
+Retrieves a single record based on its unique primary key:
+
   $record = $class_name->fetch_record( $primary_key );
 
 =back
 
 =head2 Changing Records
 
+Examples:
+
 =over 2
 
 =item *
+
+Create a new record and insert it into the database:
 
   $record = $class_name->new_with_values( somefield=>'A Value' );
   $record->insert_record();
 
 =item *
 
+Retrieve an existing record and make a change in it:
+
+  $record = $class_name->fetch_record( $primary_key );
   $record->change( somefield=>'New Value' );
   $record->update_record();
 
 =item *
 
+Delete an existing record:
+
+  $record = $class_name->fetch_record( $primary_key );
   $record->delete_record();
 
 =back
@@ -896,18 +926,6 @@ This example shows the same operations using the Record interface:
 
 =back
 
-=head1 BUGS
-
-Many types of databases are not yet directly supported. While the default
-functionality should work with any DBI-accessible data source, support for
-complex queries and advanced features will typically require the addition of
-a Driver subclass which compensates for local idiom.
-
-Some of the more advanced capabililities have only been added recently, and 
-have not yet been tested in real-world conditions.
-
-See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
-
 
 =head1 SEE ALSO 
 
@@ -916,6 +934,8 @@ See L<DBI> and the various DBD modules for information about the underlying data
 See L<DBIx::AnyDBD> for details on the dynamic subclass selection mechanism.
 
 The driver interface is described in L<DBIx::SQLEngine::Driver>.
+
+See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
 
 For distribution, installation, support, copyright and license 
 information, see L<DBIx::SQLEngine::Docs::ReadMe>.

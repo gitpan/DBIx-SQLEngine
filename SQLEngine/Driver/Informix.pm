@@ -43,18 +43,6 @@ use Carp;
 
 ########################################################################
 
-=head2 About DBMS Flavors
-
-This driver uses the DatabaseFlavors trait. For more information, see L<DBIx::SQLEngine::Driver::Trait::DatabaseFlavors>.
-
-It does this in order to support use of DBD::Informix with Microsoft SQL Server. For more information, see L< DBIx::SQLEngine::Driver::Informix::MySQL>.
-
-=cut
-
-use DBIx::SQLEngine::Driver::Trait::DatabaseFlavors ':all';
-
-########################################################################
-
 ########################################################################
 
 =head1 FETCHING DATA (SQL DQL)

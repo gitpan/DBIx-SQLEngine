@@ -1,12 +1,12 @@
 =head1 NAME
 
-DBIx::SQLEngine::Record::Set - Array of Record Objects
+DBIx::SQLEngine::RecordSet::Set - Array of Record Objects
 
 =head1 SYNOPSIS
 
-  use DBIx::SQLEngine::Record::Set;
+  use DBIx::SQLEngine::RecordSet::Set;
 
-  $record_set = DBIx::SQLEngine::Record::Set->new( @records );
+  $record_set = DBIx::SQLEngine::RecordSet::Set->new( @records );
 
   $record_set = $record_class->fetch_select( criteria => { status => 2 } );
   
@@ -34,10 +34,11 @@ The base implementation of RecordSet is an array of Record references.
 
 ########################################################################
 
-package DBIx::SQLEngine::Record::Set;
+package DBIx::SQLEngine::RecordSet::Set;
+
 use strict;
 
-use Carp;
+########################################################################
 
 ########################################################################
 
@@ -51,17 +52,28 @@ use Carp;
 
 Array constructor.
 
+=item clone()
+
+  $recordset->clone() : $recordset
+
+Create a shallow copy of the record set.
+
 =back
 
 =cut
 
-# $rs = DBIx::SQLEngine::Record::Set->new( @records );
+# $rs = DBIx::SQLEngine::RecordSet::Set->new( @records );
 sub new {
   my $callee = shift;
   my $package = ref $callee || $callee;
+  my $set = bless [], $package;
+  $set->init( @_ );
+  return $set;
+}
 
-  my @records = @_;
-  bless \@records, $package;
+sub clone {
+  my $self = shift;
+  $self->new( @$self );
 }
 
 ########################################################################
@@ -101,6 +113,8 @@ sub records {
 
 ########################################################################
 
+########################################################################
+
 =head2 Positional Access 
 
 =over 4
@@ -115,7 +129,7 @@ Returns the number of records in this set.
 
   $record = $rs->record( $position );
 
-Return the record in the indicated position in the array. 
+Return the record in the indicated position in the array. Returns nothing if position is undefined.
 
 Indexes start with zero. Negative indexes are counted back from the end, with -1 being the last, -2 being the one before that, and so forth.
 
@@ -139,10 +153,19 @@ sub count {
 sub record {
   my $self = shift;
   my $position = shift;
+  return unless ( defined $position and length $position );
   $position += $self->count if ( $position < 0 );
-  return unless ( length $position and $position !~ /\D/ and $position <= $#$self);
+  return unless ( $position !~ /\D/ and $position <= $#$self);
   $self->[ $position ];
 }
+
+# @records = $rs->get_records( @positions );
+sub get_records {
+  my $self = shift;
+  map { $self->record( $_ ) } @_
+}
+
+########################################################################
 
 # $record = $rs->last_record();
 sub last_record {
@@ -150,6 +173,8 @@ sub last_record {
   return unless $self->count;
   $self->record( $self->count - 1 );
 }
+
+########################################################################
 
 ########################################################################
 
@@ -180,7 +205,7 @@ sub range_set {
   if ( $start < 0 ) { $start = 0 }
   if ( $end > $#$self ) { $end = $#$self }
    
-  $self->new( @{$self}[ $start .. $end ] );
+  $self->new( $self->get_records( $start .. $end ) );
 }
 
 # @records = $rs->range_records( $start_pos, $stop_pos );
@@ -190,8 +215,10 @@ sub range_records {
   if ( $start < 0 ) { $start = 0 }
   if ( $end > $#$self ) { $end = $#$self }
    
-  @{$self}[ $start .. $end ];
+  $self->get_records( $start .. $end )
 }
+
+########################################################################
 
 ########################################################################
 
@@ -236,7 +263,7 @@ sub sort {
 # $clone = $rs->sorted_set( @fieldnames );
 sub sorted_set {
   my $self = shift;
-  my $clone = $self->new( @$self );
+  my $clone = $self->clone();
   $clone->sort( @_ );
   return $clone;
 }
@@ -244,15 +271,19 @@ sub sorted_set {
 # @records = $rs->sorted_records( @fieldnames );
 sub sorted_records {
   my $self = shift;
-  my $clone = $self->new( @$self );
+  my $clone = $self->clone();
   $clone->sort( @_ );
   $clone->records();
 }
+
+########################################################################
 
 sub reverse {
   my $rs = shift;
   @$rs = reverse @$rs;
 }
+
+########################################################################
 
 ########################################################################
 
@@ -307,7 +338,7 @@ sub filter {
 # $clone = $rs->filtered_set( $criteria );
 sub filtered_set {
   my $self = shift;
-  my $clone = $self->new( @$self );
+  my $clone = $self->clone();
   $clone->filter( @_ );
   return $clone;
 }
@@ -315,27 +346,16 @@ sub filtered_set {
 # @records = $rs->filtered_records( $criteria );
 sub filtered_records {
   my $self = shift;
-  my $clone = $self->new( @$self );
+  my $clone = $self->clone();
   $clone->filter( @_ );
   $clone->records();
 }
 
 ########################################################################
 
-# $numeric = $rs->sum( $fieldname );
-sub sum {
-  my $rs = shift;  
-  my $field = shift;
-  my $sum = 0;
-  foreach ( $rs->records ) {
-    $sum += $_->$field();
-  }
-  return $sum;
-}
-
 ########################################################################
 
-# @results = $rs->visit_sub( $subref, @$leading_args, @$leading_args );
+# @results = $rs->visit_sub( $subref, @$leading_args, @$trailing_args );
 sub visit_sub {
   my $rs = shift;  
   my $subref = shift;
@@ -350,12 +370,29 @@ sub visit_sub {
 
 ########################################################################
 
-# $rs->push_unique_records( @records );
-sub push_unique_records {
+# $numeric = $rs->sum( $fieldname );
+sub sum {
+  my $rs = shift;  
+  my $field = shift;
+  my $sum = 0;
+  foreach ( $rs->visit_sub( sub { ( shift )->$field() } ) ) {
+    $sum += $_;
+  }
+  return $sum;
+}
+
+########################################################################
+
+########################################################################
+
+# $rs->add_records( @records );
+sub add_records {
   my $rs = shift;
   my %record_ids = map { $_->id => 1 } $rs->records;
   push @$rs, grep { ! ( $record_ids{ $_->id } ++ ) } @_
 }
+
+########################################################################
 
 ########################################################################
 
@@ -371,133 +408,3 @@ this distribution, including installation and license information.
 ########################################################################
 
 1;
-
-__END__
-
-
-
-
-
-
-
-
-=head1 CHANGES
-
-2001-06-29 Moved to DBIx::DBO2 namespace.
-
-2001-04-10 Added last_record. 
-
-2000-12-13 Simon: Substantial revisions. Moved to EBiz::Database namespace. 
-
-2000-12-01 Ed: Created. 
-
-=cut
-
-
-
-
-
-
-
-=head2 Class and IDs
-
-=over 4
-
-=item * 
-
-$rs = DBIx::SQLEngine::Record::Set->new_class_ids( $class, @ids );
-
-=item * 
-
-$rs->init_class_ids( $class, @ids );
-
-=item * 
-
-( $class, @ids ) = $rs->class_ids();
-
-=back
-
-=head2 Conversions
-
-Each of the below returns a RecordSet blessed into a particular subclass. Returns the original object if it is already of that subclass, or returns a cloned and converted copy.
-
-=over 4
-
-=item * 
-
-@data = $rs->raw();
-
-Returns the contents of the RecordSet as stored internally within the object. Results are dependent on which subclass is in use.
-
-=item * 
-
-$rs = $rs->as_RecordArray;
-
-INCOMPLETE
-
-=item * 
-
-$clone = $rs->as_IDArray;
-
-INCOMPLETE
-
-=item * 
-
-$clone = $rs->as_IDString;
-
-INCOMPLETE
-
-=back
-
-# $rs = DBIx::SQLEngine::Record::Set->new_class_ids( $class, @ids );
-sub new_ids {
-  my $callee = shift;
-  my $package = ref $callee || $callee;
-  
-  my $self = [];
-  bless $self, $package;
-  $self->init_class_ids( @_ );
-  return $self;
-}
-
-# $rs->init_ids( $class, @ids );
-sub init_ids {
-  my $self = shift;
-  my $class = shift;
-  
-  @$self = map { $class->fetch_id( $_ ) } @_;
-}
-
-# @records = $rs->class_ids();
-sub class_ids {
-  my $self = shift;
-  my $class = ref( $self->[0] );
-  return $class, map { $_->{id} } @$self;
-}
-
-###
-
-sub raw {
-  my $self = shift;
-  if ( scalar @_ ) {
-    @$self = @_;
-  } else {
-    @$self;
-  }
-}
-# 
-# sub as_RecordArray {
-#   my $self = shift;
-# }
-# 
-# sub as_IDArray {
-#   my $self = shift;
-#   EBiz::Database::RecordSet::IDArray->new( $self->records );
-# }
-# 
-# sub as_IDString {
-#   my $self = shift;
-#   EBiz::Database::RecordSet::IDString->new( $self->records );
-# }
-
-

@@ -354,7 +354,7 @@ Retrieves the connection definition matching the name provided. Croaks if no con
 
   DBIx::SQLEngine::Driver->interpret_named_connection($name, @params) : $dbh
   DBIx::SQLEngine::Driver->interpret_named_connection($name, @params) : $dsn
-  DBIx::SQLEngine::Driver->interpret_named_connection($name, @params) : ( $dsn, $user, $pass )
+  DBIx::SQLEngine::Driver->interpret_named_connection($name, @params) : @args
 
 Combines the connection definition matching the name provided with the following arguments and returns the resulting connection arguments. Croaks if no connection has been defined for that name.
 

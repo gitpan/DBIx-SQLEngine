@@ -6,12 +6,15 @@ use ExtUtils::MakeMaker;
 
 print "\nReading test connection definitions from test.config file...\n"; 
 
-open( CNXNS, 'test.config' ) or die $!;
-@dsns = <CNXNS>;
-chomp @dsns;
-close( CNXNS ) or die $!;
-
-print "  Found " . scalar(@dsns) . " lines.\n\n";
+if ( -f 'test.config' ) {
+  open( CNXNS, 'test.config' ) or die $!;
+  @dsns = <CNXNS>;
+  chomp @dsns;
+  close( CNXNS ) or die $!;
+  print "  Found " . scalar(@dsns) . " lines.\n\n";
+} else {
+  print "  No test.config file found.\n\n";
+}
 
 ########################################################################
 
@@ -68,6 +71,7 @@ if ( my $count = scalar @suggestions ) {
 
 ########################################################################
 
+my $needs_save;
 while (1) {
   if ( scalar @dsns ) {
     print "\nThe current configuration in test.config is listed below:\n";
@@ -94,16 +98,13 @@ while (1) {
 	'a new driver string', 
 	( @dsns ? 'a number to edit' : () ), 
 	( @available ? 'a letter to add' : () ), 
-	'or return to quit'
+	'or q to quit'
       );
   
   my $next = prompt("\n$prompt:\n>");
 
-  if ( $next !~ /\S/ ) {
+  if ( $next !~ /\S/ or $next =~ /^\s*q(uit)?\s*$/ ) {
     last;
-  } elsif ( $next eq '?' ) {
-    
-    @suggestions or @suggestions = get_suggestions();
     
   } elsif ( $next =~ /^\s*([a-z])\s*$/ ) {
     my $line = $1;
@@ -112,6 +113,7 @@ while (1) {
       next;
     }
     push @dsns, $additions{ $line };
+    $needs_save ++;
     
   } elsif ( $next =~ /^\s*(\d+)\s*$/ ) {
     my $line = $1;
@@ -126,17 +128,21 @@ while (1) {
     } else {
       splice @dsns, $line -1, 1;
     }
+    $needs_save ++;
   } else {
     push @dsns, $next;
+    $needs_save ++;
   }
 }
 
-print "\nWriting " . scalar(@dsns) . " connections to test.config file...\n"; 
+if ( $needs_save ) {
+  print "\nWriting " . scalar(@dsns) . " connections to test.config file...\n"; 
+  
+  open( CNXNS, '>test.config' ) or die $!;
+  print CNXNS map "$_\n", @dsns;
+  close( CNXNS ) or die $!;
+}
 
-open( CNXNS, '>test.config' ) or die $!;
-print CNXNS map "$_\n", @dsns;
-close( CNXNS ) or die $!;
-
-print "Done.\n\n";
+print "\nDone.\n\n";
 
 1;

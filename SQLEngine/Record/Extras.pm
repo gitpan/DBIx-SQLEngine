@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Record::Trait::Extras - Provide extra methods
+DBIx::SQLEngine::Record::Extras - Provide extra methods
 
 =head1 SYNOPSIS
 
@@ -21,7 +21,7 @@ Don't use this module directly; instead, pass its name as a trait when you creat
 
 ########################################################################
 
-package DBIx::SQLEngine::Record::Trait::Extras;
+package DBIx::SQLEngine::Record::Extras;
 
 use strict;
 use Carp;

@@ -1,15 +1,15 @@
 =head1 NAME
 
-DBIx::SQLEngine::Driver::Trait::LibSQLStmt - For use with SQL::Statement
+DBIx::SQLEngine::Driver::Trait::NoJoins - For databases without join ability
 
 =head1 SYNOPSIS
 
-  # Classes can import this behavior if they're based on SQL::Statement
-  use DBIx::SQLEngine::Driver::Trait::LibSQLStmt ':all';
+  # Classes can import this behavior if they can't join
+  use DBIx::SQLEngine::Driver::Trait::NoJoins ':all';
   
 =head1 DESCRIPTION
 
-This package works with DBD drivers which are implemented in Perl using SQL::Statement. It combines several other traits and methods which can be shared by most such drivers.
+This package works with DBD drivers which lack the basic ability to join tables.
 
 =head2 About Driver Traits
 

@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Record::Trait::Cache - Avoid Repeated Selects
+DBIx::SQLEngine::Record::Cache - Avoid Repeated Selects
 
 =head1 SYNOPSIS
 
@@ -54,7 +54,7 @@ Don't use this module directly; instead, pass its name as a trait when you creat
 
 ########################################################################
 
-package DBIx::SQLEngine::Record::Trait::Cache;
+package DBIx::SQLEngine::Record::Cache;
 
 use strict;
 use Carp;
@@ -513,18 +513,6 @@ sub fetch_one_record {
   (shift)->fetch_select( @_, 'limit' => 1 )->record( 0 )
 }
 
-# $record = $record_class->select_record( $id_value );
-sub select_record {
-  my ( $self, $id ) = @_;
-  $self->fetch_one_record( where => $self->get_table()->primary_criteria($id) )
-}
-
-# $rows = $self->select_rows( @ids_or_hashes );
-sub select_records {
-  my ( $self, @ids ) = @_;
-  $self->fetch_select( where => $self->get_table()->primary_criteria(@ids) )
-}
-
 # @results = $self->visit_select( %select_clauses, $sub );
 sub visit_select {
   my $self = shift;
@@ -555,15 +543,15 @@ These methods are called internally by the various select methods and do not nee
 
 =over 4
 
-=item record_from_table()
+=item record_from_db_data()
 
-  $class_name->record_from_table( $hash_ref )
+  $class_name->record_from_db_data( $hash_ref )
 
 Calls SUPER method, then cache_records().
 
-=item record_set_from_table()
+=item record_set_from_db_data()
 
-  $class_name->record_set_from_table( $hash_array_ref )
+  $class_name->record_set_from_db_data( $hash_array_ref )
 
 Calls SUPER method, then cache_records().
 
@@ -577,18 +565,18 @@ Adds records to the cache.
 
 =cut
 
-# $record_class->record_from_table( $hash_ref );
-sub record_from_table {
+# $record_class->record_from_db_data( $hash_ref );
+sub record_from_db_data {
   my $self = shift;
-  my $record = $self->NEXT('record_from_table', @_ );
+  my $record = $self->NEXT('record_from_db_data', @_ );
   $self->cache_records( $record );
   $record;
 }
 
-# $record_class->record_set_from_table( $hash_array_ref );
-sub record_set_from_table {
+# $record_class->record_set_from_db_data( $hash_array_ref );
+sub record_set_from_db_data {
   my $self = shift;
-  my $recordset = $self->NEXT('record_set_from_table', @_ );
+  my $recordset = $self->NEXT('record_set_from_db_data', @_ );
   $self->cache_records( @$recordset );
   $recordset;
 }
@@ -796,4 +784,4 @@ sub delete_row {
   return $row->NEXT('delete_row, @_);
 }
 
-
+1;

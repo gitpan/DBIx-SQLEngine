@@ -9,6 +9,7 @@ WriteMakefile(
 	DBI				=> 1.0,
 	DBIx::AnyDBD			=> 2.0,
 	Class::MakeMethods		=> 1.006,
+	Class::MixinFactory		=> 0.9,
     }, 
     ($] >= 5.005 ? (
       ABSTRACT_FROM => 'SQLEngine.pm', 
@@ -19,7 +20,8 @@ WriteMakefile(
 ########################################################################
 
 
-if ( open( CNXNS, 'test.config' ) ) {
+if ( -f 'test.config' ) {
+  open( CNXNS, 'test.config' ) or die $!;
   @dsns = <CNXNS>;
   chomp @dsns;
   close( CNXNS ) or die $!;
@@ -58,7 +60,7 @@ About SQLEngine Driver Tests
 sub MY::postamble { q{
 
 everything: FORCE
-	make again; make cleanmanifest; make docs; make compile; make testsuite
+	make again; make cleanmanifest; make docs; make compile; make test
 
 cleandist: FORCE
 	make again; make cleanmanifest; make docs; make dist
@@ -68,9 +70,6 @@ again: FORCE
 
 cleanmanifest: FORCE
 	rm MANIFEST ; touch MANIFEST; make manifest
-
-testsuite: pm_to_blib FORCE
-	perl make_extras/testsuite.pl
 
 %.t: pm_to_blib FORCE
 	perl -Iblib/lib -w $@

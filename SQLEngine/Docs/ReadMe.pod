@@ -73,7 +73,7 @@ See L<DBIx::SQLEngine::Docs::Changes> for revision history.
 See L<DBIx::SQLEngine::Docs::Related> for notes on related modules.
 
 
-=head1 STATUS AND BUGS
+=head1 STATUS
 
 =head2 Version
 
@@ -95,18 +95,6 @@ Additional features have been outlined for future development, but
 the intent is support these by adding more options to the declaration
 interface, while maintaining backward compatibility.
 
-=head2 Known Problems
-
-Some of the more advanced capabililities have only been added recently, and 
-have not yet been tested in real-world conditions.
-
-Some types of databases are not yet directly supported. While most of the
-default functionality should work with any DBI-accessible data source,
-support for complex queries and advanced features will typically require
-the addition of a Driver subclass which compensates for local idiom.
-
-See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
-
 =head2 Tested Platforms
 
 This release has been tested succesfully on the following platforms:
@@ -123,6 +111,18 @@ You may review the current test results from CPAN-Testers:
 http://testers.cpan.org/show/DBIx-SQLEngine.html
 
 =back
+
+=head1 BUGS
+
+Some of the more advanced capabililities have only been added recently, and 
+have not yet been tested in real-world conditions.
+
+Some types of databases are not yet directly supported. While most of the
+default functionality should work with any DBI-accessible data source,
+support for complex queries and advanced features will typically require
+the addition of a Driver subclass which compensates for local idiom.
+
+See L<DBIx::SQLEngine::ToDo> for a list of bugs and missing features.
 
 
 =head1 DISTRIBUTION
@@ -149,6 +149,7 @@ This package requires these other modules and libraries:
   DBI				1.0
   DBIx::AnyDBD			2.0
   Class::MakeMethods		1.006
+  Class::MixinFactory		0.9
 
 You must also have at least one working DBD module installed. 
 

@@ -111,10 +111,10 @@ Comparison:
  DBIx::SystemCatalog	  Y	  -	  -	  -	  Y	  Y	  -
  
  __Tied_Access__
- DBIx::RecordSet/Compat	  Y	  ?	  Y	  -?	  Y	  Y	  tie
- Tie::DBI		  Y	  Y	  ?	  -	  -	  -	  tie
- Tie::RDBM/::Cached	  Y	  Y	  ?	  -	  Y/-	  -	  tie
- Tie::Table		  Y	  Y	  ?	  -	  -	  -	  tie
+ DBIx::RecordSet/Compat	  Y	  ?	  Y	  -	  Y	  Y	  tie
+ Tie::DBI		  Y	  Y	  -	  -	  -	  -	  tie
+ Tie::RDBM/::Cached	  Y	  Y	  -	  -	  Y/-	  -	  tie
+ Tie::Table		  Y	  Y	  -	  -	  -	  -	  tie
 
  __Object_Mappers__
  Alzabo                	  Y	  Y	  Y	  -?	  Y	  Y	  Y
@@ -122,7 +122,7 @@ Comparison:
  Class::Tables		  Y	  Y	  Y/-	  -	  Y	  Y	  Y
  DBIx::SearchBuilder	  Y	  Y	  Y	  -	  -	  Y	  Y
  MKDoc::SQL         	  Y	  Y	  Y	  -?	  ?	  Y/-	  Y
- Rosetta/SQL::SyntaxModel Y?	  -?	  Y?	  -?	  Y?	  Y?	  Y?
+ Rosetta/SQL::Routine     Y	  Y	  Y 	  Y	  Y	  Y	  -
  SPOPS              	  Y	  Y	  Y	  -	  Y	  Y	  Y
  Tangram        	  Y	  Y	  Y	  -	  Y?	  Y	  Y
   

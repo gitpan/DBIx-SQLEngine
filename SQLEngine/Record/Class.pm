@@ -11,17 +11,26 @@ B<Setup:> Several ways to create a class.
   $class_name = $sqldb->record_class( $table_name, @traits );
   
   $sqldb->record_class( $table_name, $class_name, @traits );
+  
+  package My::Record;
+  use DBIx::SQLEngine::Record::Class '-isasubclass', 'Table', 'Hooks';  
+  My::Record->table( $sqldb->table($table_name) );
 
 B<Basics:> Common operations on a record.
-
-  $record = $class_name->fetch_record( $primary_key );
-  
-  @records = $class_name->fetch_select(%clauses)->records;
   
   $record = $class_name->new_with_values(somefield => 'My Value');
   
   print $record->get_values( 'somefield' );
+
   $record->change_values( somefield => 'New Value' );
+
+B<Fetch:> Retrieve records by ID or other query.
+
+  $record = $class_name->select_record( $primary_key );
+  
+  @records = $class_name->fetch_select(%clauses)->records;
+
+B<Modify:> Write changes to the data source.
 
   $record->insert_record();
   
@@ -73,7 +82,7 @@ sub import {
   
   if ( $_[0] eq '-isasubclass' ) {
     shift;
-    my $base = $factory->base_class_with_traits( @_ );
+    my $base = $factory->class( @_ );
 
     my $target_class = ( caller )[0];
     no strict;
@@ -82,6 +91,48 @@ sub import {
     croak("Unsupported import '$_[0]'")
   }
 }
+
+########################################################################
+
+=head2 Mixin Class Factory
+
+=over 4
+
+=item class()
+
+  $factory->class() : $base_class
+  $factory->class( @traits ) : $class_name
+
+Build an ad-hod class with mixins. 
+
+See the documentation for Class::MixinFactory to learn more about developing custom mixin classes.
+
+=back
+
+The MixinFactory is configured with the following package names:
+
+=over 12
+
+=item base_class
+
+DBIx::SQLEngine::Record::Base
+
+=item mixin_prefix
+
+DBIx::SQLEngine::Record
+
+=item mixed_prefix
+
+DBIx::SQLEngine::Record::AUTO
+
+=back
+
+=cut
+
+use Class::MixinFactory -isafactory;
+__PACKAGE__->base_class(   "DBIx::SQLEngine::Record::Base" );
+__PACKAGE__->mixin_prefix( "DBIx::SQLEngine::Record" );
+__PACKAGE__->mixed_prefix( "DBIx::SQLEngine::Record::AUTO" );
 
 ########################################################################
 
@@ -121,6 +172,10 @@ You may pass a reference to one or more trait names as a "traits" argument.
 Convenience method for common parameters. 
 You are expected to provde a DBIx::SQLEngine::Schema::Table object.
 
+=item generate_subclass_name_for_table()
+
+Called internally by new_subclass() if no class name is provided.
+
 =back
 
 Cross-constructors from other objects:
@@ -147,21 +202,18 @@ Convenience method to create a record class for a given table object.
 
 =cut
 
-sub subclass_for_table {
-  my ($factory, $table, $classname, @traits) = @_;
-  $factory->new_subclass(
-    table => $table, name => $classname, traits => \@traits
-  )
-}
-
 sub new_subclass {
   my ( $factory, %options ) = @_;
 
-  my $base = $factory->base_class_with_traits( $options{traits} );
+  my $traits = $options{traits};
 
   my $table = $options{table};
+  ( ! $table ) or ( grep { $_ eq 'Table' } @$traits ) or push @$traits, 'Table';
+
+  my $base = $factory->class( $options{traits} );
+  
   my $name = $options{name} || do {
-    $table or croak("$factory new_subclass requires without a name requires a table");
+    $table or croak("$factory new_subclass without a name requires a table");
     $factory->generate_subclass_name_for_table($table);
   };
   $name = "DBIx::SQLEngine::Record::Auto::" . $name unless ( $name =~ /::/ );
@@ -174,19 +226,13 @@ sub new_subclass {
   return $name;
 }
 
-########################################################################
-
-=pod
-
-=over 4
-
-=item generate_subclass_name_for_table()
-
-Called internally by new_subclass() if no class name is provided.
-
-=back
-
-=cut
+sub subclass_for_table {
+  my ($factory, $table, $classname, @traits) = @_;
+  ( grep { $_ eq 'Table' } @traits ) or push @traits, 'Table';
+  $factory->new_subclass(
+    table => $table, name => $classname, traits => \@traits
+  )
+}
 
 my %generated_names_for_table;
 sub generate_subclass_name_for_table {
@@ -235,123 +281,6 @@ Adds ok_, pre_, and post_ hooks to key methods. Any number of code refs can be r
 =back
 
 =cut
-
-########################################################################
-
-=head2 Accessing Packages
-
-=over 4
-
-=item base_class
-
-  $factory->base_class() : $base_class
-
-=item require_package
-
-  $factory->require_package( $package_name )
-
-Uses require() to load the named package.
-
-=item get_trait_package()
-
-  $factory->get_trait_package($subclass) : ($name, $package, $trait)
-
-=back
-
-=cut
-
-sub base_class {
-  'DBIx::SQLEngine::Record::Base'
-}
-
-sub require_package {
-  my ( $factory, $target ) = @_;
-  $target =~ s{::}{/}g;
-  $target .= ".pm";
-  # warn "require $target";
-  require $target;
-}
-
-# ($name, $package) = Record::Class->get_trait_package($name);
-sub get_trait_package {
-  my ($factory, $arg) = @_;
-
-  my $name = $arg;
-  $name =~ s/.*:://;
-  
-  my $package = $arg;
-  ( $package =~ /::/ ) or $package = "DBIx::SQLEngine::Record::Trait::$package";
-  $factory->require_package( $package );
-
-  wantarray ? ( $name, $package ) : $package
-}
-
-########################################################################
-
-=head2 Composing Trait Classes
-
-=over 4
-
-=item base_class_with_traits
-
-  $factory->base_class_with_traits() : $base_class
-  $factory->base_class_with_traits( @traits ) : $class_name
-
-Instead of forcing use of NEXT, with a slower redispatch method, we're going to build an ad-hod class hierarchy. 
-Because some of the methods call SUPER methods, they need to be evaluated repeatedly in each composed subclass. 
-
-=back
-
-=cut
-
-sub base_class_with_traits {
-  my $factory = shift;
-  my @args = ( @_ == 1 and ref($_[0]) ) ? @{ $_[0] } : @_;
-  
-  my $package = $factory->base_class();
-  my $name = 'Base';
-
-  while ( scalar @args ) {
-    my $trait = shift @args;
-    my ($t_name, $t_class) = $factory->get_trait_package($trait);
-    
-    $name .= "_$t_name";
-    my $new_class = $factory . "::" . $name;
-    
-    no strict;
-    @{ "$new_class\::ISA" } or @{ "$new_class\::ISA" } = ( $t_class, $package );
-    $package = $new_class;
-  }
-  
-  $package;
-}
-
-########################################################################
-
-=head2 Trait Subclass Internals
-
-=over 4
-
-=item import_self_trait()
-
-Used by trait packages to construct simple subclasses.
-
-=back
-
-=cut
-
-sub import_self_trait {
-  my $factory = shift;
-
-  my $target_class = ( caller )[0];
-  my $trait = $target_class;
-  $trait =~ s/.*:://;
-
-  my $trait_class = $factory->base_class_with_traits( $trait );
-
-  no strict 'refs';  
-  @{ "$target_class\::ISA" } = $trait_class;
-}
 
 ########################################################################
 

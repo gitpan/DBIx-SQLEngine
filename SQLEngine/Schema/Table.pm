@@ -280,6 +280,11 @@ sub fetch_select {
   (shift)->sqlengine_do('fetch_select', @_)
 }
 
+# $rows = $self->fetch_one_row( %select_clauses );
+sub fetch_one_row {
+  (shift)->sqlengine_do('fetch_one_row', @_)
+}
+
 # @results= $self->visit_select( %select_clauses, $sub );
 sub visit_select {
   my $self = shift;

@@ -10,34 +10,32 @@ B<Setup:> Several ways to create a class.
 
   $class_name = $sqldb->record_class( $table_name );
   
-  $sqldb->record_class( $table_name, $class_name);
+  $sqldb->record_class( $table_name, $class_name );
   
   package My::Record;
-  use DBIx::SQLEngine::Record::Class '-isasubclass';  
-  My::Record->table( $sqldb->table($table_name) );
+  use DBIx::SQLEngine::Record::Class '-isasubclass', @Traits;  
 
 B<Basics:> Common operations on a record.
-
-  $record = $class_name->select_record( $primary_key );
-  
-  @records = $class_name->fetch_select(%clauses)->records;
   
   $record = $class_name->new_with_values(somefield => 'My Value');
   
   print $record->get_values( 'somefield' );
+
   $record->change_values( somefield => 'New Value' );
+
+B<Fetch:> Retrieve records by ID or other query.
+
+  $record = $class_name->select_record( $primary_key );
+  
+  @records = $class_name->fetch_select(%clauses)->records;
+
+B<Modify:> Write changes to the data source.
 
   $record->insert_record();
   
   $record->update_record();
   
   $record->delete_record();
-
-B<Schema:> Access to table and columns.
-
-  unless ( $class_name->table_exists ) {
-    $class_name->create_table( { name => 'id', type => 'int'} );
-  }
 
 
 =head1 DESCRIPTION
@@ -51,166 +49,21 @@ By subclassing this package, you can easily create a class whose instances repre
 ########################################################################
 
 package DBIx::SQLEngine::Record::Base;
-use strict;
 
+use strict;
 use Carp;
 
-require DBIx::SQLEngine::Schema::Table;
-require DBIx::SQLEngine::Record::Set;
-
 ########################################################################
 
 ########################################################################
 
-=head1 TABLE INTERFACE
+=head1 SIMPLE RECORD OBJECT
 
-Each record class is associated with a table object. The table provides the
-DBI connection and SQL execution capabilities required to talk to the remote
-data storage.
-
-=head2 Table Accessor
-
-=over 4
-
-=item table()
-
-  $class_name->table() : $table
-  $class_name->table($table)
-
-Get and set our current DBIx::SQLEngine::Schema::Table. Required value.
-Establishes the table a specific class of record will be stored in. 
-
-=item get_table()
-
-  $class_name->get_table() : $table or exception
-
-Returns the table, or throws an exception if it is not set.
-
-=back
-
-=cut
-
-use Class::MakeMethods (
-  'Template::ClassInherit:object' => [ 
-		  table => {class=>'DBIx::SQLEngine::Schema::Table'}
-  ],
-);
-
-sub get_table {
-  ($_[0])->table() or croak("No table set for record class '$_[0]'")
-}
-
-########################################################################
-
-=head2 Methods Delegated to Table
-
-These methods all call the same method on the associated table.
-
-=over 4
-
-=item detect_sqlengine()
-
-  $class_name->detect_sqlengine : $flag
-
-Detects whether the SQL database is avaialable by attempting to connect.
-
-=item table_exists()
-
-  $class_name->table_exists : $flag
-
-Detects whether the table has been created and has not been dropped.
-
-=item columnset()
-
-  $class_name->columnset () : $columnset
-
-Returns the current columnset, if any.
-
-=item fetch_one_value()
-
-  $class_name->fetch_one_value( %sql_clauses ) : $scalar
-
-Calls fetch_select, then returns the first value from the first row of results.
-
-=item count_rows()
-
-  $class_name->count_rows ( ) : $number
-  $class_name->count_rows ( $criteria ) : $number
-
-Return the number of rows in the table. If called with criteria, returns the number of matching rows. 
-
-=back
-
-=cut
-
-use Class::MakeMethods (
-  'Standard::Universal:delegate' => [ [ qw( 
-	detect_sqlengine 
-	table_exists create_table drop_table 
-	fetch_one_value count_rows 
-	columnset column_primary_name 
-    ) ] => { target=>'get_table' },
-  ],
-);
-
-########################################################################
-
-=head2 Table Delegation Methods
-
-The following methods are used internally to facilitate delegation to the table object.
-
-=over 4
-
-=item table_fetch_one_method()
-
-  $class->table_fetch_one_method( $method, @args );
-
-Calls the named method on the table and inflates the result with record_from_table.
-
-=item table_fetch_set_method()
-
-  $class->table_fetch_set_method( $method, @args );
-
-Calls the named method on the table and inflates the result with record_set_from_table.
-
-=item table_record_method()
-
-  $record->table_record_method( $method, @args );
-
-Calls the named method on the table, passing the record itself as the first argument.
-
-=back
-
-=cut
-
-sub table_fetch_one_method {
-  my $self = shift;
-  my $method = shift;
-  $self->record_from_table( $self->get_table()->$method( @_ ) )
-}
-
-sub table_fetch_set_method {
-  my $self = shift;
-  my $method = shift;
-  $self->record_set_from_table( scalar $self->get_table()->$method( @_ ) )
-}
-
-sub table_record_method {
-  my $self = shift;
-  my $method = shift;
-  ref($self) or croak("Can't call this object method on a record class");
-  $self->get_table()->$method( $self, @_ );
-}
-
-########################################################################
-
-########################################################################
-
-=head1 SIMPLE RECORD INTERFACE
+The following concrete methods provide a constructor, accessor, mutator and destructor for a record object.
 
 =head2 Constructor
 
-You may create your own records for new instances, or fetch records from the database as described in L</"FETCHING DATA (SQL DQL)">
+You may create your own records for new instances, or fetch records from the database as described in L</"FETCHING DATA">
 
 =over 4
 
@@ -219,19 +72,6 @@ You may create your own records for new instances, or fetch records from the dat
   $class_name->new_empty_record() : $empty_record
 
 Creates and blesses an empty hash object into the given record class.
-
-=item new_with_values()
-
-  $class_name->new_with_values ( %key_argument_pairs ) : $record
-
-Calls new_empty_record, and then change_values.
-
-=item new_copy()
-
-  $record->new_copy() : $new_record
-  $record->new_copy( %key_argument_pairs ) : $new_record
-
-Makes a copy of a record and then clears its primary key so that it will be recognized as a distinct, new row in the database rather than overwriting the original when you save it. Also includes any provided arguments in its call to new_with_values.
 
 =back
 
@@ -245,75 +85,13 @@ sub new_empty_record {
   bless {}, $class;
 }
 
-# $record = $record_class->new_with_values( 'fieldname' => 'new_value', ... )
-sub new_with_values {
-  my $self = (shift)->new_empty_record();
-  $self->change_values( @_ );
-  $self;
-}
-
-# $record = $record->new_copy();
-sub new_copy { 
-  my $self = shift;
-  ref($self) or croak("Can't call this object method on a record class");
-  $self->new_with_values( %$self, $self->column_primary_name() => '', @_ );
-}
-
-########################################################################
-
-=head2 Simple Fetch and Save
-
-These methods hide the distinctions between fetch/create and insert/update.
-
-=over 4
-
-=item get_record()
-
-  $class_name->get_record ( ) : $new_empty_record
-  $class_name->get_record ( $p_key ) : $fetched_record_or_undef
-
-Calls new if no primary key is provided, or if the primary key is zero; otherwise calls select_record.
-
-=item save_record()
-
-  $record->save_record () : $record_or_undef
-
-Determines whether the record has an primary key assigned to it and then calls either insert_record or update_record. Returns the record unless it fails to save it.
-
-=back
-
-=cut
-
-# $new_record = $package->get_record()
-# $selected_record = $package->get_record( $id )
-sub get_record {
-  my $package = shift;
-  my $id = shift;
-  if ( ! $id ) {
-    $package->new_empty_record();
-  } else {
-    $package->select_record( $id );
-  }
-}
-
-# $record->save_record()
-sub save_record {
-  my $self = shift;
-  
-  if ( ! $self->primary_key_value() ) {
-    $self->insert_record( @_ );
-  } else {
-    $self->update_record( @_ );
-  }
-  $self;
-}
-
 ########################################################################
 
 =head2 Getting and Changing Values
 
-Records are stored as simple hashes, and their contents can be accessed that
-way, but methods are also available to get and set field values.
+Records are stored as simple hashes, and their contents can typically
+be accessed that way, but methods are also available to get and
+set field values.
 
 =over 4
 
@@ -330,13 +108,6 @@ Returns the values associated with the keys in the provided record.
   $record->change_values( key1 => value1, ... ) 
 
 Sets the associated key-value pairs in the provided record.
-
-=item hash_from_record()
-
-  $record->hash_from_record() : $hash_ref
-  $record->hash_from_record() : %hash_values
-
-Returns an unblessed copy of the values in the record.
 
 =back
 
@@ -355,9 +126,63 @@ sub change_values {
   %$self = ( %$self, @_ )
 }
 
-# $hash_ref = $record_obj->hash_from_record();
-# %hash_list = $record_obj->hash_from_record();
-sub hash_from_record {
+########################################################################
+
+=head2 Vivifying and Serializing Records
+
+These methods are called internally by the various public methods and do not need to be called directly.
+
+=over 4
+
+=item record_from_db_data()
+
+  $class_name->record_from_db_data( $hash_ref )
+  $class_name->record_from_db_data( $hash_ref ) : $record
+  $class_name->record_from_db_data( %hash_contents ) : $record
+
+Converts a hash retrieved from the table to a Record object.
+
+=item record_set_from_db_data()
+
+  $class_name->record_set_from_db_data( $hash_array_ref )
+  $class_name->record_set_from_db_data( $hash_array_ref ) : $record_set
+  $class_name->record_set_from_db_data( @hash_refs ) : $record_set
+
+Converts an array of hashrefs retrieved from the table to a RecordSet::Set object containing Record objects.
+
+=item record_as_db_data()
+
+  $record->record_as_db_data() : $hash_ref
+  $record->record_as_db_data() : %hash_values
+
+Returns an unblessed copy of the values in the record.
+
+=back
+
+=cut
+
+# $record_class->record_from_db_data( $hash_ref );
+# $record = $record_class->record_from_db_data( $hash_ref );
+# $record = $record_class->record_from_db_data( %hash_contents );
+sub record_from_db_data {
+  my $class = shift;
+  my $hash = ( @_ == 1 ) ? shift : { @_ }
+	or return;
+  bless $hash, $class;
+}
+
+# $record_class->record_set_from_db_data( $hash_array_ref );
+# $record_set = $record_class->record_set_from_db_data( $hash_array_ref );
+# $record_set = $record_class->record_set_from_db_data( @hash_refs );
+sub record_set_from_db_data {
+  my $class = shift;
+  my $array = ( @_ == 1 ) ? shift : [ @_ ];
+  bless [ map { bless $_, $class } @$array ], 'DBIx::SQLEngine::RecordSet::Set';
+}
+
+# $hash_ref = $record_obj->record_as_db_data();
+# %hash_list = $record_obj->record_as_db_data();
+sub record_as_db_data {
   my $self = shift;
   ref($self) or croak("Can't call this object method on a record class");
   wantarray ? %$self : { %$self }
@@ -365,74 +190,7 @@ sub hash_from_record {
 
 ########################################################################
 
-=head2 Primary Keys
-
-=over 4
-
-=item primary_criteria()
-
-  $record->primary_criteria() : $hash_ref
-
-Returns a hash of key-value pairs which could be used to select this record by its primary key.
-
-=item primary_key_value()
-
-  $record->primary_key_value() : $id_value
-
-Returns the primary key value for this object.
-
-=back
-
-=cut
-
-sub primary_criteria {
-  (shift)->table_record_method('primary_criteria');
-}
-
-sub primary_key_value {
-  my $self = shift;
-  
-  $self->{ $self->column_primary_name() }
-}
-
-########################################################################
-
-=head2 Change and Save Combinations
-
-=over 4
-
-=item change_and_save()
-
-  $record->change_and_save ( %key_argument_pairs ) : $record
-
-Calls change_values, and then save_record.
-
-=item new_and_save()
-
-  $class_name->new_and_save ( %key_argument_pairs ) : $record
-
-Calls new_empty_record, and then change_and_save.
-
-=back
-
-=cut
-
-# $record->change_and_save( 'fieldname' => 'new_value', ... )
-sub change_and_save {
-  my $self = shift;
-  $self->change_values( @_ );
-  $self->save_record;
-  $self;
-}
-
-# $record_class->new_and_save( 'fieldname' => 'new_value', ... )
-sub new_and_save {
-  (shift)->new_with_values( @_ )->save_record();
-}
-
-########################################################################
-
-=head2 Destruction
+=head2 Destructor
 
 =over 4
 
@@ -454,19 +212,130 @@ sub DESTROY {
 
 ########################################################################
 
-=head1 FETCHING DATA (SQL DQL)
+=head1 CONVENIENCE METHODS
+
+The following wrapper methods chain together combinations of other methods.
+
+=head2 Constructor Methods
+
+=item new_with_values()
+
+  $class_name->new_with_values ( %key_argument_pairs ) : $record
+
+Calls new_empty_record, and then change_values.
+
+=item new_copy()
+
+  $record->new_copy() : $new_record
+  $record->new_copy( %key_argument_pairs ) : $new_record
+
+Makes a copy of a record and then clears its primary key so that it will be recognized as a distinct, new row in the database rather than overwriting the original when you save it. Also includes any provided arguments in its call to new_with_values.
+
+=item get_record()
+
+  $class_name->get_record ( ) : $new_empty_record
+  $class_name->get_record ( $p_key ) : $fetched_record_or_undef
+
+Calls new if no primary key is provided, or if the primary key is zero; otherwise calls select_record.
+
+=back
+
+=cut
+
+# $record = $record_class->new_with_values( 'fieldname' => 'new_value', ... )
+sub new_with_values {
+  my $self = (shift)->new_empty_record();
+  $self->change_values( @_ );
+  $self;
+}
+
+# $record = $record->new_copy();
+sub new_copy { 
+  my $self = shift;
+  ref($self) or croak("Can't call this object method on a record class");
+  $self->new_with_values( 
+    $self->record_as_db_data, $self->column_primary_name() => '', @_ 
+  )
+}
+
+# $new_record = $package->get_record()
+# $selected_record = $package->get_record( $id )
+sub get_record {
+  my $package = shift;
+  my $id = shift;
+  if ( ! $id ) {
+    $package->new_empty_record();
+  } else {
+    $package->select_record( $id );
+  }
+}
+
+########################################################################
+
+=head2 Save Methods
+
+These methods hide the distinction between insert and update.
+
+=over 4
+
+=item save_record()
+
+  $record->save_record () : $record_or_undef
+
+Determines whether the record has an primary key assigned to it and then calls either insert_record or update_record. Returns the record unless it fails to save it.
+
+=item new_and_save()
+
+  $class_name->new_and_save ( %key_argument_pairs ) : $record
+
+Calls new_empty_record, and then change_and_save.
+
+=item change_and_save()
+
+  $record->change_and_save ( %key_argument_pairs ) : $record
+
+Calls change_values, and then save_record.
+
+=back
+
+=cut
+
+# $record->save_record()
+sub save_record {
+  my $self = shift;
+  ref($self) or croak("Can't call this object method on a record class");
+  
+  if ( ! $self->primary_key_value() ) {
+    $self->insert_record( @_ );
+  } else {
+    $self->update_record( @_ );
+  }
+  $self;
+}
+
+# $record_class->new_and_save( 'fieldname' => 'new_value', ... )
+sub new_and_save {
+  (shift)->new_with_values( @_ )->save_record();
+}
+
+# $record->change_and_save( 'fieldname' => 'new_value', ... )
+sub change_and_save {
+  my $self = shift;
+  $self->change_values( @_ );
+  $self->save_record;
+}
+
+########################################################################
+
+########################################################################
+
+=head1 FETCHING DATA
+
+The following abstract methods are to be implemented by subclasses; in particular, see L<DBIx::SQLEngine::Record::Table>. 
 
 =head2 Select to Retrieve Records
 
 =over 4
-
-=item fetch_select()
-
-  $class_name->fetch_select ( %select_clauses ) : $record_set
-
-Retrives records from the table using the provided SQL select clauses. 
-
-Calls the corresponding SQLEngine method with the table name and the provided arguments. Each row hash is blessed into the record class before being wrapped in a Record::Set object.
 
 =item fetch_one_record()
 
@@ -474,7 +343,31 @@ Calls the corresponding SQLEngine method with the table name and the provided ar
 
 Retrives one record from the table using the provided SQL select clauses. 
 
-Calls fetch_select, then returns only the first row of results. The row hash is blessed into the record class before being returned.
+=item fetch_select()
+
+  $class_name->fetch_select ( %select_clauses ) : $record_set
+
+Retrives records from the table using the provided SQL select clauses. 
+
+=item visit_select()
+
+  $class_name->visit_select ( $sub_ref, %select_clauses ) : @results
+  $class_name->visit_select ( %select_clauses, $sub_ref ) : @results
+
+Calls the provided subroutine on each matching record as it is retrieved. Returns the accumulated results of each subroutine call (in list context).
+
+=back
+
+=cut
+
+use Class::MakeMethods::Standard::Universal 
+	'abstract' => "fetch_one_record fetch_select visit_select";
+
+########################################################################
+
+=head2 Selecting by Primary Key
+
+=over 4
 
 =item select_record()
 
@@ -492,105 +385,22 @@ The row hash is blessed into the record class before being returned.
 
 Fetches a set of one or more records by primary key.
 
-Each row hash is blessed into the record class before being wrapped in a Record::Set object.
-
-=item visit_select()
-
-  $class_name->visit_select ( $sub_ref, %select_clauses ) : @results
-  $class_name->visit_select ( %select_clauses, $sub_ref ) : @results
-
-Calls the provided subroutine on each matching record as it is retrieved. Returns the accumulated results of each subroutine call (in list context).
-
-Each row hash is blessed into the record class before being the subroutine is called.
+Each row hash is blessed into the record class before being wrapped in a RecordSet::Set object.
 
 =back
 
 =cut
 
-# $records = $record_class->fetch_select( %select_clauses );
-sub fetch_select {
-  (shift)->table_fetch_set_method('fetch_select', @_)
-}
-
-# $record = $record_class->fetch_one_record( %clauses );
-sub fetch_one_record {
-  (shift)->table_fetch_one_method('fetch_one_row', @_)
-}
-
-# @results = $record_class->visit_select( %select_clauses, $sub );
-# @results = $record_class->visit_select( $sub, %select_clauses );
-sub visit_select {
-  my $self = shift;
-  my $sub = ( ref($_[0]) ? shift : pop );
-  $self->get_table()->visit_select(@_, 
-				sub { $self->record_from_table($_[0]); &$sub })
-}
-
-# $record = $record_class->select_record( $id_value );
-# $record = $record_class->select_record( \@compound_id );
-# $record = $record_class->select_record( \%hash_with_pk );
-sub select_record {
-  (shift)->table_fetch_one_method('select_row', @_)
-}
-
-# $records = $record_class->select_records( @ids_or_hashes );
-sub select_records {
-  (shift)->table_fetch_set_method('select_rows', @_)
-}
-
-########################################################################
-
-=head2 Vivifying Records From The Database
-
-These methods are called internally by the various select methods and do not need to be called directly.
-
-=over 4
-
-=item record_from_table()
-
-  $class_name->record_from_table( $hash_ref )
-  $class_name->record_from_table( $hash_ref ) : $record
-  $class_name->record_from_table( %hash_contents ) : $record
-
-Converts a hash retrieved from the table to a Record object.
-
-=item record_set_from_table()
-
-  $class_name->record_set_from_table( $hash_array_ref )
-  $class_name->record_set_from_table( $hash_array_ref ) : $record_set
-  $class_name->record_set_from_table( @hash_refs ) : $record_set
-
-Converts an array of hashrefs retrieved from the table to a Record::Set object containing Record objects.
-
-=back
-
-=cut
-
-# $record_class->record_from_table( $hash_ref );
-# $record = $record_class->record_from_table( $hash_ref );
-# $record = $record_class->record_from_table( %hash_contents );
-sub record_from_table {
-  my $class = shift;
-  my $hash = ( @_ == 1 ) ? shift : { @_ }
-	or return;
-  confess("from table : '$hash'") unless $hash; 
-  bless $hash, $class;
-}
-
-# $record_class->record_set_from_table( $hash_array_ref );
-# $record_set = $record_class->record_set_from_table( $hash_array_ref );
-# $record_set = $record_class->record_set_from_table( @hash_refs );
-sub record_set_from_table {
-  my $class = shift;
-  my $array = ( @_ == 1 ) ? shift : [ @_ ];
-  bless [ map { bless $_, $class } @$array ], 'DBIx::SQLEngine::Record::Set';
-}
+use Class::MakeMethods::Standard::Universal 
+	'abstract' => "select_record select_records";
 
 ########################################################################
 
 ########################################################################
 
-=head1 EDITING DATA (SQL DML)
+=head1 ALTERING DATA
+
+The following abstract methods are to be implemented by subclasses; in particular, see L<DBIx::SQLEngine::Record::Table>. 
 
 =head2 Insert to Add Records
 
@@ -606,15 +416,6 @@ Adds the values from this record to the table. Returns the number of rows affect
 
 =back
 
-=cut
-
-# $record_obj->insert_record();
-sub insert_record {
-  (shift)->table_record_method('insert_row');
-}
-
-########################################################################
-
 =head2 Update to Change Records
 
 After retrieving a record with one of the fetch methods, you may save any changes by calling update_record.
@@ -628,15 +429,6 @@ After retrieving a record with one of the fetch methods, you may save any change
 Attempts to update the record using its primary key as a unique identifier. Returns the number of rows affected, which should be 1 unless there's an error.
 
 =back
-
-=cut
-
-# $record_obj->update_record();
-sub update_record {
-  (shift)->table_record_method('update_row');
-}
-
-########################################################################
 
 =head2 Delete to Remove Records
 
@@ -652,50 +444,8 @@ Delete this existing record based on its primary key. Returns the number of rows
 
 =cut
 
-# $record_obj->delete_record();
-sub delete_record {
-  (shift)->table_record_method('delete_row');
-}
-
-########################################################################
-
-########################################################################
-
-=head2 Mixin Class Redispatch
-
-=over 4
-
-=item NEXT
-
-Enhanced superclass method dispatch for use inside mixin class methods. Allows mixin classes to redispatch to other classes in the inheritance tree without themselves inheriting from anything. 
-
-(This is similar to the functionality provided by NEXT::ACTUAL, but without using AUTOLOAD; for a more generalized approach to this issue see L<NEXT>.)
-
-=back
-
-=cut
-
-sub NEXT {
-  my ( $self, $method, @args ) = @_;
-
-  my $package = caller();
-  
-  my @classes = ref($self) || $self;
-  my @isa;
-  while ( my $class = shift @classes ) {
-    push @isa, $class;
-    no strict;
-    unshift @classes, @{ $class . "::ISA" };
-  }
-  while ( my $class = shift @isa ) {
-    last if ( $class eq $package )
-  }
-  while ( my $class = shift @isa ) {
-    next unless my $sub = $class->can( $method );
-    return &$sub( $self, @args );
-  }
-  Carp::confess( "Can't find NEXT method" );
-}
+use Class::MakeMethods::Standard::Universal 
+	'abstract' => "insert_record update_record delete_record";
 
 ########################################################################
 

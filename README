@@ -54,7 +54,7 @@ SEE ALSO
     See the DBIx::SQLEngine::Docs::Related manpage for notes on related
     modules.
 
-STATUS AND BUGS
+STATUS
   Version
 
     This version is a routine release of DBIx::SQLEngine intended for public
@@ -75,19 +75,6 @@ STATUS AND BUGS
     intent is support these by adding more options to the declaration
     interface, while maintaining backward compatibility.
 
-  Known Problems
-
-    Many types of databases are not yet directly supported. While the
-    default functionality should work with any DBI-accessible data source,
-    support for complex queries and advanced features will typically require
-    the addition of a Driver subclass which compensates for local idiom.
-
-    Some of the more advanced capabililities have only been added recently,
-    and have not yet been tested in real-world conditions.
-
-    See the DBIx::SQLEngine::ToDo manpage for a list of bugs and missing
-    features.
-
   Tested Platforms
 
     This release has been tested succesfully on the following platforms:
@@ -98,6 +85,19 @@ STATUS AND BUGS
     may review the current test results from CPAN-Testers:
 
     * http://testers.cpan.org/show/DBIx-SQLEngine.html
+
+BUGS
+    Some of the more advanced capabililities have only been added recently,
+    and have not yet been tested in real-world conditions.
+
+    Some types of databases are not yet directly supported. While most of
+    the default functionality should work with any DBI-accessible data
+    source, support for complex queries and advanced features will typically
+    require the addition of a Driver subclass which compensates for local
+    idiom.
+
+    See the DBIx::SQLEngine::ToDo manpage for a list of bugs and missing
+    features.
 
 DISTRIBUTION
     If you encounter any problems, please inform the author and I'll
@@ -120,6 +120,7 @@ REQUIREMENTS
       DBI                           1.0
       DBIx::AnyDBD                  2.0
       Class::MakeMethods            1.006
+      Class::MixinFactory           0.9
 
     You must also have at least one working DBD module installed.
 
@@ -209,6 +210,7 @@ THANKS
       Ron Savage
       Christian Glahn, Innsbruck University
       Michael Kroll, Innsbruck University
+      Peter (Stig) Edwards
 
 SOURCE MATERIAL
     Inspiration, tricks, and bits of useful code were mined from these CPAN

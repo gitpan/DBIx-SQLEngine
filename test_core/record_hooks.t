@@ -15,7 +15,7 @@ ok( $sqldb and ref($sqldb) =~ m/^DBIx::SQLEngine/ );
 my $record_class = $sqldb->record_class('foo', 'My::Foo', 'Hooks');
 ok( $record_class eq 'My::Foo' );
 ok( My::Foo->isa('DBIx::SQLEngine::Record::Base') );
-ok( My::Foo->isa('DBIx::SQLEngine::Record::Trait::Hooks') );
+ok( My::Foo->isa('DBIx::SQLEngine::Record::Hooks') );
 
 ########################################################################
 

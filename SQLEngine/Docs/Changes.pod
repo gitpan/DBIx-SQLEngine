@@ -6,7 +6,34 @@ DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 =head1 HISTORY
 
 
+=head2 Version 0.92
+
+2004-11-28 Released as DBIx-SQLEngine-0.92.
+
+2004-11-21 Added incomplete implementation of RecordSet::NextPrev class.
+
+2004-11-21 Moved table-specific Record code into new Record::Table class.
+
+2004-11-21 Sketched out interface for a new Record::PKey object.
+
+2004-11-16 Modified Record class factory to use new Class::MixinFactory distribution.
+
+2004-11-16 Eliminated unnecessary extra level in Record namespace for mixins.
+
+2004-11-16 Moved Record::Set to a new RecordSet namespace to allow new mixins.
+
+2004-11-16 Fixed SQLite definition for sequential fields, thanks to Ron Savage.
+
+2004-11-13 Adjusted Related.pod docs for Rosetta based on email from Darren Duncan.
+
+2004-11-13 Fixed test.config.pl to not die when run for the first time.
+
+
 =head2 Version 0.91
+
+2004-11-12 Released as DBIx-SQLEngine-0.91.
+
+2004-11-12 Replaced compile-time @MIXINS in Record hierarchy with run-time NEXT method.
 
 2004-11-12 Ran coverage tests and added test cases and documentation for missing items. We're now at over 90% for POD coverage, but still under 60% overall.
 
@@ -436,6 +463,8 @@ Class::MakeMethods distribution.
 2001-01-13 Added retry on "Lost connection to MySQL" errors
 
 2000-12-22 Added new_with_contents constructor to Criteria::Compound.
+
+2000-12-13 Substantial revisions to record set functionality
 
 2000-11-29 Switched to use of Class::MethodMaker 2.0 features.
 

@@ -11,8 +11,8 @@ B<DBI Wrapper>: Adds methods to a DBI database handle.
 B<Portability Subclasses:> Uses driver's idioms or emulation.
   
   $hash_ary = $sqldb->fetch_select( 
-    table => 'students' 
-    limit => 5, offset => 10
+    table => 'students',
+    where => { name => 'Dave' },
   );
 
 =head1 DESCRIPTION

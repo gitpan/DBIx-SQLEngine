@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Record::Trait::Hooks - Flexible Pre/Post Hooks
+DBIx::SQLEngine::Record::Hooks - Flexible Pre/Post Hooks
 
 =head1 SYNOPSIS
 
@@ -50,6 +50,7 @@ B<Basics:> Layered over superclass.
   # Calls ok_delete, pre_delete, and post_delete hooks
   $record->delete_record();
 
+
 =head1 DESCRIPTION
 
 This package provides a callback layer for DBIx::SQLEngine::Record objects.
@@ -60,7 +61,7 @@ Don't use this module directly; instead, pass its name as a trait when you creat
 
 ########################################################################
 
-package DBIx::SQLEngine::Record::Trait::Hooks;
+package DBIx::SQLEngine::Record::Hooks;
 
 use strict;
 use Carp;
@@ -213,19 +214,19 @@ These methods are called internally by the various select methods and do not nee
 
 =over 4
 
-=item record_from_table()
+=item record_from_db_data()
 
-  $class_name->record_from_table( $hash_ref )
-  $class_name->record_from_table( $hash_ref ) : $record
-  $class_name->record_from_table( %hash_contents ) : $record
+  $class_name->record_from_db_data( $hash_ref )
+  $class_name->record_from_db_data( $hash_ref ) : $record
+  $class_name->record_from_db_data( %hash_contents ) : $record
 
 Adds support for post_fetch hook. 
 
-=item record_set_from_table()
+=item record_set_from_db_data()
 
-  $class_name->record_set_from_table( $hash_array_ref )
-  $class_name->record_set_from_table( $hash_array_ref ) : $record_set
-  $class_name->record_set_from_table( @hash_refs ) : $record_set
+  $class_name->record_set_from_db_data( $hash_array_ref )
+  $class_name->record_set_from_db_data( $hash_array_ref ) : $record_set
+  $class_name->record_set_from_db_data( @hash_refs ) : $record_set
 
 Adds support for post_fetch hook. 
 
@@ -240,17 +241,17 @@ Inheritable Hook. Add functions which should be called immediately after each re
 
 use Class::MakeMethods::Composite::Inheritable( hook=>'post_fetch' ); 
 
-# $row_class->record_from_table( $hash_ref );
-# $row = $row_class->record_from_table( $hash_ref );
-# $row = $row_class->record_from_table( %hash_contents );
-sub record_from_table {
-  my $record = (shift)->NEXT('record_from_table', @_ ) or return;
+# $row_class->record_from_db_data( $hash_ref );
+# $row = $row_class->record_from_db_data( $hash_ref );
+# $row = $row_class->record_from_db_data( %hash_contents );
+sub record_from_db_data {
+  my $record = (shift)->NEXT('record_from_db_data', @_ ) or return;
   $record->post_fetch; 
   return $record;
 }
 
-sub record_set_from_table {
-  my $recordset = (shift)->NEXT('record_set_from_table', @_ ) or return;
+sub record_set_from_db_data {
+  my $recordset = (shift)->NEXT('record_set_from_db_data', @_ ) or return;
   foreach my $record ( @$recordset ) { $record->post_fetch }
   return $recordset;
 }

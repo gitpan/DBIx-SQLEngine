@@ -27,7 +27,7 @@ For comparison purposes, this document reviews some of the points of comparison 
 
 =head2 Supported databases
 
-Any database supported by one of the following: DBD::AnyData, DBD::CSV, DBD::Informix, DBD::MySQL, DBD::Oracle, DBD::Pg, DBD::SQLite, or DBD::Sybase.
+Any database supported by one of the following: DBD::AnyData, DBD::CSV, DBD::Informix, DBD::MySQL, DBD::Oracle, DBD::Pg, DBD::SQLite, DBD::Sybase, or DBD::XBase.
 
 Providing support for other drivers involves creating a DBD-specific subclass of DBIx::SQLEngine::Driver (which will be loaded via DBIx::AnyDBD when appropriate), and should only require a limited amount of coding.
 
@@ -53,7 +53,9 @@ DBIx::SQLEngine does not yet provide any automatic support for relationships.
 
 =head2 Multiple rows and cursors
 
-DBIx::SQLEngine can return all matching records at once, or accept a code ref which will be called on each one in turn. A RecordSet object similar to a cursor is used but it does not yet handle incremental retrieval. (Support for richer cursors is expected in an upcoming release.)
+DBIx::SQLEngine can return all matching records at once, or accept a code ref which will be called on each one in turn, or return a code ref that will incrementally return available rows. 
+
+A RecordSet object similar to a cursor is also used but it does not yet handle incremental retrieval. (Support for richer cursors is expected in an upcoming release.)
 
 =head2 Caching
 

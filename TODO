@@ -6,15 +6,15 @@ TO DO
 
   Tests
 
-    The test scripts are incomplete and really ought to exercise much more
-    of the public interface. Specific things to add to the test include:
+    The test scripts are incomplete and ought to exercise much more of the
+    public interface. Specific things to add to the test include:
 
     Test for inserting, updating and selecting nulls, including "is null"
     test.
 
     Tests for new transaction code.
 
-    Add more tests to excercise null-value/empty-string distinction.
+    Tests for null-value/empty-string distinction.
 
     Find people to test drivers for Informix, Sybase, MS SQL.
 
@@ -24,10 +24,19 @@ TO DO
     yet correct. The Record classes could also use a review to ensure
     primary keys are handled correctly throughout.
 
-    Use superclass NEXT method for redispatching instead of recompiling with
-    @MIXINS for SUPER support.
+  Driver Interface
 
-  Driver Features
+    There sure are a lot of fetch methods... But it's not clear how to
+    usefully simplify and combine them:
+
+                            x_method()              x_rows()
+         fetch_select       hashes                  arrays
+         visit_select       hashes => \&sub         arrays => \&sub
+         fetchsub_select    hash_sub                array_sub
+         fetch_one          one_hash                one_array
+         fetch_one_value    one_value               one_list
+
+  Driver-Specific Features
 
     Review DBIx::Compat; it seems like this information should map fairly
     directly to candidate methods and subclasses.
@@ -41,6 +50,8 @@ TO DO
     Determine which features, if any, should be handled by an ODBC driver
     subclass.
 
+  Driver Internals
+
     Determine the right way to handle the multiplexing drivers,
     DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may
     reconnect to a different server in mid-stream. In practice, all of the
@@ -51,7 +62,8 @@ TO DO
     using DBI's type_info methods.
 
     Consider centralizing logging interface by making 'DBI', 'SQL' arguments
-    to general function, or using log4perl.
+    to general function, or using a callback that could be hooked to
+    log4perl.
 
   Additional Criteria
 
@@ -59,7 +71,7 @@ TO DO
     SubString, CaseInsensitiveSubString.
 
     Consider enabling pure-Perl interpretation of criteria to allow
-    post-fetch processing by Record::Set objects:
+    post-fetch processing by RecordSet objects:
 
       package DBIx::SQLEngine::Criteria::Equality;
   

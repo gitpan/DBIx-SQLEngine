@@ -24,6 +24,8 @@ This package provides a subclass of DBIx::SQLEngine which compensates for Sybase
 
 Note: this driver class has been added recently and not yet tested in real-world conditions.
 
+The SQLEngine framework doesn't yet have a strategy or interface for dealing with one of  the limitations of DBD::Sybase: each connection can only have one statement handle active. If AutoCommit is on, then it silently opens up another database handle for each additional statement handle. However, transactions can't span connections, so if AutoCommit is off, it dies with this message: C<DBD::Sybase: Can't have multiple statement handles on a single database handle when AutoCommit is OFF>.
+
 =head2 About Driver Subclasses
 
 You do not need to use this package directly; when you connect to a database, the SQLEngine object is automatically re-blessed in to the appropriate subclass.

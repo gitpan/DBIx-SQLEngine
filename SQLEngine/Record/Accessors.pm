@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Record::Trait::Accessors - Add Methods for Columns
+DBIx::SQLEngine::Record::Accessors - Add Methods for Columns
 
 =head1 SYNOPSIS
 
@@ -33,7 +33,7 @@ This package is not yet complete.
 
 ########################################################################
 
-package DBIx::SQLEngine::Record::Trait::Accessors;
+package DBIx::SQLEngine::Record::Accessors;
 
 use strict;
 use Carp;

@@ -5,6 +5,7 @@ make_extras/test.config.pl
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
+META.yml
 README
 SQLEngine.pm
 SQLEngine/Cache/BasicCache.pm
@@ -50,13 +51,15 @@ SQLEngine/Driver/Trait/NoSequences.pm
 SQLEngine/Driver/Trait/NoUnions.pm
 SQLEngine/Driver/Trait/PerlDBLib.pm
 SQLEngine/Driver/XBase.pm
+SQLEngine/Record/Accessors.pm
 SQLEngine/Record/Base.pm
+SQLEngine/Record/Cache.pm
 SQLEngine/Record/Class.pm
-SQLEngine/Record/Set.pm
-SQLEngine/Record/Trait/Accessors.pm
-SQLEngine/Record/Trait/Cache.pm
-SQLEngine/Record/Trait/Extras.pm
-SQLEngine/Record/Trait/Hooks.pm
+SQLEngine/Record/Extras.pm
+SQLEngine/Record/Hooks.pm
+SQLEngine/Record/Table.pm
+SQLEngine/RecordSet/NextPrev.pm
+SQLEngine/RecordSet/Set.pm
 SQLEngine/Schema/Column.pm
 SQLEngine/Schema/ColumnSet.pm
 SQLEngine/Schema/Table.pm
@@ -85,4 +88,3 @@ test_drivers/nulls.t
 test_drivers/standard.t
 test_drivers/union.t
 TODO
-META.yml                                 Module meta-data (added by MakeMaker)
