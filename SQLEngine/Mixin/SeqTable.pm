@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::SQLEngine::Mixin::SeqTable
+DBIx::SQLEngine::Mixin::SeqTable - For databases without native sequences
 
 =head1 SYNOPSIS
 

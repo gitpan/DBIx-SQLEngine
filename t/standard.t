@@ -16,6 +16,7 @@ use Test;
 BEGIN { plan tests => ( $dsn ? 25 : 1 ) }
 
 use DBIx::SQLEngine;
+  # DBIx::SQLEngine->DBILogging(1);
 
 ########################################################################
 
@@ -25,16 +26,15 @@ if ( ! $dsn ) {
 
   Note: By default, DBIx::SQLEngine will only perform a limited series of
   tests; to be fully tested, it must connect to a working DBI database driver.
+  Using that connection, this test script will create a table named sqle_test,
+  run several queries against it, and then drop it.
 
-  In order to test DBIx::SQLEngine against your local database, set the DBI_DSN 
-  environment variable to your connection string before running the tests, and 
-  if needed, also set the DBI_USER and DBI_PASS variables. 
+  In order to test DBIx::SQLEngine against your local database, set the
+  DBI_DSN environment variable to your connection string before running the
+  tests, and if needed, also set the DBI_USER and DBI_PASS variables.
     Example:  > setenv DBI_DSN "DBI:mysql:test"; make test
 
-  If you specify a database, this test script will create a table named 
-  sqle_test, run several queries against it, and then drop it.
-
-  Querying DBI for available driver types and suggested DSNs: 
+  This script will now query DBI for available drivers and suggested DSNs: 
 .
 
   %common_cases = (
@@ -90,12 +90,13 @@ warn <<".";
   The remaining tests will use the DBI DSN specified in your environment: 
     $dsn
 
-  In a few seconds, this script will connect to the above data source, create 
-  a table named sqle_test, run various queries aginst it, and then drop it.
+  In a few seconds, this script will connect to this data source, create
+  a table named sqle_test, run several queries against that table, and 
+  then drop it. 
   
 .
 
-sleep(3);
+sleep(1);
 
 my $sqldb;
 ok( $sqldb = DBIx::SQLEngine->new($dsn, $user, $pass) );
@@ -108,13 +109,16 @@ warn <<".";
 
 .
 
-# $sqldb->DBILogging(1);
-
 ok( $sqldb->detect_any );
 
 ########################################################################
 
 my $table = 'sqle_test';
+
+# FETCH_COLUMN_INFO_1: {
+   # my @cols = $sqldb->detect_table( $table, 'quietly' );
+   # ok( scalar( @cols ) == 0 );
+# }
 
 CREATE_TABLE: {
 
@@ -128,13 +132,17 @@ CREATE_TABLE: {
 
 }
 
-FETCH_COLUMN_INFO: {
+FETCH_COLUMN_INFO_2: {
 
-  my @cols = $sqldb->detect_table( $table );
-  ok( scalar( @cols ) == 3 );
-  @cols = $sqldb->detect_table( 'area_51_secrets', 'quietly' );
+# warn "detect";
+  # my @cols = $sqldb->detect_table( $table );
+  # warn "cols $#cols";
+  # ok( scalar( @cols ) == 3 );
+#warn "detect 51";
+  my @cols = $sqldb->detect_table( 'area_51_secrets', 'quietly' );
+# warn "cols $#cols";
   ok( scalar( @cols ) == 0 );
-
+#warn "done";
 }
 
 INSERTS_AND_SELECTS: {
@@ -172,6 +180,9 @@ SELECT_CRITERIA: {
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
   
   $rows = $sqldb->fetch_select( sql => [ "select * from $table where name = ?", 'Dave' ] );
+  ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
+  
+  $rows = $sqldb->fetch_select( sql => "select * from $table", criteria => [ "name = ?", 'Dave' ] );
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
 
 }
@@ -225,6 +236,12 @@ DROP_TABLE: {
   ok( 1 );
 
 }
+
+# FETCH_COLUMN_INFO_3: {
+  # my @cols = $sqldb->detect_table( $table, 'quietly' );
+  # warn "Columns: " . join(', ', map "'$_'", @cols );
+  # ok( scalar( @cols ) == 0 );
+# }
 
 ########################################################################
 

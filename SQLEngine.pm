@@ -141,7 +141,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.012;
+$VERSION = 0.014;
 
 use strict;
 
@@ -165,28 +165,60 @@ Create one SQLEngine for each DBI datasource you will use.
 
 =item new()
 
+  DBIx::SQLEngine->new( $dbh ) : $sqldb
   DBIx::SQLEngine->new( $dsn ) : $sqldb
   DBIx::SQLEngine->new( $dsn, $user, $pass ) : $sqldb
   DBIx::SQLEngine->new( $dsn, $user, $pass, $args ) : $sqldb
 
+Based on the arguments supplied, invokes either new_with_connect() or new_with_dbh() and returns the resulting new object.
+
+=item new_with_connect()
+
+  DBIx::SQLEngine->new_with_connect( $dsn ) : $sqldb
+  DBIx::SQLEngine->new_with_connect( $dsn, $user, $pass ) : $sqldb
+  DBIx::SQLEngine->new_with_connect( $dsn, $user, $pass, $args ) : $sqldb
+
 Accepts the same arguments as the standard DBI connect method. 
+
+I<Note:> this method has recently been added and the interface is subject to change.
+
+=item new_with_dbh()
+
+  DBIx::SQLEngine->new_with_dbh( $dbh ) : $sqldb
+
+Accepts an existing DBI database handle and creates a new SQLEngine object around it.
+
+I<Note:> this method has recently been added and the interface is subject to change.
 
 =back
 
-I<Portability:> After setting up the DBI handle that it will use, the SQLEngine is reblessed into a matching subclass, if one is available. Thus, if you connect a DBIx::SQLEngine through DBD::mysql, by passing a DSN such as "dbi:mysql:test", your object will automatically shift to being an instance of the DBIx::SQLEngine::Driver::Mysql class. This allows the driver-specific subclasses to compensate for differences in the SQL dialect or execution ideosyncracies of that platform.
+B<Portability:> After setting up the DBI handle that it will use, the SQLEngine is reblessed into a matching subclass, if one is available. Thus, if you connect a DBIx::SQLEngine through DBD::mysql, by passing a DSN such as "dbi:mysql:test", your object will automatically shift to being an instance of the DBIx::SQLEngine::Driver::Mysql class. This allows the driver-specific subclasses to compensate for differences in the SQL dialect or execution ideosyncracies of that platform.
 
 =cut
 
 sub new {
   my $class = shift;
-  my ($dsn, $user, $pass, $args) = @_;
-  $args ||= { AutoCommit => 1, PrintError => 0, RaiseError => 1, };
+  ref($_[0]) ? $class->new_with_dbh( @_ ) : $class->new_with_connect( @_ )
+}
+
+sub new_with_connect {
+  my ($class, $dsn, $user, $pass, $args) = @_;
+  $args ||= { AutoCommit => 1, PrintError => 0, RaiseError => 1 };
   DBIx::SQLEngine::Driver::Default->log_connect( $dsn ) 
 	if DBIx::SQLEngine::Driver::Default->DBILogging;
-  my $self = DBIx::AnyDBD->connect($dsn, $user, $pass, $args, 'DBIx::SQLEngine::Driver');
+  my $self = DBIx::AnyDBD->connect($dsn, $user, $pass, $args, 
+						'DBIx::SQLEngine::Driver');
   return undef unless $self;
   $self->{'reconnector'} = sub { DBI->connect($dsn, $user, $pass, $args) };
   return $self;
+}
+
+sub new_with_dbh {
+  my ($class, $dbh) = @_;
+  my $self = bless { 'package' => 'DBIx::SQLEngine::Driver', 'dbh' => $dbh }, 'DBIx::AnyDBD';
+  $self->rebless;
+  $self->_init if $self->can('_init');
+  return $self;  
 }
 
 ########################################################################
@@ -197,6 +229,7 @@ sub SQLLogging { shift; DBIx::SQLEngine::Driver::Default->SQLLogging( @_ ) }
 ########################################################################
 
 package DBIx::SQLEngine::Driver::Default;
+BEGIN { $INC{'DBIx/SQLEngine/Driver.pm'} = __FILE__ }
 BEGIN { $INC{'DBIx/SQLEngine/Driver/Default.pm'} = __FILE__ }
 
 use strict;
@@ -252,13 +285,13 @@ B<SQL Select Clauses>: The above select methods accept a hash describing the cla
 
 =over 4
 
-=item 'sql' => ...
+=item sql
 
-Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+Optional; can not be used in combination with the table and columns arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
 =item table I<or> tables
 
-Required. The name of the tables to select from.
+Required unless sql is provided. The name of the tables to select from.
 
 =item columns
 
@@ -314,7 +347,11 @@ Each query can be written out explicitly or generated on demand using whichever 
     table => 'students', criteria => { 'status' => 'minor' } 
   );
 
-  $crit = DBIx::SQLEngine::Criteria::StringEquality->new('status' => 'minor');
+  $hashes = $sqldb->fetch_select( 
+    sql => 'select * from students', criteria => { 'status' => 'minor' }
+  );
+
+  $crit = DBIx::SQLEngine::Criteria::Equality->new('status' => 'minor');
   $hashes = $sqldb->fetch_select( 
     table => 'students', criteria => $crit
   );
@@ -447,47 +484,48 @@ sub sql_select {
   my $self = shift;
   my %clauses = @_;
 
-  if ( my $explicit = $clauses{'sql'} ) {
-    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
-  }
-
-  my $sql_keyword = 'select';
+  my $keyword = 'select';
   my ($sql, @params);
+
+  if ( my $literal = delete $clauses{'sql'} ) {
+    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
+    if ( my ( $conflict ) = grep $clauses{$_}, qw/ columns table tables / ) { 
+      croak("Can't build a $keyword query using both sql and $conflict clauses")
+    }
   
-  my $columns = delete $clauses{'columns'};
-  if ( ! $columns ) {
-    $columns = '*';
-  } elsif ( ! ref( $columns ) and length( $columns ) ) {
-    # should be one or more comma-separated column names
-  } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
-    $columns = join ', ', $columns->column_names;
-  } elsif ( ref($columns) eq 'ARRAY' ) {
-    $columns = join ', ', @$columns;
   } else {
-    confess("Unsupported column spec '$columns'");
-  }
-  $sql = "select $columns";
   
-  my $tables = delete $clauses{'table'} || delete $clauses{'tables'};
-  if ( ! $tables ) {
-    confess("Table name is missing or empty");
-  } elsif ( ! ref( $tables ) and length( $tables ) ) {
-    # should be one or more comma-separated table names
-  } elsif ( UNIVERSAL::can($tables, 'table_names') ) {
-    $tables = $tables->table_names;
-  } elsif ( ref($tables) eq 'ARRAY' ) {
-    $tables = join ', ', @$tables;
-  } else {
-    confess("Unsupported table spec '$tables'");
+    my $columns = delete $clauses{'columns'};
+    if ( ! $columns ) {
+      $columns = '*';
+    } elsif ( ! ref( $columns ) and length( $columns ) ) {
+      # should be one or more comma-separated column names
+    } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
+      $columns = join ', ', $columns->column_names;
+    } elsif ( ref($columns) eq 'ARRAY' ) {
+      $columns = join ', ', @$columns;
+    } else {
+      confess("Unsupported column spec '$columns'");
+    }
+    $sql = "select $columns";
+    
+    my $tables = delete $clauses{'table'} || delete $clauses{'tables'};
+    if ( ! $tables ) {
+      confess("Table name is missing or empty");
+    } elsif ( ! ref( $tables ) and length( $tables ) ) {
+      # should be one or more comma-separated table names
+    } elsif ( UNIVERSAL::can($tables, 'table_names') ) {
+      $tables = $tables->table_names;
+    } elsif ( ref($tables) eq 'ARRAY' ) {
+      $tables = join ', ', @$tables;
+    } else {
+      confess("Unsupported table spec '$tables'");
+    }
+    $sql .= " from $tables";
   }
-  $sql .= " from $tables";
   
   if ( my $criteria = delete $clauses{'criteria'} ) {
-    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
-    if ( $sql_crit ) {
-      $sql .= " where $sql_crit";
-      push @params, @cp;
-    }
+    ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
   if ( my $group = delete $clauses{'group'} ) {
@@ -523,7 +561,7 @@ sub sql_select {
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported $sql_keyword clauses: " . 
+    confess("Unsupported $keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -536,7 +574,7 @@ sub sql_select {
 
 =pod
 
-I<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
+B<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
 
 =over 4
 
@@ -546,23 +584,11 @@ I<Portability:> Limit and offset clauses are handled differently by various DBMS
 
 Modifies the SQL statement and parameters list provided to apply the specified limit and offset requirements. Triggered by use of a limit or offset clause in a call to sql_select().
 
-=back
+=item sql_where()
 
-sub sql_limit {
-  my $self = shift;
-  my ( $limit, $offset, $sql, @params ) = @_;
-  
-  $sql .= " limit $limit" if $limit;
-  $sql .= " offset $offset" if $offset;
-  
-  return ($sql, @params);
-}
+  $sqldb->sql_where( $criteria, $sql, @params ) : $sql, @params
 
-########################################################################
-
-=pod
-
-=over 4
+Modifies the SQL statement and parameters list provided to append the specified criteria as a where clause. Triggered by use of criteria in a call to sql_select().
 
 =item sql_escape_text_for_like()
 
@@ -576,8 +602,31 @@ Subclasses should, based on the datasource's server_type, protect a literal valu
 
 =cut
 
+sub sql_where {
+  my $self = shift;
+  my ( $criteria, $sql, @params ) = @_;
+  
+  my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
+  if ( $sql_crit ) {
+    $sql .= " where $sql_crit";
+    push @params, @cp;
+  }
+  
+  return ($sql, @params);
+}
+
 sub sql_escape_text_for_like {
   confess("DBMS-Specific Function")
+}
+
+sub sql_limit {
+  my $self = shift;
+  my ( $limit, $offset, $sql, @params ) = @_;
+  
+  $sql .= " limit $limit" if $limit;
+  $sql .= " offset $offset" if $offset;
+  
+  return ($sql, @params);
 }
 
 ########################################################################
@@ -659,7 +708,7 @@ Here's the same insert using separate arrays of column names and values to be in
 
 Of course you can also use your own arbitrary SQL and placeholder parameters.
 
-  $sqldb->fetch_one_row( 
+  $sqldb->do_insert( 
     sql => [ 'insert into students (id, name) values (?, ?)', 201, 'Dave' ]
   );
 
@@ -683,12 +732,12 @@ sub sql_insert {
   my $self = shift;
   my %clauses = @_;
 
-  if ( my $explicit = $clauses{'sql'} ) {
-    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
-  }
-
-  my $sql_keyword = 'insert';
+  my $keyword = 'insert';
   my ($sql, @params);
+
+  if ( my $literal = delete $clauses{'sql'} ) {
+    return ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
+  }
   
   my $table = delete $clauses{'table'};
   if ( ! $table ) {
@@ -755,7 +804,7 @@ sub sql_insert {
   push @params, @v_params;
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported $sql_keyword clauses: " . 
+    confess("Unsupported $keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -768,7 +817,7 @@ sub sql_insert {
 
 =pod
 
-I<Portability:> Auto-incrementing sequences are handled differently by various DBMS platforms. For example, the MySQL and MSSQL subclasses use auto-incrementing fields, Oracle and Pg use server-specific sequence objects, and AnyData and CSV make their own ad-hoc table of incrementing values.  
+B<Portability:> Auto-incrementing sequences are handled differently by various DBMS platforms. For example, the MySQL and MSSQL subclasses use auto-incrementing fields, Oracle and Pg use server-specific sequence objects, and AnyData and CSV make their own ad-hoc table of incrementing values.  
 
 To standardize their use, this package defines an interface with several typical methods which may or may not be supported by individual subclasses. You may need to consult the documentation for the SQLEngine subclass and DBMS platform you're using to confirm that the sequence functionality you need is available.
 
@@ -871,19 +920,19 @@ B<SQL Update Clauses>: The above update methods accept a hash describing the cla
 
 =item sql
 
-Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+Optional; conflicts with table, columns and values arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
 =item table 
 
-Required. The name of the table to update.
+Required unless sql argument is used. The name of the table to update.
 
 =item columns
 
-Optional; defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to a hash whose keys contain the column names, or a reference to an object with a "column_names" method.
+Optional unless sql argument is used. Defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to a hash whose keys contain the column names, or a reference to an object with a "column_names" method.
 
 =item values
 
-Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
+Required unless sql argument is used. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
 =item criteria
 
@@ -918,7 +967,7 @@ B<Examples:>
 
 =item *
 
-  $sqldb->fetch_one_row( 
+  $sqldb->do_update( 
     sql => [ 'update students set status = ? where age > ?', 'adult', 20 ]
   );
 
@@ -935,85 +984,86 @@ sub do_update {
 sub sql_update {
   my $self = shift;
   my %clauses = @_;
-
-  if ( my $explicit = $clauses{'sql'} ) {
-    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
-  }
-
-  my $sql_keyword = 'update';
+  
+  my $keyword = 'update';
   my ($sql, @params);
+  
+  if ( my $literal = delete $clauses{'sql'} ) {
+    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
+    if ( my ( $conflict ) = grep $clauses{$_}, qw/ table columns values / ) { 
+      croak("Can't build a $keyword query using both sql and $conflict clauses")
+    }
+  
+  } else {
     
-  my $table = delete $clauses{'table'};
-  if ( ! $table ) {
-    confess("Table name is missing or empty");
-  } elsif ( ! ref( $table ) and length( $table ) ) {
-    # should be a single table name
-  } else {
-    confess("Unsupported table spec '$table'");
-  }
-  $sql = "update $table";
-
-  my $columns = delete $clauses{'columns'};
-  if ( ! $columns and UNIVERSAL::isa( $clauses{'values'}, 'HASH' ) ) {
-    $columns = $clauses{'values'}
-  }
-  my @columns;
-  if ( ! $columns or $columns eq '*' ) {
-    croak("Column names are missing or empty");
-  } elsif ( ! ref( $columns ) and length( $columns ) ) {
-    # should be one or more comma-separated column names
-    @columns = split /,\s?/, $columns;
-  } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
-    @columns = $columns->column_names;
-  } elsif ( ref($columns) eq 'HASH' ) {
-    @columns = sort keys %$columns;
-  } elsif ( ref($columns) eq 'ARRAY' ) {
-    @columns = @$columns;
-  } else {
-    confess("Unsupported column spec '$columns'");
-  }
-  
-  my $values = delete $clauses{'values'};
-  my @value_args;
-  if ( ! $values ) {
-    croak("Values are missing or empty");
-  } elsif ( ! ref( $values ) and length( $values ) ) {
-    confess("Unsupported values clause!");
-  } elsif ( UNIVERSAL::isa( $values, 'HASH' ) ) {
-    @value_args = map $values->{$_}, @columns;
-  } elsif ( ref($values) eq 'ARRAY' ) {
-    @value_args = @$values;
-  } else {
-    confess("Unsupported values spec '$values'");
-  }
-  ( scalar @value_args ) or croak("Values are missing or empty");    
-  my @values;
-  my @v_params;
-  foreach my $v ( @value_args ) {
-    if ( ! defined($v) ) {
-      push @values, 'NULL';
-    } elsif ( ! ref($v) ) {
-      push @values, '?';
-      push @v_params, $v;
-    } elsif ( ref($v) eq 'SCALAR' ) {
-      push @values, $$v;
+    my $table = delete $clauses{'table'};
+    if ( ! $table ) {
+      confess("Table name is missing or empty");
+    } elsif ( ! ref( $table ) and length( $table ) ) {
+      # should be a single table name
     } else {
-      Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      confess("Unsupported table spec '$table'");
     }
-  }
-  $sql .= " set " . join ', ', map "$columns[$_] = $values[$_]", 0 .. $#columns;
-  push @params, @v_params;
+    $sql = "update $table";
   
-  if ( my $criteria = delete $clauses{'criteria'} ) {
-    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
-    if ( $sql_crit ) {
-      $sql .= " where $sql_crit";
-      push @params, @cp;
+    my $columns = delete $clauses{'columns'};
+    if ( ! $columns and UNIVERSAL::isa( $clauses{'values'}, 'HASH' ) ) {
+      $columns = $clauses{'values'}
     }
+    my @columns;
+    if ( ! $columns or $columns eq '*' ) {
+      croak("Column names are missing or empty");
+    } elsif ( ! ref( $columns ) and length( $columns ) ) {
+      # should be one or more comma-separated column names
+      @columns = split /,\s?/, $columns;
+    } elsif ( UNIVERSAL::can($columns, 'column_names') ) {
+      @columns = $columns->column_names;
+    } elsif ( ref($columns) eq 'HASH' ) {
+      @columns = sort keys %$columns;
+    } elsif ( ref($columns) eq 'ARRAY' ) {
+      @columns = @$columns;
+    } else {
+      confess("Unsupported column spec '$columns'");
+    }
+    
+    my $values = delete $clauses{'values'};
+    my @value_args;
+    if ( ! $values ) {
+      croak("Values are missing or empty");
+    } elsif ( ! ref( $values ) and length( $values ) ) {
+      confess("Unsupported values clause!");
+    } elsif ( UNIVERSAL::isa( $values, 'HASH' ) ) {
+      @value_args = map $values->{$_}, @columns;
+    } elsif ( ref($values) eq 'ARRAY' ) {
+      @value_args = @$values;
+    } else {
+      confess("Unsupported values spec '$values'");
+    }
+    ( scalar @value_args ) or croak("Values are missing or empty");    
+    my @values;
+    my @v_params;
+    foreach my $v ( @value_args ) {
+      if ( ! defined($v) ) {
+	push @values, 'NULL';
+      } elsif ( ! ref($v) ) {
+	push @values, '?';
+	push @v_params, $v;
+      } elsif ( ref($v) eq 'SCALAR' ) {
+	push @values, $$v;
+      } else {
+	Carp::confess( "Can't use '$v' as part of a sql values clause" );
+      }
+    }
+    $sql .= " set " . join ', ', map "$columns[$_] = $values[$_]", 0 .. $#columns;
+    push @params, @v_params;
+  }
+    
+  if ( my $criteria = delete $clauses{'criteria'} ) {
+    ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported $sql_keyword clauses: " . 
+    confess("Unsupported $keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -1048,11 +1098,11 @@ B<SQL Delete Clauses>: The above delete methods accept a hash describing the cla
 
 =item sql
 
-Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
+Optional; conflicts with 'table' argument. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
 =item table 
 
-Required (unless explicit "sql => ..." is used). The name of the table to delete from.
+Required unless explicit "sql => ..." is used. The name of the table to delete from.
 
 =item criteria
 
@@ -1076,8 +1126,14 @@ B<Examples:>
 
 =item *
 
-  $sqldb->fetch_one_row( 
+  $sqldb->do_delete( 
     sql => [ 'delete from students where name = ?', 'Dave' ]
+  );
+
+=item *
+
+  $sqldb->do_delete( 
+    sql => 'delete from students', criteria => { 'name'=>'Dave' } 
   );
 
 =back
@@ -1094,33 +1150,34 @@ sub sql_delete {
   my $self = shift;
   my %clauses = @_;
 
-  if ( my $explicit = $clauses{'sql'} ) {
-    return ( ref($explicit) eq 'ARRAY' ) ? @$explicit : $explicit;
-  }
-
-  my $sql_keyword = 'delete';
+  my $keyword = 'delete';
   my ($sql, @params);
-    
-  my $table = delete $clauses{'table'};
-  if ( ! $table ) {
-    confess("Table name is missing or empty");
-  } elsif ( ! ref( $table ) and length( $table ) ) {
-    # should be a single table name
-  } else {
-    confess("Unsupported table spec '$table'");
-  }
-  $sql = "delete from $table";
   
-  if ( my $criteria = delete $clauses{'criteria'} ) {
-    my ( $sql_crit, @cp ) = DBIx::SQLEngine::Criteria->auto_where( $criteria );
-    if ( $sql_crit ) {
-      $sql .= " where $sql_crit";
-      push @params, @cp;
+  if ( my $literal = delete $clauses{'sql'} ) {
+    ($sql, @params) = ( ref($literal) eq 'ARRAY' ) ? @$literal : $literal;
+    if ( my ( $conflict ) = grep $clauses{$_}, qw/ table / ) { 
+      croak("Can't build a $keyword query using both sql and $conflict clauses")
     }
+  
+  } else {
+    
+    my $table = delete $clauses{'table'};
+    if ( ! $table ) {
+      confess("Table name is missing or empty");
+    } elsif ( ! ref( $table ) and length( $table ) ) {
+      # should be a single table name
+    } else {
+      confess("Unsupported table spec '$table'");
+    }
+    $sql = "delete from $table";
+  }
+    
+  if ( my $criteria = delete $clauses{'criteria'} ) {
+    ($sql, @params) = $self->sql_where($criteria, $sql, @params);
   }
   
   if ( scalar keys %clauses ) {
-    confess("Unsupported $sql_keyword clauses: " . 
+    confess("Unsupported $keyword clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
   }
   
@@ -1188,7 +1245,6 @@ sub detect_table {
     ( my($rows), $columns ) = $self->fetch_select( @sql );
   };
   if ( ! $@ ) {
-    # return $columns ? @$columns : ();
     return @$columns;
   } else {
     warn "Unable to detect_table $tablename: $@" unless $quietly;
@@ -1214,7 +1270,7 @@ C<name =E<gt> $column_name_string>
 
 Defines the name of the column. 
 
-I<Portability:> No case or length restrictions are imposed on column names, but for incresased compatibility, you may wish to stick with single-case strings of moderate length.
+B<Portability:> No case or length restrictions are imposed on column names, but for incresased compatibility, you may wish to stick with single-case strings of moderate length.
 
 =item *
 
@@ -1345,7 +1401,7 @@ sub sql_create_columns {
     return "PRIMARY KEY ($name)";
   } else {
     return '  ' . $name . 
-	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
+	    ' ' x ( ( length($name) > 31 ) ? 1 : ( 32 - length($name) ) ) .
 	    $type . 
 	    ( $column->{required} ? " not null" : '' );
   }
@@ -1393,7 +1449,7 @@ sub dbms_create_column_types {
 
 These methods allow arbitrary SQL statements to be executed.
 
-I<Portability:> Note that no processing of the SQL query string is
+B<Portability:> Note that no processing of the SQL query string is
 performed, so if you call these low-level functions it is up to
 you to ensure that the query is correct and will function as expected
 when passed to whichever data source the SQLEngine is using.
@@ -1530,7 +1586,7 @@ sub try_query {
     if ( my $error = $@ ) {
       my $catch = $self->catch_query_exception($error, @_);
       if ( ! $catch ) {
-	die "DBIx::SQLEngine Query failed: $_[0]\n$error";
+	die "DBIx::SQLEngine Query failed: $_[0]\n$error\n";
       } elsif ( $catch eq 'OK' ) {
 	return;
       } elsif ( $catch eq 'REDO' ) {
@@ -1541,7 +1597,7 @@ sub try_query {
 	  confess("DBIx::SQLEngine Query failed on $attempts consecutive attempts: $_[0]\n$error\n");
 	}
       } else {
-	confess("DBIx::SQLEngine Query failed: $_[0]\n$error\n" . 
+	confess("DBIx::SQLEngine Query failed: $_[0]\n$error" . 
 		"Unknown return from exception handler '$catch'");
       }
     }
@@ -1622,6 +1678,7 @@ sub are_transactions_supported {
   my $self = shift;
   my $dbh = $self->dbh;
   eval {
+    local $SIG{__DIE__};
     $dbh->begin_work;
     $dbh->rollback;
   };
@@ -1637,6 +1694,7 @@ sub as_one_transaction {
   $dbh->begin_work;
   my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
+    local $SIG{__DIE__};
     @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
     $dbh->commit;  
   };
@@ -1654,12 +1712,14 @@ sub as_one_transaction_if_supported {
   my $dbh = $self->dbh;
   my @results;
   my $in_transaction;
+  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
+    local $SIG{__DIE__};
     $dbh->begin_work;
     $in_transaction = 1;
   };
-  my $wantarray = wantarray(); # Capture before eval which otherwise obscures it
   eval {
+    local $SIG{__DIE__};
     @results = $wantarray ? &$code( @_ ) : scalar( &$code( @_ ) );
     $dbh->commit if ( $in_transaction );
   };
@@ -1853,6 +1913,8 @@ The $result_method should be the name of a method supported by that SQLEngine in
   $sqldb->prepare_execute ($sql, @params) : $sth
 
 Prepare, bind, and execute a SQL statement to create a DBI statement handle.
+
+Uses prepare_cached().
 
 =item done_with_query()
 
@@ -2170,16 +2232,25 @@ sub log_start {
 }
 
 # $self->log_stop( $timer );
-# $self->log_stop( $timer, $row_count );
+# $self->log_stop( $timer, $error_message );
+# $self->log_stop( $timer, @$return_values );
 sub log_stop { 
-  my ($self, $start_time, $rows) = @_;
+  my ($self, $start_time, $results) = @_;
   my $class = ref($self) || $self;
   
-  my $count = ( ref( $rows->[0] ) eq 'ARRAY' ) ? @{ $rows->[0] } : undef;
+  my $message;
+  if ( ! ref $results ) {
+    $message = "error: $results";
+  } elsif ( ref($results) eq 'ARRAY' ) {
+    # Successful return
+    if ( ref( $results->[0] ) eq 'ARRAY' ) {
+      $message = scalar(@{ $results->[0] }) . " items";
+    }
+  }
   my $seconds = (time() - $start_time or 'less than one' );
   
   warn "DBI: Completed in $seconds seconds" . 
-	(defined $count ? ", returning $count items" : '') . "\n";
+	(defined $message ? ", returning $message" : '') . "\n";
   
   return;
 }

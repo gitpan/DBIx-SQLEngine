@@ -99,7 +99,11 @@ sub sql_detect_any {
 
 sub sql_detect_table {
   my ($self, $tablename) = @_;
-  return ( sql => "select * from $tablename limit 1" );
+  return (
+    table => $tablename,
+    criteria => '1 = 0',
+    limit => 1,
+  )
 }
 
 ########################################################################

@@ -9,6 +9,15 @@ TO DO
     Centralize logging interface by making 'DBI', 'SQL' arguments to general
     function.
 
+    Consider becoming a subclass of DBI via RootClass and DbTypeSubclass,
+    rather than using composition via DBIx::AnyDBD. This is somewhat
+    attractive: it might run faster by eliminating a layer of delegation,
+    and it would facilitate separation of the DBH and STH methods. The
+    downside is loosing the flexibility of composition: if someone had their
+    own DBI subclass, we could dynamically wrap around it if using
+    composition, but it might be harder to dynamically inherit from it.
+    There's also a certain degree of inertia
+
   Distribution
 
     The test script is fairly minimal and really ought to exercise much more
@@ -19,6 +28,9 @@ TO DO
 
     - Test new transaction code.
 
+    Consider bumping the version number; the leading 0.0xx may deter some
+    potential users by suggesting a very incomplete package.
+
   Columns
 
     The column-information retrieve in DBIx::SQLEngine::Default should be
@@ -28,6 +40,8 @@ TO DO
 
     Consider blessing the column info hashes into new Column and ColumnSet
     classes.
+
+    Consider adding very simple Table and TableSet classes.
 
   Proposed Array Select interface
 
@@ -75,6 +89,9 @@ TO DO
       }
 
   Future Database-specific Functionality
+
+    Review DBIx::Compat; it seems like this information should map fairly
+    directly to candidate methods and subclasses.
 
     Additional subclass logic will be required to support the following:
 

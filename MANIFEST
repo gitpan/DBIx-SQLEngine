@@ -32,8 +32,12 @@ SQLEngine/Driver/Oracle.pm
 SQLEngine/Driver/Pg.pm
 SQLEngine/Driver/SQLite.pm
 SQLEngine/Mixin/SeqTable.pm
+SQLEngine/Schema/Column.pm
+SQLEngine/Schema/ColumnSet.pm
+SQLEngine/Schema/Table.pm
+SQLEngine/Schema/TableSet.pm
 TODO
 t/compile.t
 t/example.t
 t/standard.t
-test_data/test.sqlite
+test_data/about_test_data

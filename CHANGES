@@ -2,17 +2,45 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Version 0.014
+
+    2004-03-14 Released as DBIx-SQLEngine-0.014.
+
+    2004-03-13 Fixed spacing problem for long column names in
+    sql_create_columns, curtesy of a patch from Ron Savage.
+
+    2004-03-13 Ported schema classes from DBO2 to DBIx::SQLEngine::Schema
+    namespace. These are not yet in use, but will be supported through
+    additions to the SQLEngine interface in upcoming versions in a way that
+    should not break any existing code.
+
+  Version 0.013
+
+    2004-03-12 Released as DBIx-SQLEngine-0.013.
+
+    2004-03-12 Fixed another minor POD error.
+
+  Version 0.012
+
+    2004-03-11 Released as DBIx-SQLEngine-0.012.
+
+    2004-03-11 Fixed several minor POD errors. Adjusted checking of
+    wantarray to preserve its value across eval{} boudaries.
+
   Version 0.011
+
+    2004-03-10 Released as DBIx-SQLEngine-0.011.
 
     2004-03-10 Moved driver-specific subclasses to a new Driver:: namespace
     and added documentation to each of them. The external public interface
     is identical, but this may break naughty code that checked ref() or
     isa(); however the fix is straightforward and this keeps our namespaces
-    clearer. If your code was negatively impacted by this, let me know!
+    clearer. If your code was negatively impacted by this, let me know for
+    future reference!
 
     2004-02-24 Integrated some patches from Michael Kroll, including new
     Oracle subclass, and created a new Criteria::StringComparison class as
-    an alternate way of addressing an issue raised by another patch.
+    an alternate way of addressing an issue raised in email.
 
   Version 0.010
 
@@ -143,15 +171,18 @@ HISTORY
     2001-06-28 Ported some Criteria classes from earlier code into the new
     SQLEngine class hierarchy.
 
-    2001-06-27 Renamed from Adaptor to SQLEngine. Flattened class hierarchy;
-    we're only going to support DBI. Expunged old code. Switched to new
-    Class::MakeMethods distribution.
+    2001-06-27 New version moved into separate DBIx::DBO2 namespace. Renamed
+    Adaptor to SQLEngine. Flattened class hierarchy; we're only going to
+    support DBI. Expunged old code. Switched to new Class::MakeMethods
+    distribution.
 
   Prior Generation: DBO
 
     2001-02-14 Reversed boolean sense of 'nullable' to 'required'.
 
     2001-01-29 Fixed code to detect length and nullable column information.
+
+    2001-01-29 Added boolean required to store whether column is nullable.
 
     2001-01-13 Added retry on "Lost connection to MySQL" errors
 
