@@ -7,3 +7,5 @@
 ^pm_to_blib
 dbix_sqlengine_seq
 test.sqlite
+cover_db
+DBIx-SQLEngine-[^/]+/

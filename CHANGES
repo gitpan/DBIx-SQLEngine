@@ -2,11 +2,48 @@ NAME
     DBIx::SQLEngine::Docs::Changes - Revision history for DBIx::SQLEngine.
 
 HISTORY
+  Version 0.022
+
+    2004-04-09 Released as DBIx-SQLEngine-0.022.
+
+    2004-04-09 Merged many methods from DBIx::DBO2::RecordSet into
+    Record::Set.
+
+    2004-04-09 Added Record::Trait::Accessors and increased the minimum
+    version of Class::MakeMethods to 1.006 to get the Autoload interface it
+    uses.
+
+    2004-04-09 Added Record::Trait::Cached based on
+    DBIx::DBO2::Record::Cached. Added cache packages
+    DBIx::SQLEngine::Cache::TrivialCache and
+    DBIx::SQLEngine::Cache::BasicCache.
+
+    2004-04-09 Added Record::Trait::Hooks based on DBIx::DBO2::Record and
+    built a few tests.
+
+    2004-04-09 Initial working support for multiply-combinable Record class
+    traits. Moved traits into nested namespaces Driver::Trait and
+    Record::Trait.
+
+    2004-04-09 Revised synopsis and description to include more recent
+    features.
+
+    2004-04-09 Added support for sql_select( columns =>
+    \%colnames_as_aliases ) and sql_select( tables => { "table1.column1" =>
+    "table2.column2" } ), both inspired by the interface described in the
+    Sql::Simple documentation.
+
+    2004-04-08 Fixed tight loop detection (self-reference) in
+    CloneWithParameters.
+
+    2004-04-06 Beginning support for multiply-combinable Record class
+    traits.
+
   Version 0.021
 
-    2004-04- Released as DBIx-SQLEngine-0.021.
+    2004-04-05 Released as DBIx-SQLEngine-0.021.
 
-    2004-04-05
+    2004-04-05 Doc adjustments. Additional work on Record classes.
 
   Version 0.020
 
@@ -290,7 +327,8 @@ HISTORY
     support DBI. Expunged old code. Switched to new Class::MakeMethods
     distribution.
 
-  Prior Generation: DBO
+PRIOR VERSIONS
+  DBO
 
     2001-02-14 Reversed boolean sense of 'nullable' to 'required'.
 
@@ -333,7 +371,7 @@ HISTORY
 
     1997-11-18 Simon: Updated to current practice.
 
-  Generation Zero: DBAdaptor
+  DBAdaptor
 
     1997-09-24 IntraNetics97 Version 1.00.000
 

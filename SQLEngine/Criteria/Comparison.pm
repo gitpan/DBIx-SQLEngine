@@ -55,11 +55,13 @@ sub new {
 
 =item expr ( $fieldname )
 
+Accessor.
+
 =item compv () : $comparsion_value
 
 =item compv ( $comparsion_value )
 
-Accessor
+Accessor.
 
 =back
 
@@ -71,6 +73,24 @@ use Class::MakeMethods (
 );
 
 ########################################################################
+
+=head2 Evaluation
+
+=over 4
+
+=item sql_comparator () : $operator
+
+Returns operator associated with this criteria, such as "=" or "like".
+
+=item sql_where () : $sql_where_expression
+
+Generates SQL criteria expression. 
+
+Automatically converts "= NULL" to "IS NULL".
+
+=back
+
+=cut
 
 use Class::MakeMethods (
   'Template::Class:string' => 'sql_comparator',

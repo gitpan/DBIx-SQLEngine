@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 10 }
+BEGIN { plan tests => 14 }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -18,16 +18,34 @@ $sqldb->define_named_query( 'select_foo', 'select * from foo' );
 $sqldb->fetch_select( named_query => 'select_foo' );
 ok( $sqldb->last_query, 'select * from foo' );
 
+$sqldb->fetch_named_query( 'select_foo' );
+ok( $sqldb->last_query, 'select * from foo' );
+
+########################################################################
+
 $sqldb->define_named_query( 'insert_foo', [ 'insert into foo (bar) values (?)', \$1 ] );
 $sqldb->do_insert( named_query => [ 'insert_foo', 'Baz' ] );
 ok( $sqldb->last_query, 'insert into foo (bar) values (?)/Baz' );
+
+$sqldb->do_named_query( 'insert_foo', 'Baz' );
+ok( $sqldb->last_query, 'insert into foo (bar) values (?)/Baz' );
+
+########################################################################
 
 $sqldb->define_named_query( 'update_foo', { action => 'update', table => 'foo', values => { bar => \$1 } } );
 $sqldb->do_update( named_query => [ 'update_foo', 'Baz' ] );
 ok( $sqldb->last_query, 'update foo set bar = ?/Baz' );
 
+$sqldb->do_named_query( 'update_foo', 'Baz' );
+ok( $sqldb->last_query, 'update foo set bar = ?/Baz' );
+
+########################################################################
+
 $sqldb->define_named_query( 'delete_foo', sub { 'delete from foo' } );
 $sqldb->do_delete( named_query => 'delete_foo' );
+ok( $sqldb->last_query, 'delete from foo' );
+
+$sqldb->do_named_query( 'delete_foo' );
 ok( $sqldb->last_query, 'delete from foo' );
 
 ########################################################################

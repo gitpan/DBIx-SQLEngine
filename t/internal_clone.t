@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 29 }
+BEGIN { plan tests => 33 }
 
 use DBIx::SQLEngine::Utility::CloneWithParams;
 ok( 1 );
@@ -89,6 +89,27 @@ ok( ref($clone) );
 ok( UNIVERSAL::isa($clone, 'My::SimpleObject') );
 ok( $clone->foo,'Foozle' );
 ok( $clone->bar, 'Basil' );
+
+########################################################################
+
+ok( clone_with_parameters(\&My::SimpleObject::foo), \&My::SimpleObject::foo );
+
+{ 
+  my $clone = clone_with_parameters(\"foo");
+  ok( ref( $clone ) eq 'SCALAR' and $$clone eq 'foo' );
+}
+
+{ 
+  my $clone = clone_with_parameters(\\"foo");
+  ok( ref( $$clone ) eq 'SCALAR' and $$$clone eq 'foo' );
+}
+
+{ 
+  my $foo = [];
+  $foo->[0] = [ $foo ];
+  my $clone = clone_with_parameters($foo);
+  ok( ref( $clone ) eq 'ARRAY' and ref( $clone->[0] ) eq 'ARRAY' and ref( $clone->[0]->[0] ) eq 'ARRAY' );
+}
 
 ########################################################################
 

@@ -13,7 +13,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Or - Compound Any Criteria
+DBIx::SQLEngine::Criteria::Or - Criteria for Compound "Any"
 
 =head1 SYNOPSIS
 

@@ -26,7 +26,9 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
+use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
+
+use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );
 
 ########################################################################
 
@@ -81,11 +83,11 @@ sub sql_limit {
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
-Implemented using DBIx::SQLEngine::DriverTrait::NoSequences.
+Implemented using DBIx::SQLEngine::Driver::Trait::NoSequences.
 
 =cut
 
-use DBIx::SQLEngine::DriverTrait::NoSequences ':all';
+use DBIx::SQLEngine::Driver::Trait::NoSequences ':all';
 
 ########################################################################
 
@@ -106,10 +108,6 @@ Implemented using AnyData's "select * from $tablename limit 1".
 
 sub detect_any { 
   return 1
-}
-
-sub sql_detect_any {
-  croak "Unsupported";
 }
 
 sub sql_detect_table {

@@ -54,6 +54,27 @@ This package provides a subclass of DBIx::SQLEngine which works with the DBI's D
 
 Queries using the NullP driver and subclass never return any data, but do keep track of the SQL statements that are executed against them, allowing a simple way of checking whether the SQL generation code is working as expected.
 
+=head2 Testing Interface
+
+=over 4
+
+=item last_query()
+
+Testing interface. Returns the most recent query and parameters captured by prepare_execute().
+
+=back
+
+=head2 Internal Methods
+
+=over 4
+
+=item prepare_execute()
+
+Internal method. Captures the query and parameters that would have been sent to the database.
+
+=back
+
+
 =head1 SEE ALSO
 
 See L<DBIx::SQLEngine> for the overall interface and developer documentation.

@@ -8,7 +8,7 @@ use DBIx::SQLEngine;
 
 BEGIN { require 't/get_test_dsn.pl' }
 
-BEGIN { plan tests => 40 }
+BEGIN { plan tests => 45 }
 
 ########################################################################
 
@@ -111,6 +111,9 @@ SELECT_CRITERIA_SINGLE: {
   $rows = $sqldb->fetch_select( table => $table, criteria => "name = 'Dave'" );
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
   
+  $rows = $sqldb->fetch_select( table => $table, criteria => {name=>'Mike'});
+  ok( ref $rows and scalar @$rows == 0 );
+  
   $rows = $sqldb->fetch_select( sql => "select * from $table where name = 'Dave'" );
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
   
@@ -136,6 +139,37 @@ SELECT_CRITERIA_MULTI: {
   $rows = $sqldb->fetch_select( sql => "select * from $table where color = 'blue'", criteria => {name=>'Dave'});
   ok( ref $rows and scalar @$rows == 1 and $rows->[0]->{'name'} eq 'Dave' );
 
+}
+
+SELECT_CRITERIA_ONE: {
+
+  my $row = $sqldb->fetch_one_row( table => $table, criteria => {name=>'Dave'});
+  ok( ref $row and $rows->[0]->{'name'} eq 'Dave' );
+
+  $row = $sqldb->fetch_one_row( table => $table, criteria => {name=>'Mike'});
+  ok( ! $row );
+
+  my $value = $sqldb->fetch_one_value( table => $table, columns => 'name', criteria => {name=>'Dave'});
+  ok( $value eq 'Dave' );
+
+  $value = $sqldb->fetch_one_value( table => $table, columns => 'name', criteria => {name=>'Mike'});
+  ok( ! $value );
+
+}
+
+VISIT_SELECT: {
+
+  my ($row) = $sqldb->visit_select( table => $table, criteria => {name=>'Dave'}, sub { $_[0] });
+  ok( ref $row and $rows->[0]->{'name'} eq 'Dave' );
+
+  $row = $sqldb-> visit_select( table => $table, criteria => {name=>'Mike'}, sub { $_[0] });
+  ok( ! $row );
+
+  my $value = $sqldb->visit_select( table => $table, columns => 'name', criteria => {name=>'Dave'}, sub { $_[0]->{name} });
+  ok( $value eq 'Dave' );
+
+  $value = $sqldb->fetch_one_value( table => $table, columns => 'name', criteria => {name=>'Mike'}, sub { $_[0]->{name} });
+  ok( ! $value );
 }
 
 SELECT_CRITERIA_JOIN: {

@@ -1,11 +1,11 @@
 =head1 NAME
 
-DBIx::SQLEngine::DriverTrait::NoUnions - For databases without select unions
+DBIx::SQLEngine::Driver::Trait::NoUnions - For databases without select unions
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have native unions
-  use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
+  use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
   
   # Implements a workaround for unavailable sql_union capability
   $rows = $sqldb->fetch_select_rows( union => [
@@ -35,7 +35,7 @@ source code for the _super_dispatch function that handles this.
 
 ########################################################################
 
-package DBIx::SQLEngine::DriverTrait::NoUnions;
+package DBIx::SQLEngine::Driver::Trait::NoUnions;
 
 use Exporter;
 sub import { goto &Exporter::import } 

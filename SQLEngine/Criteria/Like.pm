@@ -15,7 +15,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Like - SQL92 Like Criteria
+DBIx::SQLEngine::Criteria::Like - Criteria for SQL92 Like Wildcards
 
 =head1 SYNOPSIS
 
@@ -28,6 +28,13 @@ DBIx::SQLEngine::Criteria::Like objects check that an expression
 matches a given SQL wildcard pattern. ANSI SQL 92 provides for "%"
 wildcards, and some vendors support additional patterns.
 
+=over 4
+
+=item sql_comparator()
+
+Returns "like".
+
+=back
 
 =head1 SEE ALSO
 

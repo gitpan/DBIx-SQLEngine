@@ -1,16 +1,35 @@
 =head1 NAME
 
-DBIx::SQLEngine - Extends DBI with high-level operations
+DBIx::SQLEngine - Extends DBI with High-Level Operations
+
+
+=head1 ABSTRACT
+
+The DBIx::SQLEngine class provides an extended interface for the DBI database
+framework. Each SQLEngine object is a wrapper around a DBI database handle,
+adding methods that support ad-hoc SQL generation and query execution in a
+single call. Dynamic subclassing based on database server type enables
+cross-platform portability. A simple object mapping layer provides classes
+for tables, columns, and records.
+
 
 =head1 SYNOPSIS
 
-B<Wrapper around a DBI Connection:>
+B<DBI Wrapper>: Adds methods to a DBI database handle.
 
   $sqldb = DBIx::SQLEngine->new( $dbi_dsn, $dbi_user, $dbi_passwd );
+  $sqldb = DBIx::SQLEngine->new( $dbh ); # or use your existing handle
 
-  $sqldb = DBIx::SQLEngine->new( $my_dbh );
+  $dbh = $sqldb->get_dbh();              # get the wraped DBI dbh
+  $sth = $sqldb->prepare($statement);    # or just call any dbh method
 
-B<High-Level Interface with Data-driven SQL:>
+B<High-Level Interface:> Prepare and fetch in one call.
+
+  $row_count = $sqldb->try_query($sql, \@params, 'get_execute_rowcount');
+  $array_ary = $sqldb->try_query($sql, \@params, 'fetchall_arrayref');
+  $hash_ary  = $sqldb->try_query($sql, \@params, 'fetchall_hashref');
+
+B<Data-Driven SQL:> SQL generation with flexible arguments.
 
   $hash_ary = $sqldb->fetch_select( 
     table => 'students', where => { 'status'=>'minor' },
@@ -30,150 +49,184 @@ B<High-Level Interface with Data-driven SQL:>
     table => 'students', where => { 'name'=>'Dave' },
   );
 
-B<Portablity with Driver Classes for Idiom and Emulation:>
+B<Portability Subclasses:> Uses driver's idioms or emulation.
 
-  $hash_ary = $sqldb->fetch_select( 
-    table => 'students',
-    order => 'last_name, first_name',
-    limit => 20, offset => 100,         # uses database's limit syntax
+  $hash_ary = $sqldb->fetch_select( # uses database's limit syntax 
+    table => 'students', order => 'last_name, first_name',
+    limit => 20, offset => 100,    
   );
   
-  $hash_ary = $sqldb->fetch_select( 
-    table => [ 'students',     # "join on" if available, or use "where" 
-		INNER_JOIN => ['students.id = grades.student_id'],
-	  	'grades' ],
+  $hash_ary = $sqldb->fetch_select( # use "join on" or merge with "where"
+    table => ['students'=>{'students.id'=>\'grades.student'}=>'grades'],
     where => { 'academic_year'=>'2004' },
   );
   
-  $hash_ary = $sqldb->fetch_select( 
-    union => [                      # combines results of both queries
-      { table => 'students', columns => 'first_name, last_name' },
-      { table => 'staff',    columns => 'name_f, name_l' },
-    ] 
+  $hash_ary = $sqldb->fetch_select( # combines multiple query results
+    union => [ { table=>'students', columns=>'first_name, last_name' },
+	       { table=>'staff',    columns=>'name_f, name_l' }        ],
   );
 
-  $sqldb->do_insert(
-    table => 'students', 
-    sequence => 'id',         # name of auto_increment/sequence column
+  $sqldb->do_insert(                # use auto_increment/sequence column
+    table => 'students', sequence => 'id',        
     values => { 'name'=>'Dave', 'age'=>'19', 'status'=>'minor' },
   );
 
-B<Full DBI Access for Direct Low-Level Use:>
+B<Named Definitions:> Pre-define connections and queries.
 
-  $array_ary = $sqldb->fetch_sql_rows($statement, @bind_params);
+  DBIx::SQLEngine->define_named_connections(
+    'test'       => 'dbi:AnyData:test',
+    'production' => [ 'dbi:Mysql:our_data:dbhost', 'user', 'passwd' ],
+  );
 
-  $dbi_dbh = $sqldb->get_dbh();               # get the wraped DBI dbh
+  DBIx::SQLEngine->define_named_queries(
+    'all_students'  => 'select * from students',
+    'delete_student' => [ 'delete * from students where id = ?', \$1 ],
+  );
 
-  $sth = $sqldb->prepare($statement);    # or just call any dbh method
+  $sqldb = DBIx::SQLEngine->new( 'test' );
 
+  $hash_ary = $sqldb->fetch_named_query( 'all_students' );
 
-=head1 ABSTRACT
+  $rowcount = $sqldb->do_named_query( 'delete_student', $my_id );
 
-The DBIx::SQLEngine class provides an extended interface for the
-DBI database framework. Each SQLEngine object is a wrapper around
-a DBI database handle, adding methods that support ad-hoc SQL
-generation and query execution in a single call. Dynamic subclassing
-based on database server type enables cross-platform portability.
+B<Object Mapping:> Classes for tables, columns, and records.
+
+  $table = $sqldb->table('grades');
+
+  $hash_ary = $table->fetch_select(); 
+
+  $rowcount = $table->do_delete( where => { id => $my_id } ); 
+
+  $sqldb->record_class( 'students', 'My::Student' );
+
+  @records = My::Student->fetch_select( 
+		where => 'age > 20',
+		order => 'last_name, first_name',
+             )->records;
+
+  $record = My::Student->new_with_values( 'first_name' => 'Dave' );
+  $record->insert_record();
+
+  $record = My::Student->fetch_record( $primary_key );
+
+  print $record->get_values('first_name', 'last_name');
+
+  $record->change_values( 'status' => 'adult' );
+  $record->update_record();
+
+  $record->delete_record();
 
 
 =head1 DESCRIPTION
 
-DBIx::SQLEngine is the latest generation of a toolkit used by the
-authors for several years to develop business data applications
-and object-relational mapping toolkits. Its goal is to simplify
-dynamic query execution with the following capabilities:
+DBIx::SQLEngine is the latest generation of a toolkit used by the authors for
+several years to develop business data applications. Its goal is to simplify dynamic query execution and to minimize cross-RDMS portability issues.
 
-=over 4
+=head2 DBI Wrapper
 
-=item *
+Each DBIx::SQLEngine object is implemented as a wrapper around a database
+handle provided by DBI, the Perl Database Interface.
 
-Data-driven SQL: Ad-hoc generation of SQL statements from Perl data
-structures in a variety of formats; simple hash and array references
-are flexibly converted to form clauses in standard SQL query syntax.
+Arbitrary queries can be executed, bypassing the SQL generation capabilities.
+The methods whose names end in _sql, like fetch_sql and do_sql, each accept
+a SQL statement and parameters, pass it to the DBI data source, and return
+information about the results of the query. Error handling is standardized,
+and routine annoyances like timed-out connections are retried automatically.
 
-=item *
+The SQLEngine also allows direct access to the wrapped database handle,
+enabling use of the entire DBI API for cases when high-level interfaces are
+insufficient.
 
-High-Level Interface: Standard query operations are handled by a single
-method call each. Error handling is standardized, and routine
-annoyances like timed-out connections are retried automatically.
-
-=item *
-
-Full DBI Access: Accepts arbitrary SQL queries with placeholder
-parameters to be passed through, and delegates all other method
-calls to a wrapped database handle, allowing access to the entire
-DBI API for cases when high-level interfaces are insufficient
-
-=item *
-
-Portability Subclasses: Uses dynamic subclassing (via DBIx::AnyDBD)
-to allow platform-specific support for driver idiosyncrasies and
-DBMS workarounds. This release includes subclasses for connections
-to MySQL, PostgreSQL, Oracle, and Microsoft SQL servers, as well
-as for the standalone SQLite, AnyData, and CSV packages.
-
-=back
-
-=head2 Data-driven SQL
-
-Several methods are responsible for converting their arguments into
-commands and placeholder parameters in SQL, the Structured Query
-Language.
-
-The various methods whose names being with sql_, like sql_select
-and sql_insert, each accept a hash of arguments and combines then
-to return a SQL statement and corresponding parameters. Data for
-each clause of the statement is accepted in multiple formats to
-facilitate query abstraction, often including various strings,
-array refs, and hash refs. Each method also supports passing
-arbitrary queries through using a C<sql> parameter.
+Relevant methods are descrbed in L</"SQLEngine Object Creation">, L</"INTERNAL CONNECTION METHODS (DBI DBH)">, and L</"INTERNAL STATEMENT METHODS (DBI STH)">.
 
 =head2 High-Level Interface
 
-The combined query interface provides a useful high-level idiom to
-perform the typical cycle of SQL generation, query execution, and
-results fetching, all through a single method call.
+A combined query interface provides a useful high-level idiom to perform
+the typical cycle of SQL generation, query execution, and results fetching,
+all through a single method call. 
 
-The various fetch_*, visit_* and do_* methods that don't end in
-_sql, like fetch_select and do_insert, are wrappers that combine
-a SQL-generation and a SQL-execution method to provide a simple
-ways to perform a query in one call.
+The various fetch_*, visit_* and do_* methods that don't end in _sql, like
+fetch_select and do_insert, are wrappers that combine a SQL-generation and a
+SQL-execution method to provide a simple ways to perform a query in one call.
 
-=head2 Full DBI Access
+These methods are defined in L</"FETCHING DATA (SQL DQL)">, L</"EDITING DATA
+(SQL DML)">, and L</"DEFINING STRUCTURES (SQL DDL)">.
 
-Each DBIx::SQLEngine object is implemented as a wrapper around a
-database handle provided by DBI, the Perl Database Interface.
+=head2 Data-Driven SQL
 
-Arbitrary queries can be executed, bypassing the SQL generation
-capabilities. The methods whose names end in _sql, like fetch_sql
-and do_sql, each accept a SQL statement and parameters, pass it to
-the DBI data source, and return information about the results of
-the query.
+Several methods are responsible for converting their arguments into commands
+and placeholder parameters in SQL, the Structured Query Language.
+
+The various methods whose names being with sql_, like sql_select and
+sql_insert, each accept a hash of arguments and combines then to return a SQL
+statement and corresponding parameters. Data for each clause of the statement
+is accepted in multiple formats to facilitate query abstraction, often
+including various strings, array refs, and hash refs. Each method also
+supports passing arbitrary queries through using a C<sql> parameter.
 
 =head2 Portability Subclasses
 
 Behind the scenes, different subclasses of SQLEngine are instantiated
-depending on the type of server to which you connect, thanks to
-DBIx::AnyData. As a result, some range of SQL dialect ideosyncracies
-can be compensated for. 
+depending on the type of server to which you connect, thanks to DBIx::AnyData.
 
-For example, the sql_limit method controls the syntax for select
-statements with limit and offset clauses, and both MySQL and Oracle
-override this method to use their local syntax.
+This release includes subclasses for connections to MySQL, PostgreSQL, Oracle,
+and Microsoft SQL servers, as well as for the standalone SQLite, AnyData, and
+CSV packages. For more information about supported drivers, see L</"Driver
+Classes">.
 
-The only method that's actually provided by the DBIx::SQLEngine
-class itself is the new() constructor. All of the other methods
-are defined in DBIx::SQLEngine::Driver::Default, or in one of its
-automatically-loaded subclasses.
+As a result, if you use the data-driven query interface, some range of SQL
+dialect ideosyncracies can be compensated for.  For example, the sql_limit
+method controls the syntax for select statements with limit and offset
+clauses, and both MySQL and Oracle override this method to use their local
+syntax.
 
-The public interface of DBIx::SQLEngine is shared by all of its
-subclasses. The superclass methods aim to produce and perform
-generic queries in an database-independent fashion, using standard
-SQL syntax.  Subclasses may override these methods to compensate
-for idiosyncrasies of their database server or mechanism.  To
-facilitate cross-platform subclassing, many of these methods are
-implemented by calling combinations of other methods, which may
-individually be overridden by subclasses.
+However, some features can not be effectively emulated; it's no use to pretend
+that you're starting a transaction if your database don't have a real atomic
+rollback/commit function. In those areas, the subclasses provide capability
+methods that allow callers to determine whether the current driver has the
+features they require. Features which are only available on a limited number
+of platforms are listed in L</"ADVANCED CAPABILITIES">.
+
+=head2 Named Definitions
+
+Connections and queries may be registered in named collections. The named
+connection feature allows the definition of names for sets of connection
+parameters, while the named query methods support names for various types of
+queries in either data-driven or plain-SQL formats.
+
+The definitions may include nested data structures with a special type of
+placeholders to be replaced by additional values at run-time. References to
+subroutines can also be registed as definitions, to be called at run-time with
+any additional values to produce the connection or query arguments.
+
+This functionality is described in L</"Named Connections"> and L</"NAMED QUERY
+CATALOG">.
+
+=head2 Object Mapping
+
+Built on top of the core SQLEngine functionality is an object mapping layer
+that provides a variety of classes which serve as an alternate interface to
+database content.
+
+The Schema classes provide objects for tables and columns which call methods
+on a SQLEngine to fetch and store data, while the Record classes provide a
+means of creating subclasses whose instances map to to rows in a particular
+table using the Schema classes.
+
+Note that this is not a general-purpose "object persistence" system, or even
+a full-fledged "object-relational mapping" system. It is rather a
+"relational-object mapping" system: each record class is linked to a single
+table, each instance to a single row in that table, and each key in the record
+hash to a value in an identically named column.
+
+Furthermore, no effort has been made to obscure the relational implementation
+behind the object abstraction; for example, if you don't need the portability
+provided by the data-driven query interface, you can include arbitrary bits
+of SQL in the arguments passed to a method that fetch objects from the
+database.
+
+This functionality is described in L</"OBJECT MAPPING"> and the documentation
+for the various classes.
 
 =cut
 
@@ -181,7 +234,7 @@ individually be overridden by subclasses.
 
 package DBIx::SQLEngine;
 
-$VERSION = 0.021;
+$VERSION = 0.022;
 
 use strict;
 
@@ -237,8 +290,6 @@ Passes the provided arguments to interpret_named_connection, defined below, and 
 
 =back
 
-B<Portability:> After setting up the DBI handle that it will use, the SQLEngine is reblessed into a matching subclass, if one is available. Thus, if you connect a DBIx::SQLEngine through DBD::mysql, by passing a DSN such as "dbi:mysql:test", your object will automatically shift to being an instance of the DBIx::SQLEngine::Driver::Mysql class. This allows the driver-specific subclasses to compensate for differences in the SQL dialect or execution ideosyncracies of that platform.
-
 =cut
 
 sub new {
@@ -287,15 +338,51 @@ The following methods maanage a collection of named connection parameters.
   DBIx::SQLEngine->define_named_connections( %names_and_info )
 
 Defines one or more named connections using the names and definitions provided.
-The connection definition must be in one of the formats described in
-L</"interpret_named_connection()">.
+
+The definition for each connection is expected to be in one of the following formats:
+
+=over 4
+
+=item *
+
+A DSN string which will be passed to a DBI->connect call. 
+
+=item *
+
+A reference to an array of a DSN string, and optionally, a user name and password. Items which should later be replaced by per-connection parameters can be represented by references to the special Perl variables $1, $2, $3, and so forth, corresponding to the order and number of parameters to be supplied. 
+
+=item *
+
+A reference to a subroutine or code block which will process the user-supplied arguments and return a connected DBI database handle or a list of connection arguments. 
+
+=back
 
 =item define_named_connections_from_text()
 
-  DBIx::SQLEngine->define_named_connection_from_texts($name, $cnxn_info_text)
-  DBIx::SQLEngine->define_named_connection_from_texts(%names_and_info_text)
+  DBIx::SQLEngine->define_named_connections_from_text($name, $cnxn_info_text)
+  DBIx::SQLEngine->define_named_connections_from_text(%names_and_info_text)
 
-Defines one or more connections, using some special processing to facilitate storing dynamic connection definitions in an external source such as a text file or database table. connection definitions which begin with a [ character are presumed to contain an array definition and are evaluated immediately. Definitions which begin with a " or ; character are presumed to contain a code definition and evaluated as the contents of an anonymous subroutine. All evaluations are done via a Safe compartment, which is required when this function is first used, so the code is extremely limited and can not call most other functions. 
+Defines one or more connections, using some special processing to facilitate storing dynamic connection definitions in an external source such as a text file or database table. 
+
+The interpretation of each definition is determined by its first non-whitespace character:
+
+=over 4
+
+=item * 
+
+Definitions which begin with a [ character are presumed to contain an array definition and are evaluated immediately.
+
+=item * 
+
+Definitions which begin with a " or ; character are presumed to contain a code definition and evaluated as the contents of an anonymous subroutine. 
+
+=item * 
+
+Other definitions are assumed to contain a plain string DSN.
+
+=back
+
+All evaluations are done via a Safe compartment, which is required when this function is first used, so the code is fairly limited in terms of what actions it can perform. 
 
 =item named_connections()
 
@@ -311,35 +398,36 @@ Accessor and mutator for a class-wide hash mappping connection names to their de
 
   DBIx::SQLEngine->named_connection( $name ) : $cnxn_info
 
-Retrieves the connection definition matching the name provided. Croaks if no connection has been defined for that name.
+Retrieves the connection definition matching the name provided. Croaks if no connection has been defined for that name. Used interally by the interpret_named_connection method.
 
 =item interpret_named_connection()
 
   DBIx::SQLEngine->interpret_named_connection($name, @params) : $dbh
   DBIx::SQLEngine->interpret_named_connection($name, @params) : $dsn
-  DBIx::SQLEngine->interpret_named_connection($name, @params) : ( $dsn, $user, $pass, $opts )
+  DBIx::SQLEngine->interpret_named_connection($name, @params) : ( $dsn, $user, $pass )
 
-Combines the connection definition matching the name provided with the following arguments and returns the resulting hash of connection clauses. Croaks if no connection has been defined for that name.
+Combines the connection definition matching the name provided with the following arguments and returns the resulting connection arguments. Croaks if no connection has been defined for that name.
 
-The interpret_named_connection() method expects the definition for each connection to be in one of the following formats:
+Depending on the definition associated with the name, it is combined with the provided parameters in one the following ways:
 
 =over 4
 
 =item *
 
-A DSN string. If a user name and password are required they must be passed as arguments. Any parameters passed to interpret_named_connection() are collected with the DSN and returned. 
+A string. Any connection parameters are assumed to be the user name and password, and are simply appended and returned.
 
 =item *
 
-A reference to an array of a DSN string, and if required, a user name and password. Parameters which should be replaced by user-supplied arguments can be represented by references to the special Perl variables $1, $2, $3, and so forth, corresponding to the argument order. The parameters passed to interpret_named_connection() are substituted in place of the references to the special variables and a copy of the array is returned. An exception is thrown if the number of parameters provided does not match the number of special variables referred to.
-
-For more information about the parameter replacement and argument count checking, see the clone_with_parameters() function from L<DBIx::SQLEngine::Utility::CloneWithParams>.
+A reference to an array, possibly with embedded placeholders in the C<\$1> style described above. Uses clone_with_parameters() to make and return a copy of the array, substituting the connection parameters in place of the placeholder references. An exception is thrown if the number of parameters provided does not match the number of special variables referred to. 
 
 =item *
 
-A reference to a subroutine or code block which will process the user-supplied arguments and return a connected DBI database handle or a list of connection arguments. The parameters passed to interpret_named_connection() are passed along to the subroutine and its results returned for execution.
+A reference to a subroutine. The connection parameters are passed
+along to the subroutine and its results returned for execution.
 
 =back
+
+For more information about the parameter replacement and argument count checking, see the clone_with_parameters() function from L<DBIx::SQLEngine::Utility::CloneWithParams>.
 
 =back
 
@@ -377,6 +465,41 @@ Here's a definition that requires a user name and password to be provided:
 
 =item *
 
+Here's a definition using Perl code to set up the connection arguments:
+
+  DBIx::SQLEngine->define_named_connections( 
+    'finance' => sub { "dbi:oracle:accounting", "bob", "123" },
+  );
+
+  $sqldb = DBIx::SQLEngine->new( 'finance' );
+
+=item *
+
+Connection names are interpreted recursively, allowing them to be used as aliases:
+
+  DBIx::SQLEngine->define_named_connections(
+    'test'       => 'dbi:AnyData:test',
+    'production' => 'dbi:Mysql:our_data:dbhost',
+  );
+
+  DBIx::SQLEngine->define_named_connections(
+    '-active'    => 'production',
+  );
+
+  $sqldb = DBIx::SQLEngine->new( '-active' );
+
+=item *
+
+You can also use named connecctions to hijack regular connections:
+
+  DBIx::SQLEngine->define_named_connections(
+    'dbi:Mysql:students:db_host' => 'dbi:AnyData:test',
+  );
+  
+  $sqldb = DBIx::SQLEngine->new( 'dbi:Mysql:students:db_host' );
+
+=item *
+
 Connection definitions can be stored in external text files or other sources and then evaluated into data structures or code references. The below code loads a simple text file of query definitions 
 
   open( CNXNS, '/path/to/my/connections' );
@@ -395,6 +518,9 @@ Placing the following text in the target file will define all of the connections
   
   # Definition that requires a user name and password 
   production: [ 'dbi:mysql:livedata', \$1, \$2 ]
+
+  # Definition using Perl code to set up the connection arguments
+  finance: "dbi:oracle:accounting", "bob", "123"
 
 =back
 
@@ -458,8 +584,76 @@ sub define_named_connections_from_text {
 
 ########################################################################
 
-sub DBILogging { shift; DBIx::SQLEngine::Driver::Default->DBILogging( @_ ) }
-sub SQLLogging { shift; DBIx::SQLEngine::Driver::Default->SQLLogging( @_ ) }
+=head2 Driver Classes
+
+After setting up the DBI handle that it will use, the SQLEngine is reblessed
+into a matching subclass, if one is available. Thus, if you connect a
+DBIx::SQLEngine through DBD::mysql, by passing a DSN such as "dbi:mysql:test",
+your object will automatically shift to being an instance of the
+DBIx::SQLEngine::Driver::Mysql class. This allows the driver-specific
+subclasses to compensate for differences in the SQL dialect or execution
+ideosyncracies of that platform.
+
+The only methods that are actually provided by the DBIx::SQLEngine package
+itself are the constructors like new(). All of the other methods desribed here
+are defined in DBIx::SQLEngine::Driver::Default, or in one of its
+automatically-loaded subclasses.
+
+This release includes the following driver subclasses, which support the listed database platforms:
+
+=over 10
+
+=item Mysql
+
+MySQL via DBD::mysql (Free RDBMS)
+
+=item Pg
+
+PostgreSQL via DBD::Pg (Free RDBMS)
+
+=item Oracle
+
+Oracle (Commercial RDBMS)
+
+=item MSSQL
+
+Microsoft SQL Server (Commercial RDBMS)
+
+=item SQLite
+
+SQLite via DBD::SQLite (Free Package)
+
+=item AnyData
+
+AnyData via DBD::AnyData (Free Package)
+
+=item CSV
+
+DBD::CSV (Free Package)
+
+=back
+
+To understand which SQLEngine driver class will be used for a given database
+connection, see the discussion of driver and class names in L<DBIx::AnyDBD>.
+
+The public interface of DBIx::SQLEngine described below is shared by all of
+the driver subclasses.  The superclass methods aim to produce and perform
+generic queries in an database-independent fashion, using standard SQL syntax.
+Subclasses may override these methods to compensate for idiosyncrasies of
+their database server or mechanism.  To facilitate cross-platform subclassing,
+many of these methods are implemented by calling combinations of other
+methods, which may individually be overridden by subclasses.
+
+=cut
+
+########################################################################
+
+# Provide aliases for methods that might be called on the base class
+foreach my $method ( qw/ DBILogging SQLLogging 
+	  named_queries define_named_query define_named_queries_from_text / ) {
+  no strict 'refs';
+  *{$method} = sub { shift; DBIx::SQLEngine::Driver::Default->$method( @_ ) }
+}
 
 ########################################################################
 
@@ -542,47 +736,47 @@ B<SQL Select Clauses>: The above select methods accept a hash describing the cla
 
 =over 4
 
-=item named_query 
+=item 'named_query'
 
 Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
-=item sql
+=item 'sql'
 
 May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders. Can not be used in combination with the table and columns arguments. 
 
-=item union
+=item 'union'
 
 Calls sql_union() to produce a query that combines the results of multiple calls to sql_select(). Should contain a reference to an array of hash-refs, each of which contains key-value pairs to be used in one of the unified selects. Can not be used in combination with the table and columns arguments. 
 
-=item table I<or> tables
+=item 'table' I<or> 'tables'
 
-The name of the tables to select from. Required unless one of the above parameters is provided. May contain a string with one or more table names, or a reference to an array of table names and join parameters. See the sql_join() method for details.
+The name of the tables to select from. Required unless one of the above parameters is provided. May contain a string with one or more table names, or a reference to an array or hash of table names and join criteria. See the sql_join() method for details.
 
-=item columns
+=item 'columns'
 
-Optional; defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to an object with a "column_names" method.
+Optional; defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to a hash mapping column names to "as" aliases, or a reference to an object with a "column_names" method.
 
-=item distinct
+=item 'distinct'
 
 Optional. Boolean. Adds the "distinct" keyword to the query if value is true.
 
-=item where I<or> criteria
+=item 'where' I<or> 'criteria'
 
 Optional. May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
-=item group
+=item 'group'
 
 Optional. May contain a comma-separated string of column names or experessions, or an reference to an array of the same.
 
-=item order
+=item 'order'
 
 Optional. May contain a comma-separated string of column names or experessions, optionally followed by "DESC", or an reference to an array of the same.
 
-=item limit
+=item 'limit'
 
 Optional. Maximum number of rows to be retrieved from the server. Relies on DBMS-specific behavior provided by sql_limit(). 
 
-=item offset
+=item 'offset'
 
 Optional. Number of rows at the start of the result which should be skipped over. Relies on DBMS-specific behavior provided by sql_limit(). 
 
@@ -643,7 +837,7 @@ Both generated and explicit SQL can be stored as named queries and then used aga
 
 =item *
 
-Here's a use of some optional clauses limiting the columns returned, and specifying a sort order:
+Here's a use of some optional clauses listing the columns returned, and specifying a sort order:
 
   $hashes = $sqldb->fetch_select( 
     table => 'students', columns => 'name, age', order => 'name'
@@ -719,49 +913,6 @@ You can visit with any combination of the other clauses supported by fetch_selec
     order => 'name, id desc',
     where => 'age < 22',
   );
-
-=item *
-
-Here's a join of two tables, using a basic inner join:
-
-  $hashes = $sqldb->fetch_select( 
-    tables => [ 
-      'students', INNER_JOIN=>['students.id = grades.student_id'], 'grades'
-    ],
-    order => 'students.name'
-  );
-
-Here's another way of expressing a join; note that we're using a backslash again to make it clear that we're looking for tuples where the students.id column matches that the grades.student_id column, rather than trying to match the literal string 'grades.student_id':
-
-  $hashes = $sqldb->fetch_select( 
-    tables => [ 
-      'students', INNER_JOIN=>{ 'students.id'=>\'grades.student_id' }, 'grades'
-    ],
-    order => 'students.name'
-  );
-
-The inner join shown above is equivalent to a typical cross join with the same joining criteria:
-
-  $hashes = $sqldb->fetch_select( 
-    tables => 'students, grades', 
-    where => { 'students.id' => \'grades.student_id' } 
-    order => 'students.name'
-  );
-
-You can also construct various kinds of outer joins using literal snippits of SQL describing the join:
-
-  $hashes = $sqldb->fetch_select( 
-    tables => 'students OUTER JOIN grades ON students.id = grades.student_id' } 
-    order => 'students.name'
-  );
-
-You can use nested array references to produce grouped join expressions:
-
-  $hashes = $sqldb->fetch_select( table => [
-    [ 'table1', INNER_JOIN=>{ 'table1.foo' => \'table2.foo' }, 'table2' ],
-      OUTER_JOIN=>{ 'table1.bar' => \'table3.bar' },
-    [ 'table3', INNER_JOIN=>{ 'table3.baz' => \'table4.baz' }, 'table4' ],
-  ] );
 
 =back
 
@@ -854,6 +1005,8 @@ sub sql_select {
       $columns = join ', ', $columns->column_names;
     } elsif ( ref($columns) eq 'ARRAY' ) {
       $columns = join ', ', @$columns;
+    } elsif ( ref($columns) eq 'HASH' ) {
+      $columns = join ', ', map { "$_ as $columns->{$_}" } sort keys %$columns;
     } else {
       confess("Unsupported column spec '$columns'");
     }
@@ -868,6 +1021,9 @@ sub sql_select {
       $tables = $tables->table_names;
     } elsif ( ref($tables) eq 'ARRAY' ) {
       ($tables, my @join_params) = $self->sql_join( @$tables );
+      push @params, @join_params;
+    } elsif ( ref($tables) eq 'HASH' ) {
+      ($tables, my @join_params) = $self->sql_join( $tables );
       push @params, @join_params;
     } else {
       confess("Unsupported table spec '$tables'");
@@ -956,6 +1112,7 @@ Subclasses should, based on the datasource's server_type, protect a literal valu
 =item sql_join()
 
   $sqldb->sql_join( $table1, $table2, ... ) : $sql, @params
+  $sqldb->sql_join( \%table_names_and_criteria ) : $sql, @params
   $sqldb->sql_join( $table1, \%criteria, $table2 ) : $sql, @params
   $sqldb->sql_join( $table1, $join_type=>\%criteria, $table2 ) : $sql, @params
 
@@ -963,9 +1120,98 @@ Processes one or more table names to create the "from" clause of a select statem
 
 A joining operation consists of a string containing the word C<join>, followed by an array reference or hash reference that specifies the criteria. The string should be one of the types of joins supported by your database, typically the following: "cross join", "inner join", "outer join", "left outer join", "right outer join". Any underscores in the string are converted to spaces, making it easier to use as an unquoted string. 
 
-The joining criteria can be an array reference of a SQL snippet followed by any necessary placeholder parameters, or a hash reference which will be converted to SQL with the DBIx::SQLEngine::Criteria package.
+The joining criteria can be an array reference of a string containing a bit SQL followed by any necessary placeholder parameters, or a hash reference which will be converted to SQL with the DBIx::SQLEngine::Criteria package.
 
-B<Portability:> While the cross and inner joins are widely supported, the various outer join capabilities are only present in some databases. Subclasses may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::DriverTrait::NoComplexJoins>.
+If an array reference is used as a table name, its contents are evaluated by being passed to another call to sql_join, and then the results are treated as a parenthesized expression. 
+
+If a hash reference is used as a table name, its contents are evaluated as criteria in "table1.column1" => "table2.column2" format. The table names and criteria are passed to another call to sql_join, and then the results are treated as a parenthesized expression. 
+
+B<Portability:> While the cross and inner joins are widely supported, the various outer join capabilities are only present in some databases. Subclasses may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::Driver::Trait::NoComplexJoins>.
+
+B<Examples:>
+
+=over 2
+
+=item *
+
+Here's a simple inner join of two tables, using a hash ref to express the linkage:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => { 'students.id' => 'grades.student_id' },
+    order => 'students.name'
+  );
+
+=item *
+
+You can also use bits of SQL to express the linkage between two tables:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => [ 
+      'students', 
+	INNER_JOIN=>['students.id = grades.student_id'], 
+      'grades'
+    ],
+    order => 'students.name'
+  );
+
+=item *
+
+Any number of tables can be joined in this fashion:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => [ 
+      'students', 
+	INNER_JOIN=>['students.id = grades.student_id'], 
+      'grades',
+	INNER_JOIN=>['classes.id  = grades.class_id'  ], 
+      'classes',
+    ],
+    order => 'students.name'
+  );
+
+=item *
+
+Here's yet another way of expressing a join, using a join type and a hash of criteria:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => [ 
+      'students', INNER_JOIN=>{ 'students.id'=>\'grades.student_id' }, 'grades'
+    ],
+    order => 'students.name'
+  );
+
+Note that we're using a backslash in our criteria hash again to make it clear that we're looking for tuples where the students.id column matches that the grades.student_id column, rather than trying to match the literal string 'grades.student_id'.
+
+=item *
+
+The inner join shown above is equivalent to a typical cross join with the same joining criteria:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => [ 'students', 'grades' ], 
+    where => { 'students.id' => \'grades.student_id' },
+    order => 'students.name'
+  );
+
+=item *
+
+You can use nested array references to produce grouped join expressions:
+
+  $hashes = $sqldb->fetch_select( table => [
+    [ 'table1', INNER_JOIN=>{ 'table1.foo' => \'table2.foo' }, 'table2' ],
+      OUTER_JOIN=>{ 'table1.bar' => \'table3.bar' },
+    [ 'table3', INNER_JOIN=>{ 'table3.baz' => \'table4.baz' }, 'table4' ],
+  ] );
+
+=item *
+
+You can also simply pass in your own arbitrary join as text:
+
+  $hashes = $sqldb->fetch_select( 
+    tables => 'students OUTER JOIN grades ON students.id = grades.student_id', 
+    order => 'students.name'
+  );
+
+=back
 
 =item sql_limit()
 
@@ -975,13 +1221,52 @@ Modifies the SQL statement and parameters list provided to apply the specified l
 
 B<Portability:> Limit and offset clauses are handled differently by various DBMS platforms. For example, MySQL accepts "limit 20,10", Postgres "limit 10 offset 20", and Oracle requires a nested select with rowcount. The sql_limit method can be overridden by subclasses to adjust this behavior.
 
+B<Examples:>
+
+=over 2
+
+=item *
+
+This query return records 101 through 120 from an alphabetical list:
+
+  $hash_ary = $sqldb->fetch_select( 
+    table => 'students', order => 'last_name, first_name',
+    limit => 20, offset => 100,    
+  );
+
+=back
+
 =item sql_union()
 
   $sqldb->sql_union( \%clauses_1, \%clauses_2, ... ) : $sql, @params
 
 Returns a combined select query using the C<union> operator between the SQL statements produced by calling sql_select() with each of the provided arrays of arguments. Triggered by use of a union clause in a call to sql_select(). 
 
-B<Portability:> Union queries are only supported by some databases. Croaks if the dbms_union_unsupported() capability method is set. Subclasses may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::DriverTrait::NoUnions>.
+B<Portability:> Union queries are only supported by some databases. Croaks if the dbms_union_unsupported() capability method is set. Subclasses may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::Driver::Trait::NoUnions>.
+
+B<Examples:>
+
+=over 2
+
+=item *
+
+A union can combine any mixture of queries with generated clauses:
+
+  $hash_ary = $sqldb->fetch_select( 
+    union=>[ { table=>'students', columns=>'first_name, last_name' },
+	     { table=>'staff',    columns=>'name_f, name_l' }, ],
+  );
+
+=item *
+
+Unions can also combine plain SQL strings:
+
+  $hash_ary = $sqldb->fetch_select( 
+    union=>[ { sql=>'select first_name, last_name from students' },
+	     { sql=>'select name_f, name_l from staff' },  ],
+  );
+
+=back
 
 =back
 
@@ -1030,7 +1315,7 @@ sub sql_join {
       $criteria = shift @exprs;
       $table = shift @exprs;
 
-    } elsif ( ref($expr) eq 'HASH' ) {
+    } elsif ( $sql and ref($expr) eq 'HASH' ) {
       $join = 'inner join';
       $criteria = $expr;
       $table = shift @exprs;
@@ -1040,14 +1325,40 @@ sub sql_join {
       $criteria = undef;
       $table = $expr;
     }
-
+    
     ( $table ) or croak("No table name provided to join to");
     ( $join ) or croak("No join type provided for link to $table");
-
+    
     $join =~ tr[_][ ];
     $sql .= ( ( length($join) == 1 ) ? '' : ' ' ) . $join;
     
-    my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
+    my ( $expr_sql, @expr_params );
+    if ( ! ref $table ) {
+      $expr_sql = $table 
+    } elsif ( ref($table) eq 'ARRAY' ) {
+      my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
+      $expr_sql = "( $sub_sql )";
+      push @expr_params, @sub_params
+    } elsif ( ref($table) eq 'HASH' ) {
+      my %seen_tables;
+      my @tables = grep { ! $seen_tables{$_} ++ } map { ( /^([^\.]+)\./ )[0] } %$table;
+      if ( @tables == 2 ) {
+	my ( $sub_sql, @sub_params ) = $self->sql_join( 
+	  $tables[0], 
+	  inner_join => { map { $_ => \($table->{$_}) } keys %$table },
+	  $tables[1], 
+	);
+	$expr_sql = $sub_sql;
+	push @expr_params, @sub_params
+      } else {
+	confess("sql_join on hash with more than two tables not yet supported")
+      }
+    } elsif ( UNIVERSAL::can($table, 'name') ) {
+      $expr_sql = $table->name
+    } else {
+      Carp::confess("Unsupported expression in sql_join: '$table'");
+    }
+
     $sql .= " $expr_sql";
     push @params, @expr_params;
     
@@ -1063,21 +1374,6 @@ sub sql_join {
   }
   $sql =~ s/^, // or carp("Suspect table join: '$sql'");
   ( $sql, @params );
-}
-
-# ( $sql, @params ) = $sqldb->sql_join_expr( $table_name_or_arrayref );
-sub sql_join_expr {
-  my ( $self, $table ) = @_;
-  if ( ! ref $table ) {
-    $table 
-  } elsif ( ref($table) eq 'ARRAY' ) {
-    my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
-    "( $sub_sql )", @sub_params
-  } elsif ( UNIVERSAL::can($table, 'name') ) {
-    $table->name
-  } else {
-    Carp::confess("Unsupported expression in sql_join: '$table'");
-  }
 }
 
 ########################################################################
@@ -1152,27 +1448,27 @@ B<SQL Insert Clauses>: The above insert methods accept a hash describing the cla
 
 =over 4
 
-=item named_query 
+=item 'named_query' 
 
 Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
-=item sql
+=item 'sql'
 
 Optional; overrides all other arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
-=item table 
+=item 'table' 
 
 Required. The name of the table to insert into.
 
-=item columns
+=item 'columns'
 
 Optional; defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to a hash whose keys contain the column names, or a reference to an object with a "column_names" method.
 
-=item values
+=item 'values'
 
 Required. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
-=item sequence
+=item 'sequence'
 
 Optional. May contain a string with the name of a column in the target table which should receive an automatically incremented value. If present, triggers use of the DMBS-specific do_insert_with_sequence() method, described below.
 
@@ -1338,7 +1634,7 @@ B<Portability:> Auto-incrementing sequences are handled differently by various D
 
 To standardize their use, this package defines an interface with several typical methods which may or may not be supported by individual subclasses. You may need to consult the documentation for the SQLEngine subclass and DBMS platform you're using to confirm that the sequence functionality you need is available.
 
-Drivers which don't support native sequences may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::DriverTrait::NoSequences>.
+Drivers which don't support native sequences may provide a degree of emulation; for one implementation of this, see L<DBIx::SQLEngine::Driver::Trait::NoSequences>.
 
 =over 4
 
@@ -1437,27 +1733,27 @@ B<SQL Update Clauses>: The above update methods accept a hash describing the cla
 
 =over 4
 
-=item named_query 
+=item 'named_query' 
 
 Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
-=item sql
+=item 'sql'
 
 Optional; conflicts with table, columns and values arguments. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
-=item table 
+=item 'table' 
 
 Required unless sql argument is used. The name of the table to update.
 
-=item columns
+=item 'columns'
 
 Optional unless sql argument is used. Defaults to '*'. May contain a comma-separated string of column names, or an reference to an array of column names, or a reference to a hash whose keys contain the column names, or a reference to an object with a "column_names" method.
 
-=item values
+=item 'values'
 
 Required unless sql argument is used. May contain a string with one or more comma-separated quoted values or expressions in SQL format, or a reference to an array of values to insert in order, or a reference to a hash whose values are to be inserted. If an array or hash reference is used, each value may either be a scalar to be used as a literal value (passed via placeholder), or a reference to a scalar to be used directly (such as a sql function or other non-literal expression).
 
-=item where I<or> criteria
+=item 'where' I<or> 'criteria'
 
 Optional, but remember that ommitting this will cause all of your rows to be updated! May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
@@ -1642,19 +1938,19 @@ B<SQL Delete Clauses>: The above delete methods accept a hash describing the cla
 
 =over 4
 
-=item named_query 
+=item 'named_query' 
 
 Uses the named_query catalog to build the query. May contain a defined query name, or a reference to an array of a query name followed by parameters to be handled by interpret_named_query. See L</"NAMED QUERY CATALOG"> for details.
 
-=item sql
+=item 'sql'
 
 Optional; conflicts with 'table' argument. May contain a plain SQL statement to be executed, or a reference to an array of a SQL statement followed by parameters for embedded placeholders.
 
-=item table 
+=item 'table' 
 
 Required unless explicit "sql => ..." is used. The name of the table to delete from.
 
-=item where I<or> criteria
+=item 'where' I<or> 'criteria'
 
 Optional, but remember that ommitting this will cause all of your rows to be deleted! May contain a literal SQL where clause, an array ref with a SQL clause and parameter list, a hash of field => value pairs, or an object that supports a sql_where() method. See the sql_where() method for details.
 
@@ -2037,51 +2333,6 @@ sub dbms_create_column_types {
 
 ########################################################################
 
-=head2 Schema Objects
-
-=over 4
-
-=item tables()
-
-  $sqldb->tables() : $tableset
-
-Returns a new DBIx::SQLEngine::Schema::TableSet object containing table objects with the names discovered by detect_table_names(). See L<DBIx::SQLEngine::Schema::TableSet> for more information on this object's interface.
-
-=item table()
-
-  $sqldb->table( $tablename ) : $table
-
-Returns a new DBIx::SQLEngine::Schema::Table object with this SQLEngine and the given table name. See L<DBIx::SQLEngine::Schema::Table> for more information on this object's interface.
-
-=item record_class()
-
-  $sqldb->record_class( $tablename ) : $record_class
-
-Returns the Record::Class which corresponds to the given table name
-
-=back
-
-=cut
-
-sub tables {
-  my $self = shift;
-  require DBIx::SQLEngine::Schema::TableSet;
-  DBIx::SQLEngine::Schema::TableSet->new( 
-    map { $self->table( $_ ) } $self->detect_table_names 
-  )
-}
-
-sub table {
-  require DBIx::SQLEngine::Schema::Table;
-  DBIx::SQLEngine::Schema::Table->new( sqlengine => (shift), name => (shift) )
-}
-
-sub record_class {
-  (shift)->table( shift )->record_class()
-}
-
-########################################################################
-
 ########################################################################
 
 =head1 NAMED QUERY CATALOG
@@ -2098,7 +2349,7 @@ The following methods manage a collection of named query definitions.
   $sqldb->define_named_queries( $query_name, $query_info, ... )
   $sqldb->define_named_queries( %query_names_and_info )
 
-Defines one or more named querues using the names and definitions provided.
+Defines one or more named queries using the names and definitions provided.
 The query definition must be in one of the formats described below in
 L</"Interpreting Named Queries">.
 
@@ -2416,6 +2667,147 @@ sub do_query {
 
 ########################################################################
 
+=head1 OBJECT MAPPING
+
+This layer provides classes for Record, Table and Column objects which 
+fetch and store information from a SQLEngine. 
+
+Each of these objects relies on a SQLEngine, typically passed to their constructor or initializer. A few convenience methods let you start this process from your current SQLEngine object, as described in L</"Accessing Objects">. 
+
+A brief summary of some of the methods provided by these objects is included in L</"Schema Classes"> and L</"Record Classes">. For a complete reference, see the documentation for each of the individual classes.
+
+=cut
+
+########################################################################
+
+=head2 Accessing Objects
+
+The following methods provide access to objects which represent tables, 
+columns and records in a given SQLEngine.
+
+They each ensure the necessary classes are loaded using require().
+
+=over 4
+
+=item tables()
+
+  $sqldb->tables() : $tableset
+
+Returns a new DBIx::SQLEngine::Schema::TableSet object containing table objects with the names discovered by detect_table_names(). See L<DBIx::SQLEngine::Schema::TableSet> for more information on this object's interface.
+
+=item table()
+
+  $sqldb->table( $tablename ) : $table
+
+Returns a new DBIx::SQLEngine::Schema::Table object with this SQLEngine and the given table name. See L<DBIx::SQLEngine::Schema::Table> for more information on this object's interface.
+
+=item record_class()
+
+  $sqldb->record_class( $tablename ) : $record_class
+  $sqldb->record_class( $tablename, $classname ) : $record_class
+  $sqldb->record_class( $tablename, $classname, @traits ) : $record_class
+
+Generates a Record::Class which corresponds to the given table name. Note that the record class is a class name, not an object. If no class name is provided, one is generated based on the table name. See L<DBIx::SQLEngine::Record::Base> for more information on this object's interface.
+
+=back
+
+=cut
+
+sub tables {
+  my $self = shift;
+  require DBIx::SQLEngine::Schema::TableSet;
+  DBIx::SQLEngine::Schema::TableSet->new( 
+    map { $self->table( $_ ) } $self->detect_table_names 
+  )
+}
+
+sub table {
+  require DBIx::SQLEngine::Schema::Table;
+  DBIx::SQLEngine::Schema::Table->new( sqlengine => (shift), name => (shift) )
+}
+
+sub record_class {
+  (shift)->table( shift )->record_class( @_ )
+}
+
+########################################################################
+
+=head2 Schema Classes
+
+The following provides a brief overview of methods provided by the schema classes. 
+
+=over 4
+
+=item Enumerating TableSets
+
+A Schema::TableSet is simply an array of Schema::Table objects.
+
+  $tableset = $sqldb->tables();
+
+  print $tableset->count;
+  
+  foreach my $table ( $tableset->tables ) {
+    print $table->name;
+  }
+  
+  $table = $tableset->table_named( $name );
+
+=item Querying Table Objects
+
+Table objects pass the various fetch_ and do_ methods through to the SQLEngine along with their table name.
+
+  $table = $sqldb->table( $table_name );
+
+  $hash_ary = $table->fetch_select( where => { status=>2 } );
+
+  $table->do_insert( values => { somefield=>'A Value', status=>3 } );
+  $table->do_update( values => { status=>3 }, where => { status=>2 } );
+  $table->do_delete( where => { somefield=>'A Value' } );
+
+=back
+
+For more information see the documentation for these packages: L<DBIx::SQLEngine::Schema::Table>, L<DBIx::SQLEngine::Schema::TableSet>, L<DBIx::SQLEngine::Schema::Column>, and L<DBIx::SQLEngine::Schema::ColumnSet>.
+
+=cut
+
+########################################################################
+
+=head2 Record Classes
+
+The following provides a brief overview of methods provided by the record classes. 
+
+=over 4
+
+=item Records and Record Sets
+
+  $class_name = $sqldb->record_class( $table_name );
+
+  $sqldb->record_class( $table_name, $class_name );
+  
+  $record_set = $class_name->fetch_select( criteria => { status=>2 } );
+  
+  @records = $record_set->records;
+
+  $record = $class_name->fetch_record( $primary_key );
+  
+  $record = $class_name->new_with_values( somefield=>'A Value' );
+  $record->insert_record();
+  
+  $record->change( somefield=>'New Value' );
+  $record->update_record();
+  
+  $record->delete_record();
+
+=back
+
+For more information see the documentation for these packages: L<DBIx::SQLEngine::Record::Base> and L<DBIx::SQLEngine::Record::Set>. 
+
+=cut
+
+########################################################################
+
+########################################################################
+
 =head1 ADVANCED CAPABILITIES
 
 Not all of the below capabilities will be available on all database servers. 
@@ -2498,8 +2890,9 @@ sub dbms_null_becomes_emptystring { undef }
 sub dbms_emptystring_becomes_null { undef }
 
 sub dbms_placeholders_unsupported { undef }
-sub dbms_transactions_unsupported { undef }
 sub dbms_multi_sth_unsupported { undef }
+
+sub dbms_transactions_unsupported { undef }
 sub dbms_indexes_unsupported { undef }
 sub dbms_storedprocs_unsupported { undef }
 
@@ -2806,7 +3199,7 @@ sub sql_drop_database {
 
 ########################################################################
 
-=head2 Stored Procedures
+=head2 Call, Create and Drop Stored Procedures
 
 Note: this feature has been added recently, and the interface is subject to change.
 
@@ -3641,11 +4034,7 @@ This example, based on a writeup by Ron Savage, shows a connection being opened,
   
   eval {
     my $engine = DBIx::SQLEngine->new(
-      'DBI:mysql:test:127.0.0.1', 'route', 'bier',
-      {
-	RaiseError => 1,
-	ShowErrorStatement => 1,
-      }
+      'DBI:mysql:test', 'route', 'bier'
     );
     my $table_name = 'sqle';
     my $columns = [
@@ -3662,16 +4051,18 @@ This example, based on a writeup by Ron Savage, shows a connection being opened,
     $engine->drop_table($table_name);
     $engine->create_table($table_name, $columns);
   
-    $engine->do_insert(table => $table_name, values => {sqle_name => 'One'});
-    $engine->do_insert(table => $table_name, values => {sqle_name => 'Two'});
-    $engine->do_insert(table => $table_name, values => {sqle_name => 'Three'});
+    $engine->do_insert(table=>$table_name, values=>{sqle_name=>'One'});
+    $engine->do_insert(table=>$table_name, values=>{sqle_name=>'Two'});
+    $engine->do_insert(table=>$table_name, values=>{sqle_name=>'Three'});
   
     my $dataset = $engine->fetch_select(table => $table_name);
     my $count = 0;
     for my $data (@$dataset) {
       $count++;
-      print "Row $count: ", map( {"\t$_ => " . 
-	(defined $$data{$_} ? $$data{$_} : 'NULL')} sort keys %$data), "\n";
+      print "Row $count: ", 
+	  map( {"\t$_ => " . (defined $$data{$_} ? $$data{$_} : 'NULL') }
+		sort keys %$data), 
+	  "\n";
     }
   };
   if ( $@ ) {
@@ -3725,11 +4116,11 @@ Many thanks to the kind people who have contributed code and other feedback:
 
 Inspiration, tricks, and bits of useful code were mined from these CPAN modules:
 
-  DBIx::AnyDBD
-  DBIx::Compat
-  DBIx::Datasource
-  DBIx::Renderer
-  Alzabo
+  Alzabo by Dave Rolsky 
+  DBIx::AnyDBD by Matt Sergeant 
+  DBIx::Compat by G. Richter
+  DBIx::Datasource by Ivan Kohler 
+  DBIx::Renderer by Marcel Grunauer 
 
 =head2 Copyright
 

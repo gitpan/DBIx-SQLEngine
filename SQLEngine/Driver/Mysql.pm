@@ -26,7 +26,7 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
+use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
 
 ########################################################################
 

@@ -1,13 +1,13 @@
 use ExtUtils::MakeMaker;
 
+########################################################################
 WriteMakefile(
     'NAME'		=> 'DBIx::SQLEngine',
     'VERSION_FROM'	=> 'SQLEngine.pm', 
     'PREREQ_PM'		=> {
 	DBI				=> 1.0,
 	DBIx::AnyDBD			=> 2.0,
-	Class::MakeMethods		=> 1.003,
-	Class::MakeMethods::Template	=> 1.003,
+	Class::MakeMethods		=> 1.006,
     }, 
     ($] >= 5.005 ? (
       ABSTRACT_FROM => 'SQLEngine.pm', 
@@ -15,19 +15,24 @@ WriteMakefile(
     ) : ()),
 );
 
+########################################################################
+
 sub MY::postamble { q{
 
 everything:
 	make again; make cleanmanifest; make docs; make testsuite
 
 again:
-	make clean; perl Makefile.PL; make
+	make clean; perl Makefile.PL; make pm_to_blib
 
 cleanmanifest:
 	rm MANIFEST ; touch MANIFEST; make manifest
 
 testsuite:
 	perl t/test_suite.pl
+
+cover:
+	cover -delete; HARNESS_PERL_SWITCHES=-MDevel::Cover make testsuite; cover
 
 docs : README CHANGES TODO
 
@@ -41,3 +46,10 @@ TODO: SQLEngine/Docs/ToDo.pod
 	pod2text SQLEngine/Docs/ToDo.pod > TODO
 
 }; }
+
+########################################################################
+
+
+
+########################################################################
+1;

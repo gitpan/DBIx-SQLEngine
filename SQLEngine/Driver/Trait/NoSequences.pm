@@ -1,11 +1,11 @@
 =head1 NAME
 
-DBIx::SQLEngine::DriverTrait::NoSequences - For databases without native sequences
+DBIx::SQLEngine::Driver::Trait::NoSequences - For databases without native sequences
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have native sequences
-  use DBIx::SQLEngine::DriverTrait::NoSequences ':all';
+  use DBIx::SQLEngine::Driver::Trait::NoSequences ':all';
   
   # Public interface for NoSequences functionality
   $nextid = $sqldb->seq_increment( $table, $field );
@@ -33,7 +33,7 @@ and @EXPORT.
 
 ########################################################################
 
-package DBIx::SQLEngine::DriverTrait::NoSequences;
+package DBIx::SQLEngine::Driver::Trait::NoSequences;
 
 use Exporter;
 sub import { goto &Exporter::import } 

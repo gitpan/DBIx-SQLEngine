@@ -1,11 +1,11 @@
 =head1 NAME
 
-DBIx::SQLEngine::DriverTrait::NoComplexJoins - For databases without complex joins
+DBIx::SQLEngine::Driver::Trait::NoComplexJoins - For databases without complex joins
 
 =head1 SYNOPSIS
 
   # Classes can import this behavior if they don't have joins using "on"
-  use DBIx::SQLEngine::DriverTrait::NoComplexJoins ':all';
+  use DBIx::SQLEngine::Driver::Trait::NoComplexJoins ':all';
   
   # Implements a workaround for missing "inner join on ..." capability
   $rows = $sqldb->fetch_select_rows( tables => [
@@ -35,7 +35,7 @@ and @EXPORT.
 
 ########################################################################
 
-package DBIx::SQLEngine::DriverTrait::NoComplexJoins;
+package DBIx::SQLEngine::Driver::Trait::NoComplexJoins;
 
 use Exporter;
 sub import { goto &Exporter::import } 
@@ -133,7 +133,34 @@ sub sql_join {
     ( $join !~ /outer|right|left/i ) 
 	or confess("This database does not support outer joins");
     
-    my ( $expr_sql, @expr_params ) = $self->sql_join_expr( $table );
+    my ( $expr_sql, @expr_params );
+    if ( ! ref $table ) {
+      $expr_sql = $table 
+    } elsif ( ref($table) eq 'ARRAY' ) {
+      my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
+      # No need for parentheses because everything's going to be cross joined.
+      $expr_sql = $sub_sql;
+      push @expr_params, @sub_params
+    } elsif ( ref($table) eq 'HASH' ) {
+      my %seen_tables;
+      my @tables = grep { ! $seen_tables{$_} ++ } map { ( /^([^\.]+)\./ )[0] } %$table;
+      if ( @tables == 2 ) {
+	my ( $sub_sql, @sub_params ) = $self->sql_join( 
+	  $tables[0], 
+	  inner_join => { map { $_ => \($table->{$_}) } keys %$table },
+	  $tables[1], 
+	);
+	$expr_sql = $sub_sql;
+	push @expr_params, @sub_params
+      } else {
+	confess("sql_join on hash with more than two tables not yet supported")
+      }
+    } elsif ( UNIVERSAL::can($table, 'name') ) {
+      $expr_sql = $table->name
+    } else {
+      Carp::confess("Unsupported expression in sql_join: '$table'");
+    }
+    
     if ( $expr_sql =~ s/ where (.*)$// ) {
       push @where_sql, $1;
       push @where_params, @expr_params;
@@ -158,22 +185,6 @@ sub sql_join {
     push @params, @where_params;
   }
   ( $sql, @params );
-}
-
-# ( $sql, @params ) = $sqldb->sql_join_expr( $table_name_or_arrayref );
-sub sql_join_expr {
-  my ( $self, $table ) = @_;
-  if ( ! ref $table ) {
-    $table 
-  } elsif ( ref($table) eq 'ARRAY' ) {
-    my ( $sub_sql, @sub_params ) = $self->sql_join( @$table );
-    # No need for parentheses because everything's going to be cross joined.
-    $sub_sql, @sub_params
-  } elsif ( UNIVERSAL::can($table, 'name') ) {
-    $table->name
-  } else {
-    Carp::confess("Unsupported expression in sql_join: '$table'");
-  }
 }
 
 ########################################################################

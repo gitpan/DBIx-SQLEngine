@@ -28,6 +28,13 @@ DBIx::SQLEngine::Criteria::StringComparison - Equality or Wildcard Criteria
 
 DBIx::SQLEngine::Criteria::StringComparison objects behave as either Equality or Like objects, depending on whether the value they're matching against contains a SQL wildcard "%" character.
 
+=over 4
+
+=item sql_comparator()
+
+Returns "like" or "=".
+
+=back
 
 =head1 SEE ALSO
 

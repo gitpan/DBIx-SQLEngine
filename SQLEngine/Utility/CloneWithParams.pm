@@ -20,8 +20,7 @@ This package provides a function named clone_with_parameters() that makes deep c
 
 This function makes deep copies of nested data structures, with object
 reblessing and loop detection to avoid endless cycles. (The internals are
-based on ref_clone() from L<Class::MakeMethods::Utility::Ref>, which in turn
-is based on the old-school Ref.pm.)
+based on clone() from L<Clone::PP>.)
 
 It's one distinctive behavior is that if a data structure contains references
 to the special numeric Perl variables $1, $2, $3, and so forth, when it is
@@ -175,6 +174,8 @@ sub __get_parameter {
 # $copy = __clone_with_parameters( $value_or_ref );
 sub __clone_with_parameters {
   my $source = shift;
+  
+  return $CopiedItems{ $source } if ( exists $CopiedItems{ $source } );
 
   if ( my $placeholder = $num_refs{ $source } ) {
     return __get_parameter( $placeholder );
@@ -186,8 +187,6 @@ sub __clone_with_parameters {
     return $source;
   }
   
-  return $CopiedItems{ $source } if ( exists $CopiedItems{ $source } );
-  
   my $class_name;
   if ( "$source" =~ /^\Q$ref_type\E\=([A-Z]+)\(0x[0-9a-f]+\)$/ ) {
     $class_name = $ref_type;
@@ -195,21 +194,20 @@ sub __clone_with_parameters {
   }
   
   my $copy;
-  if ($ref_type eq 'SCALAR') {
-    $copy = \( $$source );
-  } elsif ($ref_type eq 'REF') {
-    $copy = \( __clone_with_parameters($$source) );
+  if ($ref_type eq 'SCALAR' or $ref_type eq 'REF') {
+    $CopiedItems{ $source } = $copy = \( my $var = "" );;
+    $$copy = __clone_with_parameters($$source);
   } elsif ($ref_type eq 'HASH') {
-    $copy = { map { __clone_with_parameters($_) } %$source };
+    $CopiedItems{ $source } = $copy = {};
+    %$copy = map { __clone_with_parameters($_) } %$source;
   } elsif ($ref_type eq 'ARRAY') {
-    $copy = [ map { __clone_with_parameters($_) } @$source ];
+    $CopiedItems{ $source } = $copy = [];
+    @$copy = map { __clone_with_parameters($_) } @$source;
   } else {
     $copy = $source;
   }
   
   bless $copy, $class_name if $class_name;
-  
-  $CopiedItems{ $source } = $copy;
   
   return $copy;
 }

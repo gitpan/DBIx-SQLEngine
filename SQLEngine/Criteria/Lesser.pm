@@ -15,7 +15,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Lesser - Basic Comparison Criteria
+DBIx::SQLEngine::Criteria::Lesser - Criteria for Basic Comparison
 
 =head1 SYNOPSIS
 
@@ -26,6 +26,14 @@ DBIx::SQLEngine::Criteria::Lesser - Basic Comparison Criteria
 
 DBIx::SQLEngine::Criteria::Lesser objects check that an expression 
 is less than a given reference value.
+
+=over 4
+
+=item sql_comparator()
+
+Returns "<".
+
+=back
 
 
 =head1 SEE ALSO

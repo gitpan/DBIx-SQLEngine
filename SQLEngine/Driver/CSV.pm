@@ -31,9 +31,9 @@ use Carp;
 
 ########################################################################
 
-use DBIx::SQLEngine::DriverTrait::NoUnions ':all';
+use DBIx::SQLEngine::Driver::Trait::NoUnions ':all';
 
-use DBIx::SQLEngine::DriverTrait::NoComplexJoins ':all';
+use DBIx::SQLEngine::Driver::Trait::NoComplexJoins ':all';
 
 ########################################################################
 
@@ -84,11 +84,11 @@ sub sql_limit {
 
   $sqldb->do_insert_with_sequence( $sequence_name, %sql_clauses ) : $row_count
 
-Implemented using DBIx::SQLEngine::DriverTrait::NoSequences.
+Implemented using DBIx::SQLEngine::Driver::Trait::NoSequences.
 
 =cut
 
-use DBIx::SQLEngine::DriverTrait::NoSequences  qw( :all !sql_seq_increment );
+use DBIx::SQLEngine::Driver::Trait::NoSequences  qw( :all !sql_seq_increment );
 
 # $sql, @params = $sqldb->sql_seq_increment( $table, $field, $current, $next );
 sub sql_seq_increment {
@@ -110,6 +110,10 @@ sub sql_seq_increment {
 Returns 1, as we presume that the requisite driver modules are
 available or we wouldn't have reached this point.
 
+=head2 sql_detect_any
+
+This should not be called. Throws fatal exception.
+
 =head2 sql_detect_table
 
   $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
@@ -120,6 +124,10 @@ Implemented using DBD::CSV's "select * from $tablename where 1 = 0".
 
 sub detect_any {
   return 1;
+}
+
+sub sql_detect_any {
+  croak "Unsupported";
 }
 
 sub sql_detect_table {
@@ -208,8 +216,8 @@ sub dbms_select_table_as_unsupported { 1 }
 sub dbms_joins_unsupported           { 1 }
 sub dbms_column_types_unsupported    { 1 }
 sub dbms_null_becomes_emptystring    { 1 }
-sub dbms_indexes_unsupported         { 1 }
-sub dbms_storedprocs_unsupported     { 1 }
+
+use DBIx::SQLEngine::Driver::Trait::NoAdvancedFeatures  qw( :all );
 
 ########################################################################
 

@@ -8,14 +8,17 @@ DBIx::SQLEngine::Schema::Table - A table in a data source
   
   $table = $sqldb->table( $table_name );
   
-  $row_ary = $table->fetch_select( criteria => { status => 2 } );
-  $table->do_update( values => { status => 3 }, criteria => { status => 2 } );
+  $hash_ary = $table->fetch_select( where => { status => 2 } );
 
-  $table->insert_row( { id => $primary_key, somefield => 'Some Value' } );
-  $row = $table->fetch_row( $primary_key );
-  $row->{somefield} = 'New Value';
-  $table->update_row( $row );
-  $table->delete_row( $row );
+  $table->do_insert( values => { somefield => 'A Value', status => 3 } );
+  $table->do_update( values => { status => 3 }, where => { status => 2 } );
+  $table->do_delete( where => { somefield => 'A Value' } );
+
+  $hash = $table->fetch_row( $primary_key );
+
+  $table->insert_row( { somefield => 'Some Value' } );
+  $table->update_row( { id => $primary_key, somefield => 'Some Value' } );
+  $table->delete_row( { id => $primary_key } );
 
 
 =head1 DESCRIPTION
@@ -26,7 +29,7 @@ By storing a reference to a SQLEngine and the name of a table to operate on, a S
 
 Each table can retrieve and cache a ColumnSet containing information about the name and type of the columns in the table. Column information is loaded from the storage as needed, but if you are creating a new table you must provide the definition.
 
-The *_row() methods use this information about the table columns to facilitate common operations on table rows using simple hash-refs.
+The *_row() methods use this information about the table columns to facilitate common operations on table rows using their primary keys and simple hash-refs.
 
 =cut
 
@@ -225,8 +228,9 @@ Returns the Record::Class which corresponds to the table.
 =cut
 
 sub record_class {
-  require DBIx::SQLEngine::Record::Base;
-  DBIx::SQLEngine::Record::Base->new_subclass( table=>(shift), name=>(shift) )
+  my ($table, $classname, @traits) = @_;
+  require DBIx::SQLEngine::Record::Class;
+  DBIx::SQLEngine::Record::Class->subclass_for_table( @_ )
 }
 
 ########################################################################
@@ -288,13 +292,13 @@ sub visit_select {
   # Retrieve a specific row by id
 sub select_row {
   my $self = shift;
-  $self->sqlengine_do('fetch_one_row', criteria=>$self->primary_criteria(@_) )
+  $self->sqlengine_do('fetch_one_row', where=>$self->primary_criteria(@_) )
 }
 
 # $rows = $self->select_rows( @ids_or_hashes );
 sub select_rows {
   my $self = shift;
-  $self->sqlengine_do('fetch_select', criteria=>$self->primary_criteria(@_) )
+  $self->sqlengine_do('fetch_select', where=>$self->primary_criteria(@_) )
 }
 
 ########################################################################
@@ -334,7 +338,7 @@ sub fetch_one_value {
 # $rowcount = $self->count_rows
 # $rowcount = $self->count_rows( $criteria );
 sub count_rows {
-  (shift)->fetch_one_value( columns => 'count(*)', criteria => (shift) )
+  (shift)->fetch_one_value( columns => 'count(*)', where => (shift) )
 }
 
 sub try_count_rows {
@@ -344,7 +348,7 @@ sub try_count_rows {
 
 # $max_value = $self->fetch_max( $colname, $criteria );
 sub fetch_max {
-  (shift)->fetch_one_value( columns => "max(".(shift).")", criteria => (shift) )
+  (shift)->fetch_one_value( columns => "max(".(shift).")", where => (shift) )
 }
 
 ########################################################################
@@ -445,7 +449,7 @@ sub update_row {
   
   $self->sqlengine_do('do_update', 
     columns => [ $self->column_names ],
-    criteria => $self->primary_criteria( $row ),
+    where => $self->primary_criteria( $row ),
     values => $row,
   );
 }
@@ -494,13 +498,13 @@ sub do_delete {
 # $self->delete_row( $row );
 sub delete_row { 
   my $self = shift;
-  $self->sqlengine_do( 'do_delete', criteria => $self->primary_criteria(@_ ) )
+  $self->sqlengine_do( 'do_delete', where => $self->primary_criteria(@_ ) )
 }
 
 # $self->delete_rows( @hashes );
 sub delete_rows {
   my $self = shift;
-  $self->sqlengine_do( 'do_delete', criteria => $self->primary_criteria(@_) )
+  $self->sqlengine_do( 'do_delete', where => $self->primary_criteria(@_) )
 }
 
 ########################################################################

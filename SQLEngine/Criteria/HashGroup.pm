@@ -57,6 +57,16 @@ DBIx::SQLEngine::Criteria::HashGroup objects provide a convenient way to bundle 
 
 Each key-value pair is converted to a StringComparison Criteria, except if the value is an array reference, which produces an Or group of StringComparisons that will match any one of the provided values.
 
+=head2 Evaluation
+
+=over 4
+
+=item sql_where () : $sql_where_expression
+
+Generates SQL criteria expression. 
+
+=back
+
 
 =head1 SEE ALSO
 

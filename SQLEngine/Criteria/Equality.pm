@@ -15,7 +15,7 @@ __END__
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::Equality - Basic Equality Criteria
+DBIx::SQLEngine::Criteria::Equality - Criteria for Basic Equality 
 
 =head1 SYNOPSIS
 
@@ -25,6 +25,14 @@ DBIx::SQLEngine::Criteria::Equality - Basic Equality Criteria
 =head1 DESCRIPTION
 
 DBIx::SQLEngine::Criteria::Equality objects are check that an expression exactly matches a given reference value.
+
+=over 4
+
+=item sql_comparator()
+
+Returns "=".
+
+=back
 
 
 =head1 SEE ALSO

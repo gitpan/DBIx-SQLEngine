@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 23 }
+BEGIN { plan tests => 25 }
 
 use DBIx::SQLEngine;
   # DBIx::SQLEngine->DBILogging(1);
@@ -51,6 +51,12 @@ ok( $sqldb->last_query, 'select * from foo inner join bar on foo = bar' );
 
 $sqldb->fetch_select( table => [ 'foo',left_outer_join=>{'foo'=>\'bar'},'bar']);
 ok( $sqldb->last_query, 'select * from foo left outer join bar on foo = bar' );
+
+$sqldb->fetch_select( table => { 'foo.foo' => 'bar.bar' } );
+ok( $sqldb->last_query, 'select * from foo inner join bar on foo.foo = bar.bar' );
+
+$sqldb->fetch_select( table => { 'foo.foo' => 'bar.bar', 'foo.foozle' => 'bar.basil' } );
+ok( $sqldb->last_query, 'select * from foo inner join bar on ( foo.foo = bar.bar and foo.foozle = bar.basil )' );
 
 $sqldb->fetch_select( table => [ 
   ['foo',left_outer_join=>{'foo'=>\'bar'},'bar'],

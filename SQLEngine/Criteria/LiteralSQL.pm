@@ -27,7 +27,7 @@ sub sql_where {
 
 =head1 NAME
 
-DBIx::SQLEngine::Criteria::LiteralSQL - Holder for SQL snippets
+DBIx::SQLEngine::Criteria::LiteralSQL - Criteria with SQL snippets
 
 
 =head1 SYNOPSIS

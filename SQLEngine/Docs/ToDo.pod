@@ -23,12 +23,16 @@ The test scripts are incomplete and really ought to exercise much more of the pu
 
 Figure out how to best write tests for features not supported on all platforms, such as the null-value/empty-string distinction or transactions.
 
+Consider prompting for DSN in Makefile.PL, and then saving the result in a text file in the t/ dir.
+
+  my $value = prompt($message, $default);
+
 
 =head2 Internals
 
 How do we compensate for different versions of a database system? For example, newer versions of MySQL support a number of features that the old ones don't. Perhaps we should attempt to detect this, and rebless into an appropriate subclass.
 
-The handling of primary keys in Schema::Table and Schema::Column is not yet correct.
+The handling of primary keys in Schema::Table and Schema::Column is not yet correct. The Record classes could also use a review to ensure primary keys are handled correctly throughout.
 
 The column-information retrieve in DBIx::SQLEngine::Default should be using DBI's type_info methods.
 
@@ -43,11 +47,11 @@ wrap around it if using composition, but it might be harder to dynamically
 inherit from it. There's also a certain degree of inertia in favor of not
 changing it.
 
-Determine the right way to handle the multiplexing drivers, DBD::Multiplex
-and DBIx::HA, given that they may reconnect to a different server
-in mid-stream.
+Determine the right way to handle the multiplexing drivers, DBD::Multiplex, DBIx::DBCluster, and DBIx::HA, given that they may reconnect to a different server in mid-stream.
 
 Determine the right way to code the driver traits currently stored in Mixin::*.
+
+Consider simplifying reuse of SQL statements in similar situations, such as inserting hundreds of rows. (See L<SQL::Abstract/PERFORMANCE>.)
 
 
 =head2 Database Subclasses

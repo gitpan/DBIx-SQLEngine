@@ -39,8 +39,10 @@ if ( ! $dsn ) {
 
   %common_cases = (
     'AnyData' => 'dbi:AnyData:test_data',
-    'mysql'   => 'dbi:mysql:test',
+    'Pg'      => 'dbi:Pg:dbname=test',
     'SQLite'  => 'dbi:SQLite:dbname=t/test_data/test.sqlite',
+    'Solid'   => 'dbi:Solid:',
+    'mysql'   => 'dbi:mysql:test',
   );
   @exclude_patterns = (
     'dbi:ExampleP', # Insufficient capabilities
