@@ -5,15 +5,48 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 
 =head1 HISTORY
 
+=head2 Release 0.004
+
+2002-01-30 Released as DBIx-SQLEngine-0.004.
+
+2002-01-30 Expanded Pg subclass. Fixed Default's type_info handling to not fall over when a type has multiple info hashes (needed for Pg). Adjusted error handling to call $sth->finish() if there's an exception after we prepare but before we complete retrieving the results. 
+
+2002-01-27 Filled out documentation, especially of the public interface in SQLEngine.pm. Added skeletal Pg subclass.
+
+
+=head2 Release 0.003
+
+2002-01-25 Released as DBIx-SQLEngine-0.003
+
+2002-01-21 Fixed AnyData sql_create_column_text_long_type.
+
+2002-01-20 Fixed typo in sql_drop_table. Added detect_any and detect_table methods.
+
+2002-01-15 Improvements to sql_create_table to support primary key declarations. Completed DBIx::SQLEngine::Mixin::SeqTable. Added DBIx::SQLEngine::CSV.
+
+2002-01-14 Added initial version of DBIx::SQLEngine::Mixin::SeqTable.
+
+2002-01-14 Fixed bug in test script; user and password were not used! (Bug report from Terrence Brannon.)
+
+
+=head2 Release 0.002
+
+2002-01-14 Released as DBIx-SQLEngine-0.002
+
 2002-01-13 Fixed logging scope errors. Filled in several mising chunks of documentation. Makefile.PL touchups for distribution.
 
 2001-12-01 Separated from object-relational mapping functionality. Moved to DBIx::SQLEngine namespace. 
 
 2001-11-30 Began adjusting namespace for CPAN distribution. Fixed use of AnyDBD to not require non-standard patch.
 
+=head2 Release 0.001
+
 2001-06-28 Use DBIx::AnyDBD for platform-specific issues. Moved SQL-generation code from Table to SQLEngine.
 
-2001-06-27 Moved to DBO2 namespace. Renamed from Adaptor to SQLEngine. Flattened class hierarchy; we're only going to support DBI. Expunged old code. Switched to new Class::MakeMethods distribution.
+2001-06-27 Renamed from Adaptor to SQLEngine. Flattened class hierarchy; we're only going to support DBI. Expunged old code. Switched to new Class::MakeMethods distribution.
+
+
+=head2 Prior Generation: DBO
 
 2001-02-14 Reversed boolean sense of 'nullable' to 'required'.
 
@@ -49,9 +82,11 @@ DBIx::SQLEngine::Changes - Revision history for DBIx::SQLEngine.
 
 1997-11-18 Simon: Updated to current practice. 
 
+=head2 Generation Zero: DBAdaptor
+
 1997-09-24 IntraNetics97 Version 1.00.000
 
-1997-08-20 Eric: Created
+1997-08-20 Eric: Extracted DBAdaptor class from prior code.
 
 
 =head1 SEE ALSO 

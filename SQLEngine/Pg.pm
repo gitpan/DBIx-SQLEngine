@@ -1,29 +1,7 @@
-package DBIx::SQLEngine::Mysql;
+package DBIx::SQLEngine::Pg;
 
 use strict;
 use Carp;
-
-########################################################################
-
-sub sql_detect_any {
-  return ( sql => 'select 1' )
-}
-
-sub sql_detect_table {
-  my ($self, $tablename) = @_;
-  return ( sql => "select * from $tablename limit 1" )
-  return ( sql => "select * from $tablename where 1 = 0" )
-  
-  return (
-    table => $tablename,
-    criteria => '1 = 0',
-    limit => 1,
-  )
-}
-
-sub sql_create_column_text_long_type {
-  'blob'
-}
 
 ########################################################################
 
@@ -43,6 +21,8 @@ sub sql_select {
   }
   
   delete $args{limit};
+
+
   my ($sql, @params) = $self->SUPER::sql_select( %args );
   
   # You can't apply "limit" to non-table fetches like "select LAST_INSERT_ID"
@@ -71,18 +51,16 @@ sub do_insert_with_sequence {
   my $self = shift;
   my $seq_name = shift;
   my %args = @_;
-
+  
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
-    croak "DBIx::SQLEngine::MySQL insert with sequence requires values to be hash-ref"
+    croak "DBIx::SQLEngine::Pg insert with sequence requires values to be hash-ref"
   }
-    
-  my $rv = $self->do_insert( %args );
   
   $args{values}->{$seq_name} = $self->fetch_one_value( 
-    sql => 'select LAST_INSERT_ID()'
+    sql => "SELECT nextval('$args{table}_${seq_name}_seq')"
   );
   
-  $rv;
+  $self->do_insert( %args );
 }
 
 ########################################################################
@@ -94,25 +72,13 @@ sub sql_create_columns {
   if ( $type eq 'sequential' ) {
     return '  ' . $name . 
 	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
-	    'auto_increment';
+	    'serial';
   } else {
     $self->SUPER::sql_create_columns( $table, $column , $columns );
   }
 }
 
-########################################################################
-
-sub catch_query_exception {
-  my $self = shift;
-  my $error = shift;
-  if ( $error =~ /Lost connection to MySQL server/ ) {
-      $self->reconnect() and return 'REDO';
-  } elsif ( $error =~ /MySQL server has gone away/ ) {
-      $self->reconnect() and return 'REDO';
-  } else {
-    $self->SUPER::catch_query_exception( $error, @_ );
-  }
-}
+sub sql_create_column_text_long_type { 'text' }
 
 ########################################################################
 

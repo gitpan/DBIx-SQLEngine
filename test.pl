@@ -1,16 +1,18 @@
 #!/usr/bin/perl
 
 use Test;
-BEGIN { plan tests => 20 }
+BEGIN { plan tests => 23 }
 
 ########################################################################
 
 BEGIN { 
-
   warn "Testing compilation...\n";
-  
-  eval "use DBIx::SQLEngine;";
-  ok( ! $@ );
+}
+
+use DBIx::SQLEngine;
+BEGIN { ok( 1 ) }
+
+BEGIN { 
   
   eval "use DBIx::SQLEngine 0.001;";
   ok( ! $@ );
@@ -19,8 +21,6 @@ BEGIN {
   ok( $@ );
 
 }
-
-use DBIx::SQLEngine;
 
 ########################################################################
 
@@ -39,24 +39,39 @@ my $user = get_line( 'DBI_USER' => $ENV{DBI_USER} || '' );
 my $pass = get_line( 'DBI_PASS' => $ENV{DBI_PASS} || '' );
 
 my $ds;
-ok( $ds = DBIx::SQLEngine->new( $dsn ) );
+ok( $ds = DBIx::SQLEngine->new( $dsn, $user, $pass ) );
 ok( ref($ds) =~ /DBIx::SQLEngine::/ );
+ok( $ds->detect_any );
+
+# $ds->DBILogging(1);
 
 ########################################################################
 
-$ds->do_sql("create table test1 ( name varchar(16), color varchar(8) )");
+$ds->do_drop_table('test1') if $ds->detect_table('test1');
+$ds->do_create_table( 'test1', [
+  { name => 'id', type => 'sequential' },
+  { name => 'name', type => 'text', length => 16 },
+  { name => 'color', type => 'text', length => 8 },
+]);
 ok( 1 );
 
 ###
 
-$ds->do_insert( table => 'test1', values => { name=>'Sam', color=>'green' } );
+my @cols = $ds->detect_table( 'test1' );
+ok( scalar( @cols ) == 3 );
+@cols = $ds->detect_table( 'table42' );
+ok( scalar( @cols ) == 0 );
+
+###
+
+$ds->do_insert( table => 'test1', values => { name=>'Sam', color=>'green' }, sequence => 'id' );
 ok( 1 );
 
 my $rows = $ds->fetch_select( table => 'test1' );
 ok( ref $rows and scalar @$rows == 1 );
 ok( $rows->[0]->{'name'} eq 'Sam' and $rows->[0]->{'color'} eq 'green' );
 
-$ds->do_insert( table => 'test1', values => { name=>'Dave', color=>'blue' } );
+$ds->do_insert( table => 'test1', values => { name=>'Dave', color=>'blue' }, sequence => 'id' );
 ok( 1 );
 
 my $rows = $ds->fetch_select( table => 'test1' );

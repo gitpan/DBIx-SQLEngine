@@ -1,10 +1,12 @@
 ANNOUNCE
 CHANGES
+DBIx-SQLEngine-0.004/SQLEngine/CSV.pm
 MANIFEST
 Makefile.PL
 README
 SQLEngine.pm
 SQLEngine/AnyData.pm
+SQLEngine/CSV.pm
 SQLEngine/Changes.pod
 SQLEngine/Criteria.pm
 SQLEngine/Criteria/And.pm
@@ -16,7 +18,9 @@ SQLEngine/Criteria/Or.pm
 SQLEngine/Criteria/StringEquality.pm
 SQLEngine/Criteria/unfinished_code
 SQLEngine/Default.pm
+SQLEngine/Mixin/SeqTable.pm
 SQLEngine/Mysql.pm
+SQLEngine/Pg.pm
 SQLEngine/ReadMe.pod
 SQLEngine/ToDo.pod
 SQLEngine/unfinished_code

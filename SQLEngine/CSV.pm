@@ -1,16 +1,12 @@
-package DBIx::SQLEngine::AnyData;
+package DBIx::SQLEngine::CSV;
 
 use strict;
 use Carp;
 
 ########################################################################
 
-sub detect_any {
-  1;
-}
-
 sub sql_detect_any {
-  croak "Unsupported";
+  return ( sql => 'select 1' )
 }
 
 sub sql_detect_table {
@@ -18,7 +14,7 @@ sub sql_detect_table {
   
   return (
     table => $tablename,
-    # criteria => '1 = 0',
+    criteria => '1 = 0',
     limit => 1,
   )
 }
@@ -31,9 +27,6 @@ sub sql_create_column_text_long_type {
 sub sql_create_columns {
   my($self, $table, $column , $columns) = @_;
   return if ( $column->{type} eq 'primary' );
-  if ( $column->{type} eq 'sequential' ) {
-    $column->{type} = 'int';
-  }
   $self->SUPER::sql_create_columns( $table, $column , $columns );
 }
 
@@ -48,11 +41,7 @@ sub fetch_one_row {
 sub fetch_one_value {
   my $self = shift;
   my %args = @_;
-  if ( $args{columns} =~ /\A\s*count\((.*?)\)\s*\Z/ ) {
-    $args{columns} = $1;
-    my $rows = $self->fetch_select( %args );
-    return( $rows ? scalar( @$rows ) : 0 )
-  } elsif ( $args{columns} =~ /\A\s*max\((.*?)\)\s*\Z/ ) {
+  if ( $args{columns} =~ /\A\s*max\((.*?)\)\s*\Z/ ) {
     $args{columns} = $1;
     $args{order} = "$1 desc";
   } elsif ( $args{columns} =~ /\A\s*min\((.*?)\)\s*\Z/ ) {
@@ -103,13 +92,13 @@ sub do_insert_with_sequence {
   my $seq_name = shift;
   my %args = @_;
   
-  push @DBIx::SQLEngine::AnyData::ISA, 'DBIx::SQLEngine::Mixin::SeqTable'
-    unless ( grep $_ eq 'DBIx::SQLEngine::Mixin::SeqTable', @DBIx::SQLEngine::AnyData::ISA );
-  
+  push @DBIx::SQLEngine::CSV::ISA, 'DBIx::SQLEngine::Mixin::SeqTable'
+    unless ( grep $_ eq 'DBIx::SQLEngine::Mixin::SeqTable', @DBIx::SQLEngine::CSV::ISA );
+
   # $self->SQLLogging(1);
-  
+
   unless ( UNIVERSAL::isa($args{values}, 'HASH') ) {
-    croak "DBIx::SQLEngine::AnyData insert with sequence requires values to be hash-ref"
+    croak "DBIx::SQLEngine::CSV insert with sequence requires values to be hash-ref"
   }
   
   $args{values}->{$seq_name} = $self->seq_increment($args{table}, $seq_name);
@@ -118,22 +107,5 @@ sub do_insert_with_sequence {
 }
 
 ########################################################################
-
-# $ds->ad_catalog('TableName', 'AnyDataFormat', 'FileName');
-sub ad_catalog { 
-  (shift)->func( @_, 'ad_catalog' );
-}
-
-########################################################################
-
-sub catch_query_exception {
-  my $self = shift;
-  my $error = shift;
-  if ( $error =~ /resource/ ) {
-      $self->reconnect() and return 'REDO';
-  } else {
-    $self->SUPER::catch_query_exception( $error, @_ );
-  }
-}
 
 1;

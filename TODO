@@ -6,14 +6,31 @@ TO DO
     several years of production use, this code has recently been majorly
     refactored, and has not yet been sufficiently tested in its new form.
 
+  Distribution
+
+    This version to be posted for review and discussion on DBI list, Perl
+    Monks, and Perl Modules list.
+
     The test script is very minimal and really ought to exercise the entire
     public interface.
 
+  Immediate
+
+    The column-information retrieve in DBIx::SQLEngine::Default should be
+    using DBI's type_info methods.
+
+    Extend the base interface with the following interfaces:
+
+    *   fetch_select_with_limit
+
+    *   do_insert_with_sequence
+
+    Basic transaction support.
+
+  General
+
     The Criteria subclasses are woefully incomplete. See the unfinished_code
     file for more.
-
-    The column-information retrieve in DBIx::SQLEngine::Default should
-    probably be using DBI's type_info methods.
 
     Additional subclasses will be required to support the following:
 

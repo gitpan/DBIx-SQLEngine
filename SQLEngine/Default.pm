@@ -44,15 +44,13 @@ use strict;
 use Carp;
 use Class::MakeMethods;
 
-require DBIx::SQLEngine;
-
 use DBIx::SQLEngine::Criteria::HashGroup;
 
 ########################################################################
 
 =head1 PUBLIC INTERFACE
 
-The public interface described below is shared by all SQLEngine subclasses. To facilitate cross-platform subclassing, these methods are implemented by calling combinations of other methods described in the INTERNALS sections below.
+The public interface described below is shared by all SQLEngine subclasses. To facilitate cross-platform subclassing, many these methods are implemented by calling combinations of other methods described in the INTERNALS sections below.
 
 =cut
 
@@ -71,19 +69,6 @@ Create one SQLEngine for each DBI datasource you will use.
 
 Accepts the same arguments as the standard DBI connect method. 
 
-=item DBILogging
-
-  $sqldb->DBILogging : $value
-  $sqldb->DBILogging( $value )
-
-Global. Set this to a true value to turn on logging.
-
-=item log_connect
-
-  $sqldb->log_connect ( $dsn )
-
-Writes out connection logging message.
-
 =back
 
 =cut
@@ -97,15 +82,6 @@ sub new_connection {
   return undef unless $self;
   $self->{'reconnector'} = sub { DBI->connect($dsn, $user, $pass, $args) };
   return $self;
-}
-
-Class::MakeMethods->make( 'Standard::Global:scalar' => 'DBILogging' );
-
-# $self->log_connect( $dsn );
-sub log_connect {
-  my ($self, $dsn) = @_;
-  my $class = ref($self) || $self;
-  warn "DBI: Connecting to $dsn\n";
 }
 
 ########################################################################
@@ -157,15 +133,13 @@ sub visit_select {
 
 sub fetch_one_row {
   my $self = shift;
-  my $rows = $self->fetch_select( limit => 1, @_ ) 
-	or return;
+  my $rows = $self->fetch_select( @_ ) or return;
   $rows->[0];
 }
 
 sub fetch_one_value {
   my $self = shift;
-  my $row = $self->fetch_one_row( @_ ) 
-	or return;
+  my $row = $self->fetch_one_row( @_ ) or return;
   (%$row)[1];
 }
 
@@ -177,19 +151,19 @@ sub fetch_one_value {
 
 =item do_insert  
 
-  $sqldb->do_insert( %sql_clauses ) 
+  $sqldb->do_insert( %sql_clauses ) : $row_count
 
-Insert a single row into a table in the datasource.
+Insert a single row into a table in the datasource. Should always return 1.
 
 =item do_update  
 
-  $sqldb->do_update( %sql_clauses ) 
+  $sqldb->do_update( %sql_clauses ) : $row_count
 
 Modify one or more rows in a table in the datasource.
 
 =item do_delete
 
-  $sqldb->do_delete( %sql_clauses ) 
+  $sqldb->do_delete( %sql_clauses ) : $row_count
 
 Delete one or more rows in a table in the datasource.
 
@@ -203,7 +177,6 @@ sub do_insert {
   $self->do_sql( $self->sql_insert( @_ ) );
 }
 
-
 # $rows = $self->do_update( %clauses );
 sub do_update {
   my $self = shift;
@@ -216,10 +189,99 @@ sub do_delete {
   $self->do_sql( $self->sql_delete( @_ ) );
 }
 
+########################################################################
+
+=head2 Checking For Existence
+
+To determine if the connection is working and whether a table exists.
+
+=over 4
+
+=item detect_any
+
+  $sqldb->detect_any () : $boolean
+
+Attempts to confirm that values can be retreived from the database, using a server-specific "trivial" or "guaranteed" query provided by sql_detect_any.
+Catches any exceptions; if the query fails for any reason we return nothing.
+
+=item detect_table
+
+  $sqldb->detect_table ( $tablename ) : @columns_or_empty
+
+Attempts to query the given table without retrieving many (or any) rows. Uses a server-specific "trivial" or "guaranteed" query provided by sql_detect_any. 
+Catches any exceptions; if the query fails for any reason we return nothing.
+
+=back
+
+=cut
+
+sub detect_any {
+  my $self = shift;
+  eval {
+    local $SIG{__DIE__};
+    $self->fetch_one_value($self->sql_detect_any);
+    return 1;
+  };
+  # warn "Unable to detect_any: $@";
+  return;
+}
+
+sub detect_table {
+  my ($self, $tablename) = @_;
+  my @sql;
+  my $columns;
+  eval {
+    local $SIG{__DIE__};
+    @sql = $self->sql_detect_table( $tablename );
+    ( my($rows), $columns ) = $self->fetch_select( @sql );
+  };
+  if ( ! $@ ) {
+    return @$columns;
+  } else {
+    # warn "Unable to detect_table $tablename: $@";
+    return;
+  }
+}
 
 ########################################################################
 
-=head1 DBH METHODS
+=head2 Create and Drop Tables
+
+=over 4
+
+=item do_create_table  
+
+  $sqldb->do_create_table( $tablename, $column_hash_ary ) 
+
+Create a table.
+
+=item do_drop_table  
+
+  $sqldb->do_drop_table( $tablename ) 
+
+Delete a table.
+
+=back
+
+=cut
+
+# $rows = $self->do_create_table( $tablename, $columns );
+sub do_create_table {
+  my $self = shift;
+  $self->do_sql( $self->sql_create_table( @_ ) );
+}
+
+
+# $rows = $self->do_drop_table( $tablename );
+sub do_drop_table {
+  my $self = shift;
+  $self->do_sql( $self->sql_drop_table( @_ ) );
+}
+
+
+########################################################################
+
+=head1 INTERNAL DBH METHODS
 
 The following methods manage the DBI database handle through which we communicate with the datasource.
 
@@ -293,7 +355,7 @@ sub check_or_reconnect {
 
 ########################################################################
 
-=head1 STH METHODS
+=head1 INTERNAL STH METHODS
 
 The following methods manipulate DBI statement handles as part of processing queries and their results.
 
@@ -312,9 +374,11 @@ This is the public interface for accessing data through the SQLEngine.
 
 =item do_sql
 
-  $sqldb->do_sql ($sql, @params) : ()
+  $sqldb->do_sql ($sql, @params) : $rowcount 
 
 Execute a SQL query by sending it to the DBI connection.
+
+Returns the number of rows modified, or -1 if unknown.
 
 =item fetch_sql 
 
@@ -332,13 +396,12 @@ Similar to fetch_sql, but calls your coderef on each row, rather than returning 
 
 =cut
 
-# $self->do_sql($sql);
-# $self->do_sql($sql, @params);
+# $rowcount = $self->do_sql($sql);
+# $rowcount = $self->do_sql($sql, @params);
 sub do_sql {
   my $self = shift;
   my ($sql, @params) = @_;
-  $self->try_query( $sql, \@params, 'do_nothing' );  
-  return;
+  $self->try_query( $sql, \@params, 'get_execute_rowcount' );  
 }
 
 # $rows = $self->fetch_sql($sql);
@@ -435,7 +498,13 @@ sub catch_query_exception {
   $sqldb->DBILogging : $value
   $sqldb->DBILogging( $value )
 
-Global. Set this to a true value to turn on logging.
+Set this to a true value to turn on logging of DBI interactions. Can be called on the class to set a shared default for all instances, or on any instance to set the value for it alone.
+
+=item log_connect
+
+  $sqldb->log_connect ( $dsn )
+
+Writes out connection logging message.
 
 =item log_start
 
@@ -453,17 +522,13 @@ Called at end of query execution.
 
 =cut
 
-Class::MakeMethods->make( 'Standard::Global:scalar' => 'DBILogging' );
+use Class::MakeMethods ( 'Standard::Inheritable:scalar' => 'DBILogging' );
 
-use vars qw( %Printable );
-%Printable = ( ( map { chr($_), unpack('H2', chr($_)) } (0..255) ),
-	      "\\"=>'\\', "\r"=>'r', "\n"=>'n', "\t"=>'t', "\""=>'"' );
-
-# $special_characters_escaped = printable( $source_string );
-sub printable ($) {
-  local $_ = ( defined $_[0] ? $_[0] : '' );
-  s/([\r\n\t\"\\\x00-\x1f\x7F-\xFF])/\\$Printable{$1}/g;
-  return $_;
+# $self->log_connect( $dsn );
+sub log_connect {
+  my ($self, $dsn) = @_;
+  my $class = ref($self) || $self;
+  warn "DBI: Connecting to $dsn\n";
 }
 
 # $timer = $self->log_start( $sql );
@@ -492,6 +557,19 @@ sub log_stop {
 	(defined $count ? ", returning $count items" : '') . "\n";
   
   return;
+}
+
+########################################################################
+
+use vars qw( %Printable );
+%Printable = ( ( map { chr($_), unpack('H2', chr($_)) } (0..255) ),
+	      "\\"=>'\\', "\r"=>'r', "\n"=>'n', "\t"=>'t', "\""=>'"' );
+
+# $special_characters_escaped = printable( $source_string );
+sub printable ($) {
+  local $_ = ( defined $_[0] ? $_[0] : '' );
+  s/([\r\n\t\"\\\x00-\x1f\x7F-\xFF])/\\$Printable{$1}/g;
+  return $_;
 }
 
 ########################################################################
@@ -536,7 +614,17 @@ sub execute_query {
   my $timer = $self->log_start( @query ) if $self->DBILogging;
     
   my $sth = $self->prepare_execute( @query );
-  my @results = $self->$method( $sth, @args );
+  my @results;
+  eval {
+    local $SIG{__DIE__};
+    @results = $self->$method( $sth, @args );
+  };
+  if ( $@ ) {
+    if ( $sth ) { 
+      $self->done_with_query($sth);
+      die $@;
+    }
+  }
   $self->done_with_query($sth);
   
   $self->log_stop( $timer, \@results ) if $self->DBILogging;
@@ -557,7 +645,7 @@ sub prepare_execute {
     my @param_v = ( ref($param_v) eq 'ARRAY' ) ? @$param_v : $param_v;
     $sth->bind_param( $param_no+1, @param_v );
   }
-  $sth->execute();
+  $self->{_last_sth_execute} = $sth->execute();
   
   return $sth;
 }
@@ -580,6 +668,12 @@ sub done_with_query {
   $sqldb->do_nothing ($sth) : ()
 
 Does nothing. 
+
+=item get_execute_rowcount
+
+  $sqldb->get_execute_rowcount ($sth) : ()
+
+Returns the row count reported by the last statement executed.
 
 =item fetchall_arrayref
 
@@ -617,6 +711,11 @@ Calls coderef on each row with values as list; does not return them.
 
 sub do_nothing {
   return;
+}
+
+sub get_execute_rowcount {
+  my $self = shift;
+  return $self->{_last_sth_execute};
 }
 
 sub fetchall_arrayref {
@@ -694,7 +793,11 @@ sub retrieve_columns {
   my $names = $sth->{'NAME_lc'};
   my $types = $sth->{'TYPE'};
   # warn "Types: " . join(', ', map "'$_'", @$types);
-  my $type_codes = [ map { scalar $self->type_info($_)->{'DATA_TYPE'} } @$types ];
+  my $type_codes = [ map { 
+	my $typeinfo = scalar $self->type_info($_);
+	# warn "Type $typeinfo";
+	scalar $typeinfo->{'DATA_TYPE'} 
+  } @$types ];
   my $sizes = []; # $sth->{PRECISION};
   my $nullable = $sth->{'NULLABLE'};
   [
@@ -714,7 +817,7 @@ sub retrieve_columns {
   ];
 }
 
-Class::MakeMethods->make( 'Standard::Global:hash' => 'column_type_codes' );
+use Class::MakeMethods ( 'Standard::Global:hash' => 'column_type_codes' );
 
 # $code_to_name_hash = $self->determine_column_type_codes();
 __PACKAGE__->column_type_codes(
@@ -741,7 +844,7 @@ __PACKAGE__->column_type_codes(
 
 ########################################################################
 
-=head1 SQL METHODS
+=head1 INTERNAL SQL METHODS
 
 The various sql_* methods below each accept a hash of arguments and combines then to return a SQL statement and corresponding parameters. Data for each clause of the statement is accepted in a variety of formats to facilitate query abstraction. 
 
@@ -781,7 +884,11 @@ Optional; defaults to '*'. May contain a comma-separated string of column names,
 
 =item criteria
 
-Optional. If the criteria is one of the DBO::Criteria objects, its sql() expression will be used. Criteria are blessed hashes of { 'key'=> word, 'match'=> text, 'value'=> ref_val }; see DBO::Criteria for details.
+Optional. May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
+
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+
+Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior. 
 
 =item order
 
@@ -887,12 +994,6 @@ sub sql_select {
     $sql .= " group by $group";
   }
   
-  my $limit = $clauses{'limit'};
-  # KLUDGE
-  if ( $limit ) {
-    $sql .= " limit $limit";
-  }
-
   if ( scalar keys %clauses ) {
     confess("Unsupported select clauses: " . 
       join ', ', map "$_ ('$clauses{$_}')", keys %clauses);
@@ -1051,7 +1152,12 @@ Required. May contain a string with one or more comma-separated quoted values or
 
 =item criteria
 
-Optional, but remember that ommitting this will cause all of your rows to be updated! If the criteria is one of the DBO::Criteria objects, its sql() expression will be used. Criteria are blessed hashes of { 'key'=> word, 'match'=> text, 'value'=> ref_val }; see DBO::Criteria for details.
+Optional, but remember that ommitting this will cause all of your rows to be updated! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
+
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+
+Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior. 
+
 
 =back
 
@@ -1174,11 +1280,15 @@ Optional; overrides all other arguments. May contain a plain SQL statement to be
 
 =item table 
 
-Required. The name of the table to insert into.
+Required (unless explicit "sql => ..." is used). The name of the table to delete from.
 
 =item criteria
 
-Optional, but remember that ommitting this will cause all of your rows to be updated! If the criteria is one of the DBO::Criteria objects, its sql() expression will be used. Criteria are blessed hashes of { 'key'=> word, 'match'=> text, 'value'=> ref_val }; see DBO::Criteria for details.
+Optional, but remember that ommitting this will cause all of your rows to be deleted! May contain a literal SQL where clause (everything after there word "where"), or a reference to an array of a SQL string with embedded placeholders followed by the values that should be bound to those placeholders. 
+
+If the criteria argument is a reference to hash, it is treated as a set of field-name => value pairs, and a SQL expression is created that requires each one of the named fields to exactly match the value provided for it, or if the value is an array reference to match any one of the array's contents; see L<DBIx::SQLEngine::Criteria::HashGroup> for details.
+
+Alternately, if the criteria is an object which supports a sql_where() method, the results of that method will be used; see L<DBIx::SQLEngine::Criteria> for classes with this behavior.
 
 =back
 
@@ -1262,25 +1372,37 @@ sub sql_create_table {
   my @sql_columns;
   my $column;
   foreach $column ( @$columns ) {
-    my $name = $column->name;
-    my $type = $column->type;
-    if ( $type eq 'text' ) {
-      $type = $self->sql_create_column_text_length( $column->length || 255 ) ;
-    }
-    if ( $column->required ) { $type .= " not null" }
-    push @sql_columns, $name . ' ' x ( 32 - length($name) ) . $type;
+    push @sql_columns, $self->sql_create_columns($table, $column, \@sql_columns)
   }
   
-  my $sql = "create table $table ( \n" . 
-	    join(",\n", @sql_columns) . "\n)\n";
+  my $sql = "create table $table ( \n" . join(",\n", @sql_columns) . "\n)\n";
   
   $self->log_sql( $sql );
   return $sql;
 }
 
+sub sql_create_columns {
+  my($self, $table, $column , $columns) = @_;
+  my $name = $column->{name};
+  my $type = $column->{type};
+  if ( $type eq 'primary' ) {
+    return "PRIMARY KEY ($name)";
+  } else {
+    if ( $type eq 'text' ) {
+      my $length = $column->{length};
+      $type = $self->sql_create_column_text_length( $length || 255 ) ;
+    }
+    my $required = $column->{required};
+    $type .= " not null" if ( $required );
+    return '  ' . $name . 
+	    ' ' x ( ( length($name) > 31 ) ? ' ' : ( 32 - length($name) ) ) .
+	    $type;
+  }
+}
+
 sub sql_drop_table {
-  my ($self) = @_;
-  my $sql = 'drop table ' . $self->{'table'};
+  my ($self, $table) = @_;
+  my $sql = "drop table $table";
   $self->log_sql( $sql );
   return $sql;
 }
@@ -1335,38 +1457,46 @@ sub sql_escape_text_for_like {
 
 ########################################################################
 
-# $sql_clause = $self->sql_where( $criteria );
-sub sql_where {
-  my ($self, $criteria) = @_;
-  
-  $criteria = new_group_from_values(@$criteria) if (ref $criteria eq 'ARRAY');
-  $criteria = DBO::Criteria->new_from_hashref($criteria) if (ref $criteria eq 'HASH');
-  my $sql_crit;
-  if ( ! defined $criteria ) {
-    $sql_crit = '';
-  } elsif ( UNIVERSAL::can( $criteria, 'sql' ) ) {
-    $sql_crit = $criteria->sql( $self );
-  } else {
-    die "Unknown type of SQL criteria $sql_crit\n";
-  }
-  
-  return ( $sql_crit ? ' where ' . $sql_crit : '' );
+=head2 Checking For Existence
+
+To determine if the connection is working and whether a table exists.
+
+=over 4
+
+=item sql_detect_any
+
+  $sqldb->sql_detect_any : %sql_select_clauses
+
+Subclass hook. Retrieve something from the database that is guaranteed to exist. 
+Defaults to SQL literal "select 1", which may not work on all platforms. Your subclass might prefer one of these: "select SYSDATE() from dual", (I'm unsure of the others)...
+
+=item sql_detect_table
+
+  $sqldb->sql_detect_table ( $tablename )  : %sql_select_clauses
+
+Subclass hook. Retrieve something from the given table that is guaranteed to exist but does not return many rows, without knowning its table structure. 
+
+Defaults to "select * from table where 1 = 0", which may not work on all platforms. Your subclass might prefer one of these: "select * from table limit 1", (I'm unsure of the others)...
+
+=back
+
+=cut
+
+sub sql_detect_any {
+  return ( sql => 'select 1' )
 }
 
-# @$non_sql_criteria = non_sql_criteria(\@criteria);
-sub non_sql_criteria {
-  my ($self, $criteria) = @_;
-  $criteria = new_group_from_values(@$criteria) if (ref $criteria eq 'ARRAY');
-  return ;
-  my (@non_sql_criteria);
-  my $criterion;
-  foreach $criterion (@$criteria ) {
-    my ($where_handler) = 
-		  $self->get_sql_criterion_handler($criterion->{'match'});
-    push (@non_sql_criteria, $criterion) 
-    		unless ($where_handler and $self->can($where_handler));
-  }
-  return \@non_sql_criteria;
+sub sql_detect_table {
+  my ($self, $tablename) = @_;
+
+  # Your subclass might prefer one of these...
+  # return ( sql => "select * from $tablename limit 1" )
+  # return ( sql => "select * from $tablename where 1 = 0" )
+  
+  return (
+    table => $tablename,
+    criteria => '1 = 0',
+  )
 }
 
 ########################################################################
@@ -1380,7 +1510,7 @@ sub non_sql_criteria {
   $sqldb->SQLLogging () : $value 
   $sqldb->SQLLogging( $value )
 
-Global. Set this to a true value to turn on logging.
+Set this to a true value to turn on logging of internally-generated SQL statements (all queries except for those with complete SQL statements explicitly passed in by the caller). Can be called on the class to set a shared default for all instances, or on any instance to set the value for it alone.
 
 =item log_sql
 
@@ -1392,7 +1522,7 @@ Called when SQL is generated.
 
 =cut
 
-use Class::MakeMethods ( 'Standard::Global:scalar' => 'SQLLogging' );
+use Class::MakeMethods ( 'Standard::Inheritable:scalar' => 'SQLLogging' );
 
 # $self->log_sql( $sql );
 sub log_sql {
@@ -1402,8 +1532,6 @@ sub log_sql {
   my $params = join( ', ', map { defined $_ ? "'$_'" : 'undef' } @params );
   warn "SQL: $sql; $params\n";
 }
-
-
 
 ########################################################################
 
